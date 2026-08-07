@@ -58,6 +58,9 @@ export default async function OperationsCentersPage() {
               <p>الموقع: {center.city} — {center.country_code}</p>
               <p>التبعية: {center.dealer_id ? dealerNames.get(center.dealer_id) ?? "وكيل غير متاح" : "مباشر للشركة"}</p>
               <p>الحالة: {statusLabels[center.status] ?? center.status}</p>
+              <div className="card-actions">
+                <Link href={`/operations/centers/${center.id}/edit`} className="button">تعديل</Link>
+              </div>
             </article>
           ))}
         </section>
