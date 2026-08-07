@@ -63,20 +63,36 @@ export default async function OperationsCentersPage({ searchParams }: Operations
         <section className="card-grid" aria-label="قائمة مراكز التركيب">
           {centersResult.data.map((center) => {
             const isSuspended = center.status === "suspended";
+            const parentName = center.dealer_id
+              ? dealerNames.get(center.dealer_id) ?? "وكيل غير متاح"
+              : "مباشر للشركة";
 
             return (
               <article className="card" key={center.id}>
-                <span className="card-kicker">{center.code}</span>
+                <span className="card-kicker" dir="ltr">{center.code}</span>
                 <h2>{center.name}</h2>
-                <p>الموقع: {center.city} — {center.country_code}</p>
-                <p>التبعية: {center.dealer_id ? dealerNames.get(center.dealer_id) ?? "وكيل غير متاح" : "مباشر للشركة"}</p>
-                <p>الحالة: {statusLabels[center.status] ?? center.status}</p>
+                <div className="record-meta">
+                  <div className="record-meta-row">
+                    <span>الموقع</span>
+                    <strong>{center.city} · <span dir="ltr">{center.country_code}</span></strong>
+                  </div>
+                  <div className="record-meta-row">
+                    <span>التبعية</span>
+                    <strong>{parentName}</strong>
+                  </div>
+                  <div className="record-meta-row">
+                    <span>الحالة</span>
+                    <span className={`status-chip ${isSuspended ? "is-suspended" : "is-active"}`}>
+                      {statusLabels[center.status] ?? center.status}
+                    </span>
+                  </div>
+                </div>
                 <div className="card-actions">
                   <Link href={`/operations/centers/${center.id}/edit`} className="button">تعديل</Link>
                   <form action={setCenterStatus}>
                     <input type="hidden" name="center_id" value={center.id} />
                     <input type="hidden" name="status" value={isSuspended ? "active" : "suspended"} />
-                    <button type="submit" className={isSuspended ? "button button-primary" : "button"}>
+                    <button type="submit" className={isSuspended ? "button button-primary" : "button button-danger"}>
                       {isSuspended ? "إعادة تفعيل" : "إيقاف"}
                     </button>
                   </form>
