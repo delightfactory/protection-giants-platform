@@ -36,12 +36,21 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <form action={signIn} className="auth-form">
           <label>
             <span>البريد الإلكتروني</span>
-            <input name="email" type="email" autoComplete="email" required />
+            <input
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              dir="ltr"
+              required
+            />
           </label>
 
           <label>
             <span>كلمة المرور</span>
-            <input name="password" type="password" autoComplete="current-password" required />
+            <input name="password" type="password" autoComplete="current-password" dir="ltr" required />
           </label>
 
           <button type="submit" className="button button-primary">دخول</button>
