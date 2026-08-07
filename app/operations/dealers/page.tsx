@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -26,13 +27,16 @@ export default async function OperationsDealersPage() {
           <span className="eyebrow">الهيكل التشغيلي</span>
           <h1>الوكلاء والموزعون</h1>
         </div>
-        <p>{dealers.length} وكيل / موزع مسجل</p>
+        <div className="operations-topbar-actions">
+          <p>{dealers.length} وكيل / موزع مسجل</p>
+          <Link href="/operations/dealers/new" className="button button-primary">إضافة وكيل</Link>
+        </div>
       </div>
 
       {dealers.length === 0 ? (
         <section className="foundation-note">
           <strong>لا يوجد وكلاء أو موزعون مسجلون بعد.</strong>
-          <p>إضافة الوكلاء ستتاح في المكعب التالي بعد تثبيت شاشة القراءة الحالية.</p>
+          <p>استخدم زر إضافة وكيل لإنشاء أول كيان موزع في المنصة.</p>
         </section>
       ) : (
         <section className="card-grid" aria-label="قائمة الوكلاء والموزعين">
