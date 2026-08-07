@@ -31,6 +31,7 @@ export function OperationsNav({ profile }: OperationsNavProps) {
         {profile.role === "admin" ? (
           <>
             <Link href="/operations/dealers">الوكلاء والموزعون</Link>
+            <Link href="/operations/centers">مراكز التركيب</Link>
             <Link href="/operations/products">المنتجات</Link>
           </>
         ) : null}
