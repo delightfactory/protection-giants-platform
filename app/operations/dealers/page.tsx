@@ -55,16 +55,26 @@ export default async function OperationsDealersPage({ searchParams }: Operations
 
             return (
               <article className="card" key={dealer.id}>
-                <span className="card-kicker">{dealer.code}</span>
+                <span className="card-kicker" dir="ltr">{dealer.code}</span>
                 <h2>{dealer.name}</h2>
-                <p>الدولة: {dealer.country_code}</p>
-                <p>الحالة: {statusLabels[dealer.status] ?? dealer.status}</p>
+                <div className="record-meta">
+                  <div className="record-meta-row">
+                    <span>الدولة</span>
+                    <strong dir="ltr">{dealer.country_code}</strong>
+                  </div>
+                  <div className="record-meta-row">
+                    <span>الحالة</span>
+                    <span className={`status-chip ${isSuspended ? "is-suspended" : "is-active"}`}>
+                      {statusLabels[dealer.status] ?? dealer.status}
+                    </span>
+                  </div>
+                </div>
                 <div className="card-actions">
                   <Link href={`/operations/dealers/${dealer.id}/edit`} className="button">تعديل</Link>
                   <form action={setDealerStatus}>
                     <input type="hidden" name="dealer_id" value={dealer.id} />
                     <input type="hidden" name="status" value={isSuspended ? "active" : "suspended"} />
-                    <button type="submit" className={isSuspended ? "button button-primary" : "button"}>
+                    <button type="submit" className={isSuspended ? "button button-primary" : "button button-danger"}>
                       {isSuspended ? "إعادة تفعيل" : "إيقاف"}
                     </button>
                   </form>

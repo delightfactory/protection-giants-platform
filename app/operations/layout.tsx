@@ -7,7 +7,7 @@ export default async function OperationsLayout({ children }: Readonly<{ children
   const profile = await requireOperationalProfile();
 
   return (
-    <div className="operations-shell">
+    <div className={`operations-shell operations-shell-${profile.role}`}>
       <OperationsNav profile={profile} />
       <main className="operations-content">{children}</main>
     </div>

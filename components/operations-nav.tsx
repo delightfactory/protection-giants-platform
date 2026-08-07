@@ -2,6 +2,7 @@ import Link from "next/link";
 import { signOut } from "@/lib/auth/actions";
 import type { OperationalProfile } from "@/lib/auth/operational-profile";
 import { brandConfig } from "@/lib/brand-config";
+import { OperationsNavLinks } from "@/components/operations-nav-links";
 
 const roleLabels = {
   admin: "إدارة الشركة",
@@ -15,31 +16,39 @@ type OperationsNavProps = {
 
 export function OperationsNav({ profile }: OperationsNavProps) {
   return (
-    <aside className="operations-sidebar">
-      <Link href="/" className="brand" aria-label="العودة إلى الموقع العام">
-        <span className="brand-mark" aria-hidden="true">{brandConfig.shortName}</span>
-        <span>{brandConfig.name}</span>
-      </Link>
+    <>
+      <aside className="operations-sidebar">
+        <Link href="/operations" className="brand" aria-label={`${brandConfig.name} - بوابة التشغيل`}>
+          <span className="brand-mark" aria-hidden="true">{brandConfig.shortName}</span>
+          <span>{brandConfig.name}</span>
+        </Link>
 
-      <div className="operations-user" aria-label="المستخدم الحالي">
-        <strong>{profile.display_name}</strong>
-        <span>{roleLabels[profile.role]}</span>
-      </div>
+        <div className="operations-user" aria-label="المستخدم الحالي">
+          <strong>{profile.display_name}</strong>
+          <span>{roleLabels[profile.role]}</span>
+        </div>
 
-      <nav className="operations-nav" aria-label="تنقل بوابة التشغيل">
-        <Link href="/operations">نظرة عامة</Link>
-        {profile.role === "admin" ? (
-          <>
-            <Link href="/operations/dealers">الوكلاء والموزعون</Link>
-            <Link href="/operations/centers">مراكز التركيب</Link>
-            <Link href="/operations/products">المنتجات</Link>
-          </>
-        ) : null}
-      </nav>
+        <OperationsNavLinks role={profile.role} variant="desktop" />
 
-      <form action={signOut} className="operations-signout">
-        <button type="submit">تسجيل الخروج</button>
-      </form>
-    </aside>
+        <form action={signOut} className="operations-signout">
+          <button type="submit">تسجيل الخروج</button>
+        </form>
+      </aside>
+
+      <header className="operations-mobile-header">
+        <Link href="/operations" className="operations-mobile-identity" aria-label={`${brandConfig.name} - بوابة التشغيل`}>
+          <span className="brand-mark" aria-hidden="true">{brandConfig.shortName}</span>
+          <span className="operations-mobile-user">
+            <strong>{profile.display_name}</strong>
+            <span>{roleLabels[profile.role]}</span>
+          </span>
+        </Link>
+        <form action={signOut}>
+          <button type="submit" className="operations-mobile-signout">خروج</button>
+        </form>
+      </header>
+
+      <OperationsNavLinks role={profile.role} variant="mobile" />
+    </>
   );
 }

@@ -14,7 +14,16 @@ export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
     <>
       <label>
         <span>كود المنتج</span>
-        <input name="code" type="text" minLength={2} maxLength={40} defaultValue={values?.code} required />
+        <input
+          name="code"
+          type="text"
+          minLength={2}
+          maxLength={40}
+          autoCapitalize="characters"
+          spellCheck={false}
+          defaultValue={values?.code}
+          required
+        />
       </label>
 
       <label>
@@ -28,6 +37,8 @@ export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
           name="slug"
           type="text"
           inputMode="url"
+          autoCapitalize="none"
+          spellCheck={false}
           pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
           placeholder="protection-film-x"
           dir="ltr"
@@ -42,6 +53,7 @@ export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
         <input
           name="default_warranty_months"
           type="number"
+          inputMode="numeric"
           min={1}
           max={240}
           step={1}

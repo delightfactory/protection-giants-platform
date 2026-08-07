@@ -55,16 +55,26 @@ export default async function OperationsProductsPage({ searchParams }: Operation
 
             return (
               <article className="card" key={product.id}>
-                <span className="card-kicker">{product.code}</span>
+                <span className="card-kicker" dir="ltr">{product.code}</span>
                 <h2>{product.name}</h2>
-                <p>الضمان الافتراضي: {product.default_warranty_months} شهر</p>
-                <p>الحالة: {statusLabels[product.status] ?? product.status}</p>
+                <div className="record-meta">
+                  <div className="record-meta-row">
+                    <span>الضمان الافتراضي</span>
+                    <strong>{product.default_warranty_months} شهر</strong>
+                  </div>
+                  <div className="record-meta-row">
+                    <span>الحالة</span>
+                    <span className={`status-chip ${isArchived ? "is-archived" : "is-active"}`}>
+                      {statusLabels[product.status] ?? product.status}
+                    </span>
+                  </div>
+                </div>
                 <div className="card-actions">
                   <Link href={`/operations/products/${product.id}/edit`} className="button">تعديل</Link>
                   <form action={setProductStatus}>
                     <input type="hidden" name="product_id" value={product.id} />
                     <input type="hidden" name="status" value={isArchived ? "active" : "archived"} />
-                    <button type="submit" className={isArchived ? "button button-primary" : "button"}>
+                    <button type="submit" className={isArchived ? "button button-primary" : "button button-danger"}>
                       {isArchived ? "إعادة تفعيل" : "أرشفة"}
                     </button>
                   </form>
