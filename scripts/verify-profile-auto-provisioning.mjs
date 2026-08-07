@@ -20,6 +20,10 @@ async function readJson(response) {
   }
 }
 
+function codePoints(value) {
+  return Array.from(value ?? "", (character) => character.codePointAt(0).toString(16)).join(" ");
+}
+
 async function adminCreateUser(payload) {
   const response = await fetch(`${apiUrl}/auth/v1/admin/users`, {
     method: "POST",
@@ -54,6 +58,7 @@ async function readProfile(userId) {
   return body;
 }
 
+const expectedDisplayName = "مسؤول اختبار المنصة";
 const trustedAdmin = await adminCreateUser({
   email: "profile-trigger-admin@example.test",
   password: "Profile-Trigger-Test-2026!",
@@ -62,7 +67,7 @@ const trustedAdmin = await adminCreateUser({
     pg_provisioning: "operational-v1",
   },
   user_metadata: {
-    display_name: "مسؤول اختبار المنصة",
+    display_name: expectedDisplayName,
     phone: "+201000000001",
     role: "admin",
   },
@@ -74,6 +79,14 @@ if (!trustedAdmin.response.ok || !trustedAdmin.body?.id) {
   );
 }
 
+const authDisplayName = trustedAdmin.body?.user_metadata?.display_name;
+
+if (authDisplayName !== expectedDisplayName) {
+  throw new Error(
+    `Auth metadata Unicode round trip failed. expected=[${codePoints(expectedDisplayName)}] actual=[${codePoints(authDisplayName)}] value=${JSON.stringify(authDisplayName)}`,
+  );
+}
+
 const trustedProfile = await readProfile(trustedAdmin.body.id);
 
 if (!Array.isArray(trustedProfile) || trustedProfile.length !== 1) {
@@ -82,8 +95,13 @@ if (!Array.isArray(trustedProfile) || trustedProfile.length !== 1) {
 
 const [profile] = trustedProfile;
 
+if (profile.display_name !== expectedDisplayName) {
+  throw new Error(
+    `Profile display-name Unicode round trip failed. expected=[${codePoints(expectedDisplayName)}] actual=[${codePoints(profile.display_name)}] value=${JSON.stringify(profile.display_name)}`,
+  );
+}
+
 if (
-  profile.display_name !== "مسؤول اختبار المنصة" ||
   profile.role !== "admin" ||
   profile.status !== "active" ||
   profile.phone !== "+201000000001" ||
