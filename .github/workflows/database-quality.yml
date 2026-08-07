@@ -35,8 +35,8 @@ jobs:
       - name: Initialize local project
         run: supabase init --force
 
-      - name: Start fresh local database
-        run: supabase db start
+      - name: Start fresh local Supabase stack
+        run: supabase start
 
       - name: Verify local stack
         run: supabase status
