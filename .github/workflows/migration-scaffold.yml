@@ -13,6 +13,7 @@ permissions:
 jobs:
   scaffold:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,7 +27,15 @@ jobs:
       - name: Initialize local project
         run: supabase init --force
 
-      - name: Create migration scaffold
+      - name: Start local database
+        run: supabase db start
+
+      - name: Generate database types
         run: |
-          supabase migration new products_core
-          find supabase/migrations -maxdepth 1 -type f -printf '%f\n'
+          echo '---DATABASE_TYPES_START---'
+          supabase gen types typescript --local
+          echo '---DATABASE_TYPES_END---'
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
