@@ -6,6 +6,7 @@ name: Database Quality
       - main
     paths:
       - "supabase/**"
+      - "lib/supabase/database.types.ts"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -33,6 +34,14 @@ jobs:
 
       - name: Verify local stack
         run: supabase status
+
+      - name: Verify generated database types
+        run: |
+          supabase gen types typescript --local > /tmp/database.types.ts
+          if ! diff -u lib/supabase/database.types.ts /tmp/database.types.ts; then
+            echo "Committed database types are out of sync with the local schema."
+            exit 1
+          fi
 
       - name: Stop local stack
         if: always()
