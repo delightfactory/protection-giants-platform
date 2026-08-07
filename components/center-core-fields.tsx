@@ -5,11 +5,20 @@ type DealerOption = {
   status: string;
 };
 
-type CenterCoreFieldsProps = {
-  dealers: DealerOption[];
+type CenterCoreFieldValues = {
+  code: string;
+  name: string;
+  dealerId: string | null;
+  countryCode: string;
+  city: string;
 };
 
-export function CenterCoreFields({ dealers }: CenterCoreFieldsProps) {
+type CenterCoreFieldsProps = {
+  dealers: DealerOption[];
+  values?: CenterCoreFieldValues;
+};
+
+export function CenterCoreFields({ dealers, values }: CenterCoreFieldsProps) {
   return (
     <>
       <label>
@@ -22,6 +31,7 @@ export function CenterCoreFields({ dealers }: CenterCoreFieldsProps) {
           pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,39}"
           placeholder="EG-TANTA-01"
           dir="ltr"
+          defaultValue={values?.code}
           required
         />
         <small>حروف إنجليزية وأرقام وشرطة أو شرطة سفلية. يتم حفظ الكود بحروف كبيرة.</small>
@@ -29,12 +39,12 @@ export function CenterCoreFields({ dealers }: CenterCoreFieldsProps) {
 
       <label>
         <span>اسم مركز التركيب</span>
-        <input name="name" type="text" minLength={2} maxLength={160} required />
+        <input name="name" type="text" minLength={2} maxLength={160} defaultValue={values?.name} required />
       </label>
 
       <label>
         <span>الوكيل / الموزع الأب</span>
-        <select name="dealer_id" defaultValue="">
+        <select name="dealer_id" defaultValue={values?.dealerId ?? ""}>
           <option value="">مباشر للشركة</option>
           {dealers.map((dealer) => (
             <option value={dealer.id} key={dealer.id}>
@@ -55,13 +65,14 @@ export function CenterCoreFields({ dealers }: CenterCoreFieldsProps) {
           pattern="[A-Za-z]{2}"
           placeholder="EG"
           dir="ltr"
+          defaultValue={values?.countryCode}
           required
         />
       </label>
 
       <label>
         <span>المدينة</span>
-        <input name="city" type="text" minLength={2} maxLength={120} required />
+        <input name="city" type="text" minLength={2} maxLength={120} defaultValue={values?.city} required />
       </label>
     </>
   );
