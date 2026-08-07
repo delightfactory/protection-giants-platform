@@ -34,9 +34,13 @@ The following concerns are intentionally kept out of the core table and will be 
 
 ## Security boundary
 
-RLS is enabled immediately. The core table currently grants no access to `anon` or `authenticated` roles.
+RLS is enabled on the core table.
 
-Read and mutation policies will be introduced with the specific public-read and admin-management cubes. This prevents a temporary broad policy from becoming an accidental security dependency.
+Authenticated users receive table-level `SELECT`, but the `products_admin_read` policy only returns rows when the current user's own profile is both `active` and `admin`. Dealer and center sessions therefore cannot read the product core through the Data API in this stage.
+
+The operations application mirrors that boundary with an admin route gate and only exposes the Products navigation entry to admins.
+
+No insert, update, delete, or anonymous access is granted yet. Those operations will be introduced only with the cubes that actually need them.
 
 ## Lifecycle
 
