@@ -10,6 +10,8 @@ export type OperationalProfile = Pick<
   "id" | "display_name" | "role" | "status"
 > & { role: OperationalRole };
 
+export type AdminProfile = OperationalProfile & { role: "admin" };
+
 function isOperationalRole(role: string): role is OperationalRole {
   return operationalRoles.some((allowedRole) => allowedRole === role);
 }
@@ -38,4 +40,14 @@ export async function requireOperationalProfile(): Promise<OperationalProfile> {
   }
 
   return profile as OperationalProfile;
+}
+
+export async function requireAdminProfile(): Promise<AdminProfile> {
+  const profile = await requireOperationalProfile();
+
+  if (profile.role !== "admin") {
+    redirect("/access-denied");
+  }
+
+  return profile as AdminProfile;
 }
