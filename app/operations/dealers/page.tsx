@@ -46,6 +46,9 @@ export default async function OperationsDealersPage() {
               <h2>{dealer.name}</h2>
               <p>الدولة: {dealer.country_code}</p>
               <p>الحالة: {statusLabels[dealer.status] ?? dealer.status}</p>
+              <div className="card-actions">
+                <Link href={`/operations/dealers/${dealer.id}/edit`} className="button">تعديل</Link>
+              </div>
             </article>
           ))}
         </section>
