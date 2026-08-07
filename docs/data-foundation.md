@@ -10,11 +10,10 @@ Included:
 - Database migration convention.
 - Node.js 22 runtime alignment.
 - Local database validation in GitHub Actions.
+- Generated TypeScript database definitions.
 
 Not included:
-- Authentication flows.
-- User profiles or roles.
-- Business tables.
+- Business tables beyond their own approved cubes.
 - Storage buckets.
 - Edge Functions.
 - Realtime subscriptions.
@@ -36,7 +35,8 @@ Service-role keys, database passwords, access tokens, and other privileged crede
 - Browser components use `getSupabaseBrowserClient()` from `lib/supabase/client.ts`.
 - Server Components, Route Handlers, and Server Actions use `createSupabaseServerClient()` from `lib/supabase/server.ts`.
 - Application modules must not create ad-hoc Supabase clients.
-- Authentication cookie refresh is intentionally deferred to the authentication block.
+- The shared clients use the generated `Database` type so queries are checked against the committed schema.
+- Authentication session refresh is handled separately by the request Proxy.
 
 ## Migrations
 
@@ -57,16 +57,19 @@ Rules:
 
 The repository does not require a hosted Supabase project during normal development.
 
-Pull requests that change `supabase/**` run a separate database-quality workflow. The workflow:
+Pull requests that change database migrations, the generated database type file, or the database-quality workflow run a separate database-quality check. The workflow:
 
 1. Installs the pinned Supabase CLI.
 2. Creates a fresh local Supabase project on the GitHub runner.
-3. Starts a clean local database and applies the committed migrations.
-4. Fails the pull request if the local stack or migrations cannot start cleanly.
-5. Removes the temporary local stack after validation.
+3. Starts a clean local database and applies every committed migration.
+4. Generates TypeScript definitions from that local schema.
+5. Compares the generated output with `lib/supabase/database.types.ts` and fails if they differ.
+6. Removes the temporary local stack after validation.
 
-This gives migrations a real PostgreSQL/Supabase execution check without consuming a hosted project.
+This gives migrations a real PostgreSQL/Supabase execution check and keeps application types synchronized without consuming a hosted project.
 
 ## Generated database types
 
-Database types should be generated from the validated local schema once the first real application table exists. They do not depend on creating the production Supabase project first.
+`lib/supabase/database.types.ts` is generated from the validated local schema using the Supabase CLI. It is committed to Git and must not be hand-maintained as an independent schema definition.
+
+Whenever a migration changes the schema, regenerate this file from the local database before the pull request can pass Database Quality.
