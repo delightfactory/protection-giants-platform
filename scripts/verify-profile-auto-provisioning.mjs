@@ -64,12 +64,14 @@ const trustedAdmin = await adminCreateUser({
   password: "Profile-Trigger-Test-2026!",
   email_confirm: true,
   app_metadata: {
-    pg_provisioning: "operational-v1",
+    pg_provisioning: {
+      version: "operational-v1",
+      role: "admin",
+    },
   },
   user_metadata: {
     display_name: expectedDisplayName,
     phone: "+201000000001",
-    role: "admin",
   },
 });
 
@@ -111,21 +113,51 @@ if (
   throw new Error(`Auto-created profile has unexpected values: ${JSON.stringify(profile)}`);
 }
 
-const missingBinding = await adminCreateUser({
-  email: "profile-trigger-invalid-dealer@example.test",
+const rollbackEmail = "profile-trigger-rollback@example.test";
+const invalidDealer = await adminCreateUser({
+  email: rollbackEmail,
   password: "Profile-Trigger-Test-2026!",
   email_confirm: true,
   app_metadata: {
-    pg_provisioning: "operational-v1",
+    pg_provisioning: {
+      version: "operational-v1",
+      role: "dealer",
+    },
   },
   user_metadata: {
     display_name: "وكيل بدون ربط",
-    role: "dealer",
   },
 });
 
-if (missingBinding.response.ok) {
+if (invalidDealer.response.ok) {
   throw new Error("Dealer user creation unexpectedly succeeded without a dealer binding.");
+}
+
+const validAfterRollback = await adminCreateUser({
+  email: rollbackEmail,
+  password: "Profile-Trigger-Test-2026!",
+  email_confirm: true,
+  app_metadata: {
+    pg_provisioning: {
+      version: "operational-v1",
+      role: "admin",
+    },
+  },
+  user_metadata: {
+    display_name: "مسؤول بعد اختبار التراجع",
+  },
+});
+
+if (!validAfterRollback.response.ok || !validAfterRollback.body?.id) {
+  throw new Error(
+    `Valid user creation after a rejected provisioning attempt failed; Auth transaction may not have rolled back (${validAfterRollback.response.status}): ${JSON.stringify(validAfterRollback.body)}`,
+  );
+}
+
+const rollbackProfile = await readProfile(validAfterRollback.body.id);
+
+if (!Array.isArray(rollbackProfile) || rollbackProfile.length !== 1 || rollbackProfile[0]?.role !== "admin") {
+  throw new Error(`Rollback verification profile is invalid: ${JSON.stringify(rollbackProfile)}`);
 }
 
 const publicSignupResponse = await fetch(`${apiUrl}/auth/v1/signup`, {
@@ -146,9 +178,17 @@ const publicSignupResponse = await fetch(`${apiUrl}/auth/v1/signup`, {
 const publicSignupBody = await readJson(publicSignupResponse);
 
 if (publicSignupResponse.ok) {
-  throw new Error(
-    `Public signup unexpectedly bypassed operational provisioning: ${JSON.stringify(publicSignupBody)}`,
-  );
+  const publicUserId = publicSignupBody?.user?.id ?? publicSignupBody?.id;
+
+  if (!publicUserId) {
+    throw new Error(`Public signup succeeded without a readable user id: ${JSON.stringify(publicSignupBody)}`);
+  }
+
+  const publicProfile = await readProfile(publicUserId);
+
+  if (!Array.isArray(publicProfile) || publicProfile.length !== 0) {
+    throw new Error(`Public signup unexpectedly created an operational profile: ${JSON.stringify(publicProfile)}`);
+  }
 }
 
 console.log("Profile auto-provisioning smoke test passed.");
