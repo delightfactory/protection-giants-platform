@@ -1,0 +1,18 @@
+.operations-user {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 24px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.operations-user strong {
+  overflow-wrap: anywhere;
+}
+
+.operations-user span {
+  color: var(--muted);
+  font-size: 13px;
+}
