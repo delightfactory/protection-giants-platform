@@ -54,7 +54,7 @@ button, input { font: inherit; }
 .hero h1 { max-width: 850px; margin: 12px 0 20px; font-size: clamp(38px, 7vw, 74px); line-height: 1.08; }
 .lead { max-width: 720px; margin: 0; color: var(--muted); font-size: clamp(18px, 2.5vw, 22px); }
 .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; }
-.button { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); font-weight: 700; }
+.button { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font-weight: 700; cursor: pointer; }
 .button-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
 .section { padding: 44px 0 72px; }
@@ -77,12 +77,29 @@ button, input { font: inherit; }
 .site-footer { padding: 28px 0; border-top: 1px solid var(--border); color: var(--muted); }
 .footer-inner { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 
+.auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 32px 16px; }
+.auth-card { width: min(100%, 460px); padding: 32px; border: 1px solid var(--border); border-radius: 22px; background: rgba(15,19,24,.96); box-shadow: 0 24px 80px rgba(0,0,0,.28); }
+.auth-brand { margin-bottom: 34px; }
+.auth-card h1 { margin: 8px 0 8px; font-size: clamp(30px, 7vw, 42px); }
+.auth-card p { margin: 0; color: var(--muted); }
+.auth-form { display: grid; gap: 18px; margin-top: 28px; }
+.auth-form label { display: grid; gap: 7px; color: var(--muted); font-size: 14px; font-weight: 700; }
+.auth-form input { width: 100%; min-height: 48px; padding: 0 13px; border: 1px solid var(--border); border-radius: 11px; background: #090c10; color: var(--text); outline: none; }
+.auth-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(216,255,62,.09); }
+.auth-form .button { width: 100%; margin-top: 4px; }
+.form-error { margin-top: 20px !important; padding: 11px 13px; border: 1px solid rgba(255,107,107,.35); border-radius: 10px; background: rgba(255,107,107,.08); color: #ffb2b2 !important; }
+.auth-back-link { display: inline-block; margin-top: 24px; color: var(--muted); font-size: 14px; }
+.auth-back-link:hover, .auth-back-link:focus-visible { color: var(--text); }
+
 .operations-shell { min-height: 100vh; display: grid; grid-template-columns: 250px minmax(0, 1fr); }
-.operations-sidebar { position: sticky; top: 0; height: 100vh; padding: 24px 18px; border-inline-end: 1px solid var(--border); background: #0a0d11; }
+.operations-sidebar { position: sticky; top: 0; height: 100vh; padding: 24px 18px; border-inline-end: 1px solid var(--border); background: #0a0d11; display: flex; flex-direction: column; }
 .operations-sidebar .brand { margin-bottom: 32px; }
 .operations-nav { display: grid; gap: 6px; }
 .operations-nav a { padding: 11px 12px; border-radius: 10px; color: var(--muted); }
 .operations-nav a:hover, .operations-nav a:focus-visible { background: var(--surface-soft); color: var(--text); outline: none; }
+.operations-signout { margin-top: auto; padding-top: 24px; }
+.operations-signout button { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; text-align: start; }
+.operations-signout button:hover, .operations-signout button:focus-visible { background: var(--surface-soft); color: var(--text); outline: none; }
 .operations-content { min-width: 0; padding: 34px; }
 .operations-topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 32px; }
 .operations-topbar p { margin: 0; color: var(--muted); }
@@ -103,11 +120,13 @@ button, input { font: inherit; }
   .operations-sidebar .brand { margin-bottom: 16px; }
   .operations-nav { display: flex; overflow-x: auto; }
   .operations-nav a { white-space: nowrap; }
+  .operations-signout { margin-top: 16px; padding-top: 0; }
   .operations-content { padding: 24px 16px 48px; }
 }
 
 @media (max-width: 560px) {
   .hero { padding-top: 62px; }
+  .auth-card { padding: 24px; }
   .card-grid, .metric-grid { grid-template-columns: 1fr; }
   .section-heading, .operations-topbar { align-items: flex-start; flex-direction: column; }
 }
