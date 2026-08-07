@@ -36,11 +36,26 @@ The following concerns are intentionally kept out of the core table and will be 
 
 RLS is enabled on the core table.
 
-Authenticated users receive table-level `SELECT`, but the `products_admin_read` policy only returns rows when the current user's own profile is both `active` and `admin`. Dealer and center sessions therefore cannot read the product core through the Data API in this stage.
+Authenticated users receive table-level `SELECT`, but the `products_admin_read` policy only returns rows when the current user's own profile is both `active` and `admin`. Dealer and center sessions therefore cannot read the product core through the Data API.
 
-The operations application mirrors that boundary with an admin route gate and only exposes the Products navigation entry to admins.
+Authenticated users also receive table-level `INSERT`, but the `products_admin_insert` policy accepts a new row only when the current user's own profile is both `active` and `admin`.
 
-No insert, update, delete, or anonymous access is granted yet. Those operations will be introduced only with the cubes that actually need them.
+The operations application mirrors those boundaries with an admin route gate. Product creation is executed by a server action that validates all submitted fields before attempting the insert and maps duplicate-code or duplicate-slug database errors to a user-safe message.
+
+No update, delete, archive action, or anonymous access is granted yet. Those operations will be introduced only with the cubes that actually need them.
+
+## Creation behavior
+
+The first creation flow accepts only:
+
+- product code;
+- product name;
+- explicit lowercase ASCII URL slug;
+- default warranty duration in months.
+
+The status is not exposed in the creation form. New products use the database default of `active`.
+
+The slug is explicit rather than silently generated from the Arabic product name because it becomes a stable public URL identifier later.
 
 ## Lifecycle
 

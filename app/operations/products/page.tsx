@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -26,13 +27,16 @@ export default async function OperationsProductsPage() {
           <span className="eyebrow">البيانات المرجعية</span>
           <h1>المنتجات</h1>
         </div>
-        <p>{products.length} منتج مسجل</p>
+        <div className="operations-topbar-actions">
+          <p>{products.length} منتج مسجل</p>
+          <Link href="/operations/products/new" className="button button-primary">إضافة منتج</Link>
+        </div>
       </div>
 
       {products.length === 0 ? (
         <section className="foundation-note">
           <strong>لا توجد منتجات مسجلة بعد.</strong>
-          <p>ستظهر المنتجات هنا بعد إضافة وظيفة إنشاء المنتج في المكعب التالي.</p>
+          <p>استخدم زر إضافة منتج لإنشاء أول منتج تشغيلي.</p>
         </section>
       ) : (
         <section className="card-grid" aria-label="قائمة المنتجات">
