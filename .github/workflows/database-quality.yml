@@ -7,6 +7,7 @@ name: Database Quality
     paths:
       - "supabase/**"
       - "lib/supabase/database.types.ts"
+      - "scripts/verify-profile-auto-provisioning.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -19,6 +20,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
@@ -34,6 +40,12 @@ jobs:
 
       - name: Verify local stack
         run: supabase status
+
+      - name: Verify auth profile provisioning
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-profile-auto-provisioning.mjs
 
       - name: Verify generated database types
         run: |
