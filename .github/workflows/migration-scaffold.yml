@@ -1,0 +1,32 @@
+name: Migration Scaffold
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/migration-scaffold.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.101.0
+          github-token: ${{ github.token }}
+
+      - name: Initialize local project
+        run: supabase init --force
+
+      - name: Create migration scaffold
+        run: |
+          supabase migration new identity_profiles
+          find supabase/migrations -maxdepth 1 -type f -printf '%f\n'
