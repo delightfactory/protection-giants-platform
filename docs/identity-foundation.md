@@ -49,33 +49,48 @@ Multiple users may reference the same dealer or installation center; the binding
 
 ## Automatic profile provisioning
 
-Every newly created operational Auth user must receive exactly one matching `public.profiles` row in the same Auth user creation transaction.
+Every user intentionally provisioned as an operational account must receive exactly one matching `public.profiles` row in the same Supabase Auth Admin creation transaction.
 
-The database trigger `on_auth_user_created_create_operational_profile` runs after insertion into `auth.users` and calls `public.handle_new_operational_user()`.
+Supabase Auth v2.188.1 creates the initial `auth.users` row and then applies the request's `app_metadata` inside the same database transaction. The profile provisioning function therefore handles both events:
 
-The trigger accepts an Auth user only when the trusted Auth Admin creation path has set this non-secret application-metadata marker:
+- `AFTER INSERT` on `auth.users`: future-compatible path; it is a safe no-op when trusted provisioning metadata is not yet present.
+- `AFTER UPDATE OF raw_app_meta_data` on `auth.users`: current Auth Admin creation path; it creates the profile when the trusted provisioning contract becomes available.
 
-- `pg_provisioning = operational-v1`
+Both triggers call `public.handle_operational_user_provisioning()`.
 
-This marker is only a provisioning gate. It is not an authorization claim and application access must never depend on it.
+### Trusted provisioning contract
 
-Initial profile values are read once at user creation from the creation metadata and copied into `public.profiles`. Later changes to Auth user metadata do not change role, status, or entity binding. The profile table remains the sole operational authorization source.
+Authorization-affecting provisioning values live only in protected `app_metadata` under `pg_provisioning`:
 
-The trigger validates:
+- `version = operational-v1`
+- `role = admin | dealer | center`
+- `dealer_id` when the role is `dealer`
+- `installation_center_id` when the role is `center`
 
+Display name and optional contact phone may be supplied through user metadata because they are not authorization decisions. They are copied once into `public.profiles` during provisioning.
+
+The trigger function validates:
+
+- the provisioning object and contract version;
 - role is one of `admin`, `dealer`, or `center`;
 - display name satisfies the profile contract;
 - optional phone satisfies the existing profile length contract;
 - dealer and installation-center identifiers are valid UUIDs when supplied;
 - role/entity binding matches the database invariant.
 
-If any validation or profile insertion fails, Auth user creation fails too. This is intentional: the platform must not create an operational Auth account without a valid matching profile.
+The function is idempotent for an already-provisioned user: later Auth application-metadata changes do not recreate or rewrite the profile. `public.profiles` remains the sole operational authorization source after provisioning.
 
-A public/self-service signup cannot supply the trusted `app_metadata` marker and is therefore rejected by the trigger even if it submits role-like values in user-editable metadata.
+If trusted provisioning metadata is present but invalid, the trigger raises and the Auth Admin creation transaction rolls back. Because the initial Auth insert and application-metadata update are in the same Supabase Auth transaction, an invalid operational profile does not leave an orphan Auth account.
+
+### Public signup boundary
+
+A public/self-service signup cannot set protected `app_metadata`, so role-like values submitted in user-editable metadata cannot create an operational profile.
+
+If self-service signup is enabled in a Supabase environment, such a request may still create a non-operational Auth user with no profile. That user cannot pass the platform's operational access gate. Production is intended to be admin/invite provisioned, so self-service signup must be disabled in production Auth configuration rather than relying on the profile trigger to block the Auth endpoint itself.
 
 ## Authorization boundary
 
-The table is exposed with RLS enabled.
+The profile table is exposed with RLS enabled.
 
 An authenticated user can currently read only their own profile. There are no client-side insert, update, or delete permissions.
 
@@ -97,6 +112,8 @@ Suspending a profile blocks application access independently from Auth credentia
 
 Database Quality starts a fresh local Supabase stack and exercises the Auth API against the trigger. The smoke check verifies that:
 
-- trusted operational Auth creation auto-creates the expected profile;
+- trusted operational Auth creation auto-creates exactly one expected profile;
+- Arabic display-name metadata survives the Auth-to-profile round trip;
 - invalid role/entity provisioning is rejected;
-- public signup cannot bypass the trusted provisioning gate.
+- the rejected Auth Admin creation transaction is rolled back by proving the same email can be created successfully afterward;
+- public signup, when enabled in the local Auth stack, cannot create an operational profile from user-editable metadata.
