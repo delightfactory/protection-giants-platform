@@ -46,6 +46,9 @@ export default async function OperationsProductsPage() {
               <h2>{product.name}</h2>
               <p>الضمان الافتراضي: {product.default_warranty_months} شهر</p>
               <p>الحالة: {statusLabels[product.status] ?? product.status}</p>
+              <div className="card-actions">
+                <Link href={`/operations/products/${product.id}/edit`} className="button">تعديل</Link>
+              </div>
             </article>
           ))}
         </section>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProductCoreFields } from "@/components/product-core-fields";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createProduct } from "./actions";
 
@@ -31,34 +32,7 @@ export default async function ProductCreatePage({ searchParams }: ProductCreateP
         {errorMessage ? <p className="form-error" role="alert">{errorMessage}</p> : null}
 
         <form action={createProduct} className="operations-form">
-          <label>
-            <span>كود المنتج</span>
-            <input name="code" type="text" minLength={2} maxLength={40} required />
-          </label>
-
-          <label>
-            <span>اسم المنتج</span>
-            <input name="name" type="text" minLength={2} maxLength={120} required />
-          </label>
-
-          <label>
-            <span>رابط المنتج</span>
-            <input
-              name="slug"
-              type="text"
-              inputMode="url"
-              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-              placeholder="protection-film-x"
-              dir="ltr"
-              required
-            />
-            <small>حروف إنجليزية صغيرة وأرقام وشرطات فقط. سيُستخدم لاحقًا في رابط صفحة المنتج العامة.</small>
-          </label>
-
-          <label>
-            <span>مدة الضمان الافتراضية بالشهور</span>
-            <input name="default_warranty_months" type="number" min={1} max={240} step={1} required />
-          </label>
+          <ProductCoreFields />
 
           <div className="operations-form-actions">
             <button type="submit" className="button button-primary">حفظ المنتج</button>

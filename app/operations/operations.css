@@ -66,11 +66,16 @@
   font-weight: 400;
 }
 
-.operations-form-actions {
+.operations-form-actions,
+.card-actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 4px;
+}
+
+.card-actions {
+  margin-top: 18px;
 }
 
 @media (max-width: 560px) {
