@@ -22,7 +22,7 @@ The platform therefore starts with one concrete product entity. A future require
 
 ## Deferred product data
 
-The following concerns are intentionally kept out of the core table and will be introduced as separate cubes only when needed:
+The following concerns remain outside the core table and will be introduced as separate cubes only when needed:
 
 - Public descriptions and translated content.
 - Technical specifications.
@@ -36,24 +36,28 @@ The following concerns are intentionally kept out of the core table and will be 
 
 RLS is enabled on the core table.
 
-Authenticated users receive table-level `SELECT`, but the `products_admin_read` policy only returns rows when the current user's own profile is both `active` and `admin`. Dealer and center sessions therefore cannot read the product core through the Data API.
+Authenticated users receive table-level `SELECT`, but `products_admin_read` only returns rows when the current profile is both `active` and `admin`.
 
-Authenticated users also receive table-level `INSERT`, but the `products_admin_insert` policy accepts a new row only when the current user's own profile is both `active` and `admin`.
+Authenticated users receive `INSERT`, but `products_admin_insert` only accepts rows from an active admin.
 
-The operations application mirrors those boundaries with an admin route gate. Product creation is executed by a server action that validates all submitted fields before attempting the insert and maps duplicate-code or duplicate-slug database errors to a user-safe message.
+Update access is intentionally column-scoped. Authenticated users are granted UPDATE only for `code`, `name`, `slug`, and `default_warranty_months`, and `products_admin_update` additionally requires an active admin profile for both the existing and resulting row.
 
-No update, delete, archive action, or anonymous access is granted yet. Those operations will be introduced only with the cubes that actually need them.
+The operational interface mirrors those rules with an admin route gate. Create and edit actions both use the same Product Core parser and convert duplicate code/slug failures into user-safe messages.
 
-## Creation behavior
+`id`, `created_at`, and `status` are not covered by the current UPDATE grant. Archive/reactivate will therefore require its own explicit lifecycle cube rather than piggybacking on general product editing.
 
-The first creation flow accepts only:
+No delete or anonymous access is granted.
+
+## Creation and editing
+
+Product Core accepts only:
 
 - product code;
 - product name;
 - explicit lowercase ASCII URL slug;
 - default warranty duration in months.
 
-The status is not exposed in the creation form. New products use the database default of `active`.
+New products use the database default `active` status. The edit form cannot change lifecycle state.
 
 The slug is explicit rather than silently generated from the Arabic product name because it becomes a stable public URL identifier later.
 
