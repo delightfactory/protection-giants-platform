@@ -135,29 +135,50 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          dealer_id: string | null
           display_name: string
           id: string
+          installation_center_id: string | null
           phone: string | null
           role: string
           status: string
         }
         Insert: {
           created_at?: string
+          dealer_id?: string | null
           display_name: string
           id: string
+          installation_center_id?: string | null
           phone?: string | null
           role: string
           status?: string
         }
         Update: {
           created_at?: string
+          dealer_id?: string | null
           display_name?: string
           id?: string
+          installation_center_id?: string | null
           phone?: string | null
           role?: string
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_installation_center_id_fkey"
+            columns: ["installation_center_id"]
+            isOneToOne: false
+            referencedRelation: "installation_centers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
