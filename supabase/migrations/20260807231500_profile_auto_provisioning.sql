@@ -1,11 +1,11 @@
-create function public.handle_new_operational_user()
+create function public.handle_operational_user_provisioning()
 returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  provisioning_marker text;
+  provisioning_metadata jsonb;
   profile_metadata jsonb;
   profile_role text;
   profile_display_name text;
@@ -13,16 +13,30 @@ declare
   profile_dealer_id uuid;
   profile_center_id uuid;
 begin
-  provisioning_marker := coalesce(new.raw_app_meta_data ->> 'pg_provisioning', '');
+  provisioning_metadata := new.raw_app_meta_data -> 'pg_provisioning';
 
-  if provisioning_marker <> 'operational-v1' then
+  if provisioning_metadata is null then
+    return new;
+  end if;
+
+  if jsonb_typeof(provisioning_metadata) <> 'object'
+    or provisioning_metadata ->> 'version' <> 'operational-v1'
+  then
     raise exception using
       errcode = '22023',
-      message = 'operational user provisioning marker is required';
+      message = 'operational provisioning metadata is invalid';
+  end if;
+
+  if exists (
+    select 1
+    from public.profiles
+    where id = new.id
+  ) then
+    return new;
   end if;
 
   profile_metadata := coalesce(new.raw_user_meta_data, '{}'::jsonb);
-  profile_role := nullif(btrim(profile_metadata ->> 'role'), '');
+  profile_role := nullif(btrim(provisioning_metadata ->> 'role'), '');
   profile_display_name := nullif(btrim(profile_metadata ->> 'display_name'), '');
   profile_phone := nullif(btrim(profile_metadata ->> 'phone'), '');
 
@@ -45,7 +59,7 @@ begin
   end if;
 
   begin
-    profile_dealer_id := nullif(btrim(profile_metadata ->> 'dealer_id'), '')::uuid;
+    profile_dealer_id := nullif(btrim(provisioning_metadata ->> 'dealer_id'), '')::uuid;
   exception
     when invalid_text_representation then
       raise exception using
@@ -54,7 +68,7 @@ begin
   end;
 
   begin
-    profile_center_id := nullif(btrim(profile_metadata ->> 'installation_center_id'), '')::uuid;
+    profile_center_id := nullif(btrim(provisioning_metadata ->> 'installation_center_id'), '')::uuid;
   exception
     when invalid_text_representation then
       raise exception using
@@ -99,11 +113,16 @@ begin
 end;
 $$;
 
-revoke all on function public.handle_new_operational_user() from public;
-revoke all on function public.handle_new_operational_user() from anon;
-revoke all on function public.handle_new_operational_user() from authenticated;
+revoke all on function public.handle_operational_user_provisioning() from public;
+revoke all on function public.handle_operational_user_provisioning() from anon;
+revoke all on function public.handle_operational_user_provisioning() from authenticated;
 
-create trigger on_auth_user_created_create_operational_profile
+create trigger on_auth_user_inserted_provision_operational_profile
 after insert on auth.users
 for each row
-execute function public.handle_new_operational_user();
+execute function public.handle_operational_user_provisioning();
+
+create trigger on_auth_user_app_metadata_updated_provision_operational_profile
+after update of raw_app_meta_data on auth.users
+for each row
+execute function public.handle_operational_user_provisioning();
