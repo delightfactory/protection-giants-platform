@@ -34,6 +34,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      products: {
+        Row: {
+          code: string
+          created_at: string
+          default_warranty_months: number
+          id: string
+          name: string
+          slug: string
+          status: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          default_warranty_months: number
+          id?: string
+          name: string
+          slug: string
+          status?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          default_warranty_months?: number
+          id?: string
+          name?: string
+          slug?: string
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
