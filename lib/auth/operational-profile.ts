@@ -109,6 +109,38 @@ export async function requireOperationalProfile(): Promise<OperationalProfile> {
     redirect("/access-denied");
   }
 
+  if (operationalProfile.role === "dealer") {
+    const { data: dealer, error: dealerError } = await supabase
+      .from("dealers")
+      .select("id, status")
+      .eq("id", operationalProfile.dealer_id)
+      .maybeSingle();
+
+    if (dealerError) {
+      throw dealerError;
+    }
+
+    if (!dealer || dealer.status !== "active") {
+      redirect("/access-denied");
+    }
+  }
+
+  if (operationalProfile.role === "center") {
+    const { data: center, error: centerError } = await supabase
+      .from("installation_centers")
+      .select("id, status")
+      .eq("id", operationalProfile.installation_center_id)
+      .maybeSingle();
+
+    if (centerError) {
+      throw centerError;
+    }
+
+    if (!center || center.status !== "active") {
+      redirect("/access-denied");
+    }
+  }
+
   return operationalProfile;
 }
 
