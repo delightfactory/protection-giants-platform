@@ -1,14 +1,20 @@
 import Link from "next/link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { setCenterStatus } from "./actions";
 
 const statusLabels: Record<string, string> = {
   active: "نشط",
   suspended: "موقوف",
 };
 
-export default async function OperationsCentersPage() {
+type OperationsCentersPageProps = {
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function OperationsCentersPage({ searchParams }: OperationsCentersPageProps) {
   await requireAdminProfile();
+  const { error: pageError } = await searchParams;
 
   const supabase = await createSupabaseServerClient();
   const [centersResult, dealersResult] = await Promise.all([
@@ -44,6 +50,10 @@ export default async function OperationsCentersPage() {
         </div>
       </div>
 
+      {pageError === "lifecycle" ? (
+        <p className="form-error" role="alert">تعذر تغيير حالة مركز التركيب. حاول مرة أخرى.</p>
+      ) : null}
+
       {centersResult.data.length === 0 ? (
         <section className="foundation-note">
           <strong>لا توجد مراكز تركيب مسجلة بعد.</strong>
@@ -51,18 +61,29 @@ export default async function OperationsCentersPage() {
         </section>
       ) : (
         <section className="card-grid" aria-label="قائمة مراكز التركيب">
-          {centersResult.data.map((center) => (
-            <article className="card" key={center.id}>
-              <span className="card-kicker">{center.code}</span>
-              <h2>{center.name}</h2>
-              <p>الموقع: {center.city} — {center.country_code}</p>
-              <p>التبعية: {center.dealer_id ? dealerNames.get(center.dealer_id) ?? "وكيل غير متاح" : "مباشر للشركة"}</p>
-              <p>الحالة: {statusLabels[center.status] ?? center.status}</p>
-              <div className="card-actions">
-                <Link href={`/operations/centers/${center.id}/edit`} className="button">تعديل</Link>
-              </div>
-            </article>
-          ))}
+          {centersResult.data.map((center) => {
+            const isSuspended = center.status === "suspended";
+
+            return (
+              <article className="card" key={center.id}>
+                <span className="card-kicker">{center.code}</span>
+                <h2>{center.name}</h2>
+                <p>الموقع: {center.city} — {center.country_code}</p>
+                <p>التبعية: {center.dealer_id ? dealerNames.get(center.dealer_id) ?? "وكيل غير متاح" : "مباشر للشركة"}</p>
+                <p>الحالة: {statusLabels[center.status] ?? center.status}</p>
+                <div className="card-actions">
+                  <Link href={`/operations/centers/${center.id}/edit`} className="button">تعديل</Link>
+                  <form action={setCenterStatus}>
+                    <input type="hidden" name="center_id" value={center.id} />
+                    <input type="hidden" name="status" value={isSuspended ? "active" : "suspended"} />
+                    <button type="submit" className={isSuspended ? "button button-primary" : "button"}>
+                      {isSuspended ? "إعادة تفعيل" : "إيقاف"}
+                    </button>
+                  </form>
+                </div>
+              </article>
+            );
+          })}
         </section>
       )}
     </>
