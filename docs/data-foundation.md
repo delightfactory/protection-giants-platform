@@ -9,6 +9,7 @@ Included:
 - Environment variable contract.
 - Database migration convention.
 - Node.js 22 runtime alignment.
+- Local database validation in GitHub Actions.
 
 Not included:
 - Authentication flows.
@@ -17,6 +18,7 @@ Not included:
 - Storage buckets.
 - Edge Functions.
 - Realtime subscriptions.
+- A hosted Supabase project during the current development stage.
 
 ## Environment variables
 
@@ -45,11 +47,26 @@ Naming convention:
 `YYYYMMDDHHMMSS_short_description.sql`
 
 Rules:
+- Create migration files through the Supabase CLI before adding SQL.
 - Never edit an already-applied migration to change production state.
 - Never make manual production schema changes without an equivalent migration.
 - Keep each migration focused on one coherent change.
-- Add RLS and policies in the same block that introduces a sensitive business table.
+- Add RLS and policies in the same block that introduces a sensitive exposed table.
+
+## Database validation
+
+The repository does not require a hosted Supabase project during normal development.
+
+Pull requests that change `supabase/**` run a separate database-quality workflow. The workflow:
+
+1. Installs the pinned Supabase CLI.
+2. Creates a fresh local Supabase project on the GitHub runner.
+3. Starts a clean local database and applies the committed migrations.
+4. Fails the pull request if the local stack or migrations cannot start cleanly.
+5. Removes the temporary local stack after validation.
+
+This gives migrations a real PostgreSQL/Supabase execution check without consuming a hosted project.
 
 ## Generated database types
 
-Database types will be generated after the new Supabase project is created and the first schema migration exists. We do not maintain speculative database types before the schema is real.
+Database types should be generated from the validated local schema once the first real application table exists. They do not depend on creating the production Supabase project first.
