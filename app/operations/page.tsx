@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 
 const adminModules = [
+  { href: "/operations/users", title: "الحسابات التشغيلية", description: "مراجعة المستخدمين وأدوارهم وارتباطهم بالكيانات التشغيلية." },
   { href: "/operations/dealers", title: "الوكلاء والموزعون", description: "إدارة الكيانات الموزعة وحالتها التشغيلية." },
   { href: "/operations/centers", title: "مراكز التركيب", description: "إدارة المراكز المعتمدة وربطها بالوكيل المناسب." },
   { href: "/operations/products", title: "المنتجات", description: "إدارة هوية المنتج ومدة الضمان والحالة." },
