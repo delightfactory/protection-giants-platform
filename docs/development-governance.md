@@ -75,15 +75,27 @@ At minimum, review:
 - duplicate/race-condition protection;
 - auditability of sensitive actions.
 
-## 9. Mobile-first operational UX
+## 9. Mobile-native interface is a governing rule
 
-Operational flows used by dealers, installation centers, scanning, transfer, and warranty activation are designed for mobile first.
+The platform is expected to be used primarily from phones. Mobile is therefore the primary product surface for all operational UI, not a reduced desktop fallback.
 
+All UI-bearing work must follow `docs/mobile-native-interface-standard.md`.
+
+At minimum:
+- design the phone interaction model first, then adapt it to tablet and desktop;
+- the mobile experience must feel like a modern native application, not a desktop admin page stacked vertically;
+- mobile navigation must be application-oriented rather than a collapsed desktop sidebar;
 - avoid desktop-only tables for core field operations;
-- keep actions short and explicit;
-- support camera/scanner-friendly entry where relevant;
+- use touch-sized controls and keep frequent actions reachable without precision tapping;
+- support camera/scanner-friendly entry where a confirmed workflow requires it;
 - validation and errors must be understandable in Arabic;
-- do not hide required operational information behind hover-only interactions.
+- do not hide required operational information or actions behind hover-only interactions;
+- respect mobile keyboard, browser chrome, safe-area, and interrupted-connectivity realities where relevant;
+- preserve coherent tablet and desktop experiences without weakening the mobile-first interaction model.
+
+The official Protection Giants website at `https://protection-giants.com/` is a primary brand reference for visual DNA and public-facing identity. The operational UI should translate that brand into an efficient application experience rather than mechanically copy the marketing website.
+
+Do not invent permanent brand colors, fonts, claims, imagery, or identity rules that have not been verified from an approved brand source.
 
 ## 10. Complete vertical slices
 
@@ -166,7 +178,8 @@ A block is `Done` only when all applicable items are true:
 - permissions and public exposure are reviewed;
 - happy path works;
 - important failure paths work;
-- mobile behavior is acceptable;
+- UI-bearing work satisfies the mobile-native interface standard and has a phone-focused smoke check;
+- tablet and desktop behavior remain coherent for affected UI;
 - automated checks pass;
 - affected existing flows still pass smoke/regression checks;
 - no dead controls or temporary hidden shortcuts remain;
