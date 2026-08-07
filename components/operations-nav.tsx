@@ -28,7 +28,12 @@ export function OperationsNav({ profile }: OperationsNavProps) {
 
       <nav className="operations-nav" aria-label="تنقل بوابة التشغيل">
         <Link href="/operations">نظرة عامة</Link>
-        {profile.role === "admin" ? <Link href="/operations/products">المنتجات</Link> : null}
+        {profile.role === "admin" ? (
+          <>
+            <Link href="/operations/dealers">الوكلاء والموزعون</Link>
+            <Link href="/operations/products">المنتجات</Link>
+          </>
+        ) : null}
       </nav>
 
       <form action={signOut} className="operations-signout">
