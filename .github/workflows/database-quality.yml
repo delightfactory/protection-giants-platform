@@ -1,0 +1,39 @@
+name: Database Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/**"
+      - ".github/workflows/database-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.101.0
+          github-token: ${{ github.token }}
+
+      - name: Initialize local project
+        run: supabase init --force
+
+      - name: Start fresh local database
+        run: supabase db start
+
+      - name: Verify local stack
+        run: supabase status
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
