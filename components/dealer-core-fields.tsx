@@ -1,4 +1,14 @@
-export function DealerCoreFields() {
+type DealerCoreFieldValues = {
+  code: string;
+  name: string;
+  countryCode: string;
+};
+
+type DealerCoreFieldsProps = {
+  values?: DealerCoreFieldValues;
+};
+
+export function DealerCoreFields({ values }: DealerCoreFieldsProps) {
   return (
     <>
       <label>
@@ -11,6 +21,7 @@ export function DealerCoreFields() {
           pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,39}"
           placeholder="EG-CAIRO"
           dir="ltr"
+          defaultValue={values?.code}
           required
         />
         <small>حروف إنجليزية وأرقام وشرطة أو شرطة سفلية. يتم حفظ الكود بحروف كبيرة.</small>
@@ -18,7 +29,7 @@ export function DealerCoreFields() {
 
       <label>
         <span>اسم الوكيل / الموزع</span>
-        <input name="name" type="text" minLength={2} maxLength={160} required />
+        <input name="name" type="text" minLength={2} maxLength={160} defaultValue={values?.name} required />
       </label>
 
       <label>
@@ -31,6 +42,7 @@ export function DealerCoreFields() {
           pattern="[A-Za-z]{2}"
           placeholder="EG"
           dir="ltr"
+          defaultValue={values?.countryCode}
           required
         />
         <small>رمز الدولة من حرفين مثل EG أو SA أو AE.</small>
