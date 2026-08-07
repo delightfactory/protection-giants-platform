@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { signOut } from "@/app/operations/actions";
 import { brandConfig } from "@/lib/brand-config";
 
 export function OperationsNav() {
@@ -11,6 +12,9 @@ export function OperationsNav() {
       <nav className="operations-nav" aria-label="تنقل بوابة التشغيل">
         <Link href="/operations">نظرة عامة</Link>
       </nav>
+      <form action={signOut} className="operations-signout">
+        <button type="submit">تسجيل الخروج</button>
+      </form>
     </aside>
   );
 }
