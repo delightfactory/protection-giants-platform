@@ -1,0 +1,194 @@
+const apiUrl = process.env.API_URL;
+const serviceRoleKey = process.env.SERVICE_ROLE_KEY;
+const anonKey = process.env.ANON_KEY;
+
+if (!apiUrl || !serviceRoleKey || !anonKey) {
+  throw new Error("Local Supabase API_URL, SERVICE_ROLE_KEY and ANON_KEY are required.");
+}
+
+async function readJson(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function codePoints(value) {
+  return Array.from(value ?? "", (character) => character.codePointAt(0).toString(16)).join(" ");
+}
+
+async function adminCreateUser(payload) {
+  const response = await fetch(`${apiUrl}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = await readJson(response);
+
+  return { response, body };
+}
+
+async function readProfile(userId) {
+  const response = await fetch(
+    `${apiUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=id,display_name,role,status,phone,dealer_id,installation_center_id`,
+    {
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+      },
+    },
+  );
+  const body = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(`Profile lookup failed (${response.status}): ${JSON.stringify(body)}`);
+  }
+
+  return body;
+}
+
+const expectedDisplayName = "مسؤول اختبار المنصة";
+const trustedAdmin = await adminCreateUser({
+  email: "profile-trigger-admin@example.test",
+  password: "Profile-Trigger-Test-2026!",
+  email_confirm: true,
+  app_metadata: {
+    pg_provisioning: {
+      version: "operational-v1",
+      role: "admin",
+    },
+  },
+  user_metadata: {
+    display_name: expectedDisplayName,
+    phone: "+201000000001",
+  },
+});
+
+if (!trustedAdmin.response.ok || !trustedAdmin.body?.id) {
+  throw new Error(
+    `Trusted operational user creation failed (${trustedAdmin.response.status}): ${JSON.stringify(trustedAdmin.body)}`,
+  );
+}
+
+const authDisplayName = trustedAdmin.body?.user_metadata?.display_name;
+
+if (authDisplayName !== expectedDisplayName) {
+  throw new Error(
+    `Auth metadata Unicode round trip failed. expected=[${codePoints(expectedDisplayName)}] actual=[${codePoints(authDisplayName)}] value=${JSON.stringify(authDisplayName)}`,
+  );
+}
+
+const trustedProfile = await readProfile(trustedAdmin.body.id);
+
+if (!Array.isArray(trustedProfile) || trustedProfile.length !== 1) {
+  throw new Error(`Expected one auto-created profile, received: ${JSON.stringify(trustedProfile)}`);
+}
+
+const [profile] = trustedProfile;
+
+if (profile.display_name !== expectedDisplayName) {
+  throw new Error(
+    `Profile display-name Unicode round trip failed. expected=[${codePoints(expectedDisplayName)}] actual=[${codePoints(profile.display_name)}] value=${JSON.stringify(profile.display_name)}`,
+  );
+}
+
+if (
+  profile.role !== "admin" ||
+  profile.status !== "active" ||
+  profile.phone !== "+201000000001" ||
+  profile.dealer_id !== null ||
+  profile.installation_center_id !== null
+) {
+  throw new Error(`Auto-created profile has unexpected values: ${JSON.stringify(profile)}`);
+}
+
+const rollbackEmail = "profile-trigger-rollback@example.test";
+const invalidDealer = await adminCreateUser({
+  email: rollbackEmail,
+  password: "Profile-Trigger-Test-2026!",
+  email_confirm: true,
+  app_metadata: {
+    pg_provisioning: {
+      version: "operational-v1",
+      role: "dealer",
+    },
+  },
+  user_metadata: {
+    display_name: "وكيل بدون ربط",
+  },
+});
+
+if (invalidDealer.response.ok) {
+  throw new Error("Dealer user creation unexpectedly succeeded without a dealer binding.");
+}
+
+const validAfterRollback = await adminCreateUser({
+  email: rollbackEmail,
+  password: "Profile-Trigger-Test-2026!",
+  email_confirm: true,
+  app_metadata: {
+    pg_provisioning: {
+      version: "operational-v1",
+      role: "admin",
+    },
+  },
+  user_metadata: {
+    display_name: "مسؤول بعد اختبار التراجع",
+  },
+});
+
+if (!validAfterRollback.response.ok || !validAfterRollback.body?.id) {
+  throw new Error(
+    `Valid user creation after a rejected provisioning attempt failed; Auth transaction may not have rolled back (${validAfterRollback.response.status}): ${JSON.stringify(validAfterRollback.body)}`,
+  );
+}
+
+const rollbackProfile = await readProfile(validAfterRollback.body.id);
+
+if (!Array.isArray(rollbackProfile) || rollbackProfile.length !== 1 || rollbackProfile[0]?.role !== "admin") {
+  throw new Error(`Rollback verification profile is invalid: ${JSON.stringify(rollbackProfile)}`);
+}
+
+const publicSignupResponse = await fetch(`${apiUrl}/auth/v1/signup`, {
+  method: "POST",
+  headers: {
+    apikey: anonKey,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    email: "profile-trigger-public-signup@example.test",
+    password: "Profile-Trigger-Test-2026!",
+    data: {
+      display_name: "محاولة تسجيل عام",
+      role: "admin",
+    },
+  }),
+});
+const publicSignupBody = await readJson(publicSignupResponse);
+
+if (publicSignupResponse.ok) {
+  const publicUserId = publicSignupBody?.user?.id ?? publicSignupBody?.id;
+
+  if (!publicUserId) {
+    throw new Error(`Public signup succeeded without a readable user id: ${JSON.stringify(publicSignupBody)}`);
+  }
+
+  const publicProfile = await readProfile(publicUserId);
+
+  if (!Array.isArray(publicProfile) || publicProfile.length !== 0) {
+    throw new Error(`Public signup unexpectedly created an operational profile: ${JSON.stringify(publicProfile)}`);
+  }
+}
+
+console.log("Profile auto-provisioning smoke test passed.");
