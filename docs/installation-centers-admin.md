@@ -2,7 +2,7 @@
 
 ## Current capability
 
-The admin operations portal exposes controlled installation-center listing, creation, and core-data editing.
+The admin operations portal exposes controlled installation-center listing, creation, core-data editing, and lifecycle control.
 
 The list page:
 - requires an active `admin` operational profile;
@@ -19,11 +19,16 @@ Creation and core-data editing:
 - create through an explicit admin-only `INSERT` policy;
 - update only `code`, `name`, `dealer_id`, `country_code`, and `city` through column-scoped privileges plus admin RLS.
 
+Lifecycle control:
+- grants `status` update separately from ordinary center editing;
+- accepts only `active` or `suspended` through the server action;
+- reuses the active-admin update RLS boundary;
+- immediately affects center-role operational access because the shared access gate requires the bound center to be active.
+
 ## Deliberately not included yet
 
-This cube does not add:
-- suspension/reactivation;
+The minimum center administration layer does not add:
 - user provisioning or account assignment;
 - addresses, contacts, maps, media, documents, or commercial terms.
 
-Center lifecycle remains a separate following cube so operational suspension is not hidden inside ordinary profile editing.
+The minimum dealer and installation-center entity layers are complete. Administrative user provisioning and binding is the next structural layer.
