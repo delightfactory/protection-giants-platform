@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -37,13 +38,16 @@ export default async function OperationsCentersPage() {
           <span className="eyebrow">الهيكل التشغيلي</span>
           <h1>مراكز التركيب</h1>
         </div>
-        <p>{centersResult.data.length} مركز مسجل</p>
+        <div className="operations-topbar-actions">
+          <p>{centersResult.data.length} مركز مسجل</p>
+          <Link href="/operations/centers/new" className="button button-primary">إضافة مركز</Link>
+        </div>
       </div>
 
       {centersResult.data.length === 0 ? (
         <section className="foundation-note">
           <strong>لا توجد مراكز تركيب مسجلة بعد.</strong>
-          <p>إضافة المراكز ستتاح بعد تثبيت شاشة القراءة الحالية.</p>
+          <p>استخدم زر إضافة مركز لإنشاء أول مركز تركيب تشغيلي.</p>
         </section>
       ) : (
         <section className="card-grid" aria-label="قائمة مراكز التركيب">
