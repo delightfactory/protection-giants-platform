@@ -45,7 +45,33 @@ jobs:
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
+
+          set +e
           node scripts/verify-profile-auto-provisioning.mjs
+          test_status=$?
+          set -e
+
+          if [ "$test_status" -ne 0 ]; then
+            echo "::group::Supabase Auth logs"
+            auth_container="$(docker ps --format '{{.Names}}' | grep '^supabase_auth_' | head -n 1 || true)"
+            if [ -n "$auth_container" ]; then
+              docker logs --tail 200 "$auth_container" 2>&1 || true
+            else
+              echo "Supabase Auth container was not found."
+            fi
+            echo "::endgroup::"
+
+            echo "::group::Supabase Postgres logs"
+            db_container="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1 || true)"
+            if [ -n "$db_container" ]; then
+              docker logs --tail 200 "$db_container" 2>&1 || true
+            else
+              echo "Supabase database container was not found."
+            fi
+            echo "::endgroup::"
+
+            exit "$test_status"
+          fi
 
       - name: Verify generated database types
         run: |
