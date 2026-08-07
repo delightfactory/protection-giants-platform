@@ -34,6 +34,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      dealers: {
+        Row: {
+          code: string
+          country_code: string
+          created_at: string
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          code: string
+          country_code: string
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          code?: string
+          country_code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      installation_centers: {
+        Row: {
+          city: string
+          code: string
+          country_code: string
+          created_at: string
+          dealer_id: string | null
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          city: string
+          code: string
+          country_code: string
+          created_at?: string
+          dealer_id?: string | null
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          city?: string
+          code?: string
+          country_code?: string
+          created_at?: string
+          dealer_id?: string | null
+          id?: string
+          name?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installation_centers_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           code: string
