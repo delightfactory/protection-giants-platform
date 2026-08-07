@@ -19,6 +19,8 @@ const adminItems: NavItem[] = [
   { href: "/operations/products", label: "المنتجات", icon: "products" },
 ];
 
+const adminMobileItems = adminItems.filter((item) => item.href !== "/operations/users");
+
 const basicItems: NavItem[] = [
   { href: "/operations", label: "الرئيسية", icon: "home" },
 ];
@@ -78,7 +80,9 @@ function NavIcon({ name }: { name: NavItem["icon"] }) {
 
 export function OperationsNavLinks({ role, variant }: { role: OperationalRole; variant: NavVariant }) {
   const pathname = usePathname();
-  const items = role === "admin" ? adminItems : basicItems;
+  const items = role === "admin"
+    ? variant === "mobile" ? adminMobileItems : adminItems
+    : basicItems;
   const isTaskRoute = pathname.endsWith("/new") || pathname.endsWith("/edit");
 
   if (variant === "mobile" && (role !== "admin" || isTaskRoute)) {
