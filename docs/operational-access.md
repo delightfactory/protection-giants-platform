@@ -14,14 +14,27 @@ A request may enter `/operations` only when all of the following are true:
    - admin has no dealer or center binding;
    - dealer has one `dealer_id` only;
    - center has one `installation_center_id` only.
+6. For dealer and center users, the directly represented operational entity is also `active`.
 
-A missing, suspended, or structurally invalid operational profile is redirected to `/access-denied`.
+A missing, suspended, structurally invalid, or inactive-bound operational identity is redirected to `/access-denied`.
 
 ## Current role boundary
 
 All three approved operational roles can enter the general operations overview at this stage.
 
 This gate validates who the user is and which operational entity they represent. Module-specific authorization still belongs to each business module and its database RLS policies.
+
+## Operational entity read scope
+
+Authenticated access to dealer and installation-center records is explicitly scoped by RLS:
+
+- `admin` may read all dealers and installation centers.
+- `dealer` may read its own dealer record and installation centers assigned to that dealer.
+- `center` may read only its own installation-center record.
+
+A center is not granted dealer-table visibility merely because its center has a `dealer_id`; that access can be added later if a real workflow requires it.
+
+These policies require the requesting profile itself to remain `active`.
 
 ## Data access
 
@@ -31,7 +44,9 @@ Database RLS remains the final security boundary for exposed business data. The 
 
 ## Entity status
 
-Profile binding proves that the referenced dealer or center exists because the relationship is enforced by foreign keys. Dealer/center lifecycle visibility and active-state enforcement are introduced together with the role-specific data-access policies for those entities; this gate does not bypass those future policies.
+Dealer users require their bound dealer record to be active. Center users require their bound installation-center record to be active.
+
+The current model does not automatically suspend a center when its optional parent dealer is suspended. That would be a separate business rule and is not introduced without an explicit operational requirement.
 
 ## Suspension
 
