@@ -40,13 +40,11 @@ Authenticated users receive table-level `SELECT`, but `products_admin_read` only
 
 Authenticated users receive `INSERT`, but `products_admin_insert` only accepts rows from an active admin.
 
-Update access is intentionally column-scoped. Authenticated users are granted UPDATE only for `code`, `name`, `slug`, and `default_warranty_months`, and `products_admin_update` additionally requires an active admin profile for both the existing and resulting row.
+Update access is column-scoped. Product Core editing grants UPDATE only for `code`, `name`, `slug`, and `default_warranty_months`. The lifecycle block separately grants UPDATE on `status`. Both paths remain subject to the same `products_admin_update` RLS policy, which requires an active admin profile for the existing and resulting row.
 
-The operational interface mirrors those rules with an admin route gate. Create and edit actions both use the same Product Core parser and convert duplicate code/slug failures into user-safe messages.
+The operational interface mirrors those rules with an admin route gate. Create and edit actions use the same Product Core parser, while lifecycle actions accept only the two approved states.
 
-`id`, `created_at`, and `status` are not covered by the current UPDATE grant. Archive/reactivate will therefore require its own explicit lifecycle cube rather than piggybacking on general product editing.
-
-No delete or anonymous access is granted.
+`id` and `created_at` remain outside all current UPDATE grants. No delete or anonymous access is granted.
 
 ## Creation and editing
 
@@ -57,15 +55,17 @@ Product Core accepts only:
 - explicit lowercase ASCII URL slug;
 - default warranty duration in months.
 
-New products use the database default `active` status. The edit form cannot change lifecycle state.
+New products use the database default `active` status. The edit form does not change lifecycle state.
 
 The slug is explicit rather than silently generated from the Arabic product name because it becomes a stable public URL identifier later.
 
 ## Lifecycle
 
-Products are not physically deleted through the planned operational interface. The initial lifecycle is intentionally limited to:
+Products are not physically deleted through the operational interface. Lifecycle is intentionally limited to two reversible states:
 
 - `active`: available for current operational use.
-- `archived`: retained for historical references but no longer available for new operational use.
+- `archived`: retained for historical references but no longer considered current.
+
+Only an active parent-company admin may archive or reactivate a product. The database constraint rejects any status outside the two approved values.
 
 Historical rolls and warranties will continue to reference archived products when those modules are introduced.
