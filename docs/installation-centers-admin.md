@@ -1,23 +1,29 @@
 # Installation Center Administration
 
-## Current cube: read access
+## Current capability
 
-The admin operations portal exposes `/operations/centers` as the controlled list of installation-center records.
+The admin operations portal exposes controlled installation-center listing and creation.
 
-The page:
+The list page:
 - requires an active `admin` operational profile;
 - reads centers through the existing admin-scoped installation-center RLS policy;
-- reads dealer identities through the existing admin dealer scope to resolve optional parent relationships;
+- resolves optional parent dealer identities through the existing dealer read scope;
 - shows center code, name, city, country, parent dealer when present, and lifecycle status;
 - identifies centers with no dealer as direct parent-company centers.
 
+The creation path:
+- requires the same admin application gate;
+- validates and normalizes center code, name, country and city;
+- accepts an optional real dealer UUID rather than free-text ownership;
+- relies on the dealer foreign key to reject stale or invalid parent references;
+- inserts through an explicit installation-center `INSERT` policy restricted to active admins.
+
 ## Deliberately not included yet
 
-This read cube does not add:
-- center creation;
+This cube does not add:
 - center editing;
 - suspension/reactivation;
 - user provisioning or account assignment;
 - addresses, contacts, maps, media, documents, or commercial terms.
 
-Creation follows only after this read path is stable.
+Core editing follows as the next independent write cube.
