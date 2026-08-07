@@ -8,6 +8,7 @@ name: Database Quality
       - "supabase/**"
       - "lib/supabase/database.types.ts"
       - "scripts/verify-profile-auto-provisioning.mjs"
+      - "scripts/verify-profile-admin-read.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -41,7 +42,7 @@ jobs:
       - name: Verify local stack
         run: supabase status
 
-      - name: Verify auth profile provisioning
+      - name: Verify Auth and profile access contracts
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
@@ -49,6 +50,11 @@ jobs:
           set +e
           node scripts/verify-profile-auto-provisioning.mjs
           test_status=$?
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-profile-admin-read.mjs
+            test_status=$?
+          fi
           set -e
 
           if [ "$test_status" -ne 0 ]; then
