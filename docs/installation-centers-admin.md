@@ -2,7 +2,7 @@
 
 ## Current capability
 
-The admin operations portal exposes controlled installation-center listing and creation.
+The admin operations portal exposes controlled installation-center listing, creation, and core-data editing.
 
 The list page:
 - requires an active `admin` operational profile;
@@ -11,19 +11,19 @@ The list page:
 - shows center code, name, city, country, parent dealer when present, and lifecycle status;
 - identifies centers with no dealer as direct parent-company centers.
 
-The creation path:
-- requires the same admin application gate;
-- validates and normalizes center code, name, country and city;
-- accepts an optional real dealer UUID rather than free-text ownership;
-- relies on the dealer foreign key to reject stale or invalid parent references;
-- inserts through an explicit installation-center `INSERT` policy restricted to active admins.
+Creation and core-data editing:
+- require the same admin application gate;
+- reuse one validation and normalization contract for code, name, dealer relationship, country, and city;
+- use a real optional dealer UUID and preserve direct parent-company centers with a null relationship;
+- rely on the dealer foreign key to reject stale or invalid parent references;
+- create through an explicit admin-only `INSERT` policy;
+- update only `code`, `name`, `dealer_id`, `country_code`, and `city` through column-scoped privileges plus admin RLS.
 
 ## Deliberately not included yet
 
 This cube does not add:
-- center editing;
 - suspension/reactivation;
 - user provisioning or account assignment;
 - addresses, contacts, maps, media, documents, or commercial terms.
 
-Core editing follows as the next independent write cube.
+Center lifecycle remains a separate following cube so operational suspension is not hidden inside ordinary profile editing.
