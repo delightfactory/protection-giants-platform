@@ -10,6 +10,8 @@ type ProductEditPageProps = {
   searchParams: Promise<{ error?: string }>;
 };
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const errorMessages: Record<string, string> = {
   invalid: "راجع البيانات المدخلة. الكود والاسم مطلوبان، والرابط يجب أن يكون بحروف إنجليزية صغيرة وأرقام وشرطات فقط، ومدة الضمان من 1 إلى 240 شهرًا.",
   duplicate: "يوجد منتج آخر بنفس الكود أو رابط المنتج.",
@@ -20,6 +22,10 @@ export default async function ProductEditPage({ params, searchParams }: ProductE
   await requireAdminProfile();
   const { id } = await params;
   const { error } = await searchParams;
+
+  if (!uuidPattern.test(id)) {
+    notFound();
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data: product, error: productError } = await supabase
