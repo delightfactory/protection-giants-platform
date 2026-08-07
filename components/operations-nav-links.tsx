@@ -8,11 +8,12 @@ type NavVariant = "desktop" | "mobile";
 type NavItem = {
   href: string;
   label: string;
-  icon: "home" | "dealers" | "centers" | "products";
+  icon: "home" | "users" | "dealers" | "centers" | "products";
 };
 
 const adminItems: NavItem[] = [
   { href: "/operations", label: "الرئيسية", icon: "home" },
+  { href: "/operations/users", label: "الحسابات", icon: "users" },
   { href: "/operations/dealers", label: "الوكلاء", icon: "dealers" },
   { href: "/operations/centers", label: "المراكز", icon: "centers" },
   { href: "/operations/products", label: "المنتجات", icon: "products" },
@@ -33,6 +34,15 @@ function NavIcon({ name }: { name: NavItem["icon"] }) {
         <path d="M3.5 10.5 12 3.8l8.5 6.7" />
         <path d="M5.5 9.5v10.2h13V9.5" />
         <path d="M9.5 19.7v-6h5v6" />
+      </svg>
+    );
+  }
+
+  if (name === "users") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="8" r="3" />
+        <path d="M5.5 19c.5-3.4 2.7-5.2 6.5-5.2s6 1.8 6.5 5.2" />
       </svg>
     );
   }
