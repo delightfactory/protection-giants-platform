@@ -12,6 +12,12 @@ const statusLabels: Record<string, string> = {
   suspended: "موقوف",
 };
 
+type ProfileEntityBinding = {
+  role: string;
+  dealer_id: string | null;
+  installation_center_id: string | null;
+};
+
 export default async function OperationsUsersPage() {
   await requireAdminProfile();
 
@@ -36,7 +42,7 @@ export default async function OperationsUsersPage() {
     centersResult.data.map((center) => [center.id, `${center.name} (${center.code})`]),
   );
 
-  function entityLabel(profile: (typeof profilesResult.data)[number]) {
+  function entityLabel(profile: ProfileEntityBinding) {
     if (profile.role === "admin") return "إدارة الشركة";
     if (profile.role === "dealer" && profile.dealer_id) {
       return dealerNames.get(profile.dealer_id) ?? "وكيل غير متاح";
