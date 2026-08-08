@@ -2,13 +2,33 @@ export const operationalUserRoles = ["admin", "dealer", "center"] as const;
 
 export type OperationalUserRole = (typeof operationalUserRoles)[number];
 
-export type OperationalProfileInput = {
+type OperationalProfileBase = {
   display_name: string;
   phone: string | null;
-  role: OperationalUserRole;
-  dealer_id: string | null;
-  installation_center_id: string | null;
 };
+
+export type AdminOperationalProfileInput = OperationalProfileBase & {
+  role: "admin";
+  dealer_id: null;
+  installation_center_id: null;
+};
+
+export type DealerOperationalProfileInput = OperationalProfileBase & {
+  role: "dealer";
+  dealer_id: string;
+  installation_center_id: null;
+};
+
+export type CenterOperationalProfileInput = OperationalProfileBase & {
+  role: "center";
+  dealer_id: null;
+  installation_center_id: string;
+};
+
+export type OperationalProfileInput =
+  | AdminOperationalProfileInput
+  | DealerOperationalProfileInput
+  | CenterOperationalProfileInput;
 
 export type OperationalUserCreateInput = OperationalProfileInput & {
   email: string;
@@ -45,10 +65,14 @@ export function parseOperationalProfileInput(
   if (rawPhone && (rawPhone.length < 5 || rawPhone.length > 32)) return null;
   if (!operationalUserRoles.includes(role)) return null;
 
+  const base = {
+    display_name: displayName,
+    phone: rawPhone || null,
+  };
+
   if (role === "admin") {
     return {
-      display_name: displayName,
-      phone: rawPhone || null,
+      ...base,
       role,
       dealer_id: null,
       installation_center_id: null,
@@ -57,8 +81,7 @@ export function parseOperationalProfileInput(
 
   if (role === "dealer" && isOperationalUserId(dealerId)) {
     return {
-      display_name: displayName,
-      phone: rawPhone || null,
+      ...base,
       role,
       dealer_id: dealerId,
       installation_center_id: null,
@@ -67,8 +90,7 @@ export function parseOperationalProfileInput(
 
   if (role === "center" && isOperationalUserId(centerId)) {
     return {
-      display_name: displayName,
-      phone: rawPhone || null,
+      ...base,
       role,
       dealer_id: null,
       installation_center_id: centerId,
