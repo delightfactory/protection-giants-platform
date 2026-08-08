@@ -1,0 +1,223 @@
+.user-page-message {
+  max-width: 900px;
+  margin: -8px 0 20px;
+}
+
+.form-success {
+  padding: 13px 15px;
+  border: 1px solid rgba(94, 211, 154, .28);
+  border-radius: 14px;
+  background: rgba(94, 211, 154, .08);
+  color: #baf3d6;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.user-filter-panel {
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #121212, #0b0b0b);
+}
+
+.user-filter-form {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.8fr) minmax(150px, .7fr) minmax(150px, .7fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.user-filter-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.user-filter-form input,
+.user-filter-form select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: #070707;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.user-filter-form input:focus,
+.user-filter-form select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.user-filter-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.user-filter-actions .button {
+  min-height: 46px;
+}
+
+.account-email {
+  margin: 6px 0 0;
+  color: #b9b6b6 !important;
+  direction: ltr;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.current-account-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.user-settings-stack {
+  display: grid;
+  gap: 16px;
+  max-width: 760px;
+}
+
+.user-form-panel {
+  max-width: none;
+}
+
+.user-form-intro {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.user-form-intro strong {
+  font-size: 18px;
+}
+
+.user-form-intro p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.user-form-divider {
+  height: 1px;
+  margin: 3px 0;
+  background: var(--border);
+}
+
+.user-role-note {
+  padding: 12px 14px;
+  border: 1px solid var(--accent-border);
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: #d8d4d4;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.user-lifecycle-panel {
+  border-color: rgba(255, 255, 255, .12);
+}
+
+.user-lifecycle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.user-lifecycle-row form {
+  display: flex;
+}
+
+@media (max-width: 900px) {
+  .user-filter-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .user-search-field,
+  .user-filter-actions {
+    grid-column: 1 / -1;
+  }
+
+  .user-filter-actions .button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .user-page-message {
+    margin-top: 0;
+  }
+
+  .user-filter-panel {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .user-filter-form {
+    grid-template-columns: 1fr;
+  }
+
+  .user-search-field,
+  .user-filter-actions {
+    grid-column: auto;
+  }
+
+  .user-filter-form input,
+  .user-filter-form select {
+    min-height: 50px;
+    font-size: 16px;
+  }
+
+  .user-filter-actions {
+    display: grid;
+    grid-template-columns: 1.2fr .8fr;
+  }
+
+  .user-settings-stack {
+    gap: 22px;
+  }
+
+  .user-form-intro {
+    padding: 0 2px;
+  }
+
+  .user-form-divider {
+    margin: 4px 0;
+  }
+
+  .user-role-note {
+    border-radius: 17px;
+  }
+
+  .user-lifecycle-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .user-lifecycle-row form,
+  .user-lifecycle-row .button,
+  .user-lifecycle-row .current-account-note {
+    width: 100%;
+  }
+
+  .user-lifecycle-row .button,
+  .user-lifecycle-row .current-account-note {
+    min-height: 50px;
+    justify-content: center;
+  }
+}

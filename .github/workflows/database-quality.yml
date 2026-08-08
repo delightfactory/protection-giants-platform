@@ -9,6 +9,7 @@ name: Database Quality
       - "lib/supabase/database.types.ts"
       - "scripts/verify-profile-auto-provisioning.mjs"
       - "scripts/verify-profile-admin-read.mjs"
+      - "scripts/verify-user-admin-lifecycle.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -53,6 +54,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-profile-admin-read.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-user-admin-lifecycle.mjs
             test_status=$?
           fi
           set -e
