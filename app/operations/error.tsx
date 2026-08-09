@@ -7,7 +7,7 @@ export default function OperationsError({ reset }: { error: Error & { digest?: s
     <EmptyState
       eyebrow="حدث خطأ"
       title="تعذر تحميل هذه المساحة التشغيلية"
-      description="لم يتم تنفيذ أي إجراء جديد من هذه الشاشة. أعد المحاولة، وإذا تكرر الخطأ راجع سجل النظام."
+      description="أعد المحاولة. إذا ظهر الخطأ بعد حفظ أو تغيير حالة، راجع النتيجة الحالية قبل تكرار الإجراء حتى لا تنفذه مرتين."
       action={<button type="button" className="button button-primary" onClick={reset}>إعادة المحاولة</button>}
     />
   );

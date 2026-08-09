@@ -19,7 +19,7 @@ html {
   border-radius: var(--radius-lg);
   background: transparent;
   color: var(--text);
-  overflow: visible;
+  overflow: hidden;
 }
 .ui-confirm-dialog::backdrop {
   background: rgba(0, 0, 0, .72);
@@ -58,6 +58,15 @@ html {
 @media (max-width: 700px) {
   html { scroll-padding-block-end: 112px; }
 
+  .nav-link,
+  .ui-page-actions .button,
+  .ui-filter-actions .button,
+  .ui-record-actions .button,
+  .auth-back-link,
+  .ui-icon-button {
+    min-height: 44px;
+  }
+
   .ui-form-field input,
   .ui-form-field select,
   .ui-form-field textarea,
@@ -67,14 +76,6 @@ html {
   .ui-filter-field input,
   .ui-filter-field select {
     font-size: 16px;
-  }
-
-  .ui-page-actions .button,
-  .ui-filter-actions .button,
-  .ui-record-actions .button,
-  .auth-back-link,
-  .ui-icon-button {
-    min-height: 44px;
   }
 
   .ui-task-back {
@@ -93,6 +94,8 @@ html {
     max-height: 82dvh;
     margin: auto 0 0;
     border-radius: 20px 20px 0 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .ui-confirm-card {
     padding: 20px 16px calc(16px + env(safe-area-inset-bottom));

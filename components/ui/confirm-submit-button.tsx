@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef } from "react";
+import { useFormStatus } from "react-dom";
 
 type ConfirmSubmitButtonProps = {
   children: string;
@@ -22,17 +23,24 @@ export function ConfirmSubmitButton({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const { pending } = useFormStatus();
+  const triggerClass = tone === "danger" ? "button button-danger" : "button button-primary";
 
-  const openDialog = () => dialogRef.current?.showModal();
-  const closeDialog = () => dialogRef.current?.close();
+  const openDialog = () => {
+    if (!pending) dialogRef.current?.showModal();
+  };
+  const closeDialog = () => {
+    if (!pending) dialogRef.current?.close();
+  };
 
   return (
     <>
       <button
         type="button"
-        className={className || (tone === "danger" ? "button button-danger" : "button button-primary")}
+        className={`${triggerClass} ${className}`.trim()}
         onClick={openDialog}
         aria-haspopup="dialog"
+        disabled={pending}
       >
         {children}
       </button>
@@ -42,8 +50,12 @@ export function ConfirmSubmitButton({
         className="ui-confirm-dialog"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
+        aria-busy={pending}
+        onCancel={(event) => {
+          if (pending) event.preventDefault();
+        }}
         onClick={(event) => {
-          if (event.target === event.currentTarget) closeDialog();
+          if (!pending && event.target === event.currentTarget) closeDialog();
         }}
       >
         <div className="ui-confirm-card">
@@ -54,12 +66,15 @@ export function ConfirmSubmitButton({
           </div>
 
           <div className="ui-confirm-actions">
-            <button type="button" className="button button-ghost" onClick={closeDialog}>إلغاء</button>
+            <button type="button" className="button button-ghost" onClick={closeDialog} disabled={pending}>
+              إلغاء
+            </button>
             <button
               type="submit"
               className={tone === "danger" ? "button button-danger" : "button button-primary"}
+              disabled={pending}
             >
-              {confirmLabel}
+              {pending ? "جاري التنفيذ…" : confirmLabel}
             </button>
           </div>
         </div>

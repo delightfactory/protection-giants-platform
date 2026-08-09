@@ -14,10 +14,10 @@ export function BrandLockup({ href = "/", compact = false, className = "" }: Bra
       className={`brand ui-brand-lockup${compact ? " is-compact" : ""} ${className}`.trim()}
       aria-label={`${brandConfig.name} - الرئيسية`}
     >
-      <span className="brand-mark" aria-hidden="true">{brandConfig.shortName}</span>
+      <span className="brand-mark" dir="ltr" aria-hidden="true">{brandConfig.shortName}</span>
       <span className="ui-brand-copy">
         <strong>{brandConfig.name}</strong>
-        {!compact ? <small>{brandConfig.englishName}</small> : null}
+        {!compact ? <small dir="ltr">{brandConfig.englishName}</small> : null}
       </span>
     </Link>
   );

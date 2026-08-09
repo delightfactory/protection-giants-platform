@@ -16,6 +16,8 @@
     min-height: 44px;
   }
 
+  .operations-mobile-user > span { font-size: 9px; }
+
   .operations-mobile-nav .operations-nav-link {
     min-height: 54px;
     font-size: clamp(8.8px, 2.35vw, 9.8px);
