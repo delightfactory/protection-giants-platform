@@ -9,7 +9,7 @@ export default function ProductsPage() {
         title="أفلام حماية الطلاء"
         description="سيتم عرض المنتجات المعتمدة للجمهور هنا بعد اكتمال طبقة المحتوى والنشر العام، مع بيانات الضمان والمواصفات المناسبة للعميل."
       />
-      <div className="container public-state-wrap">
+      <div className="container section">
         <EmptyState
           eyebrow="النشر العام"
           title="عرض المنتجات للجمهور قيد التجهيز"
