@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import styles from "./public-nav-links.module.css";
 
 const publicLinks = [
   { href: "/products", label: "المنتجات" },
@@ -17,7 +18,12 @@ export function PublicNavLinks() {
       {publicLinks.map((link) => {
         const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
         return (
-          <Link key={link.href} href={link.href} className="nav-link" aria-current={active ? "page" : undefined}>
+          <Link
+            key={link.href}
+            href={link.href}
+            className={`nav-link${active ? ` ${styles.active}` : ""}`}
+            aria-current={active ? "page" : undefined}
+          >
             {link.label}
           </Link>
         );
