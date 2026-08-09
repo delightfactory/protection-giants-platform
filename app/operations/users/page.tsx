@@ -1,4 +1,10 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { FilterActions, FilterBar, FilterField, FilterGrid } from "@/components/ui/filter-bar";
+import { PageHeader } from "@/components/ui/page-header";
+import { RecordItem, RecordList } from "@/components/ui/record-list";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listAllOperationalAuthUsers } from "@/lib/users/auth-admin";
@@ -48,12 +54,8 @@ export default async function OperationsUsersPage({ searchParams }: UsersPagePro
   const adminProfile = await requireAdminProfile();
   const params = await searchParams;
   const query = params.q?.trim().toLowerCase() ?? "";
-  const roleFilter = ["admin", "dealer", "center"].includes(params.role ?? "")
-    ? params.role
-    : "";
-  const statusFilter = ["active", "suspended"].includes(params.status ?? "")
-    ? params.status
-    : "";
+  const roleFilter = ["admin", "dealer", "center"].includes(params.role ?? "") ? params.role : "";
+  const statusFilter = ["active", "suspended"].includes(params.status ?? "") ? params.status : "";
 
   const supabase = await createSupabaseServerClient();
   const [profilesResult, dealersResult, centersResult, authUsers] = await Promise.all([
@@ -71,21 +73,13 @@ export default async function OperationsUsersPage({ searchParams }: UsersPagePro
   if (centersResult.error) throw centersResult.error;
 
   const authById = new Map(authUsers.map((user) => [user.id, user]));
-  const dealerNames = new Map(
-    dealersResult.data.map((dealer) => [dealer.id, `${dealer.name} (${dealer.code})`]),
-  );
-  const centerNames = new Map(
-    centersResult.data.map((center) => [center.id, `${center.name} (${center.code})`]),
-  );
+  const dealerNames = new Map(dealersResult.data.map((dealer) => [dealer.id, `${dealer.name} (${dealer.code})`]));
+  const centerNames = new Map(centersResult.data.map((center) => [center.id, `${center.name} (${center.code})`]));
 
   function entityLabel(profile: ProfileEntityBinding) {
     if (profile.role === "admin") return "إدارة الشركة";
-    if (profile.role === "dealer" && profile.dealer_id) {
-      return dealerNames.get(profile.dealer_id) ?? "وكيل غير متاح";
-    }
-    if (profile.role === "center" && profile.installation_center_id) {
-      return centerNames.get(profile.installation_center_id) ?? "مركز غير متاح";
-    }
+    if (profile.role === "dealer" && profile.dealer_id) return dealerNames.get(profile.dealer_id) ?? "وكيل غير متاح";
+    if (profile.role === "center" && profile.installation_center_id) return centerNames.get(profile.installation_center_id) ?? "مركز غير متاح";
     return "ارتباط غير متاح";
   }
 
@@ -101,9 +95,7 @@ export default async function OperationsUsersPage({ searchParams }: UsersPagePro
       authUser?.email ?? "",
       roleLabels[profile.role] ?? profile.role,
       entityLabel(profile),
-    ]
-      .join(" ")
-      .toLowerCase();
+    ].join(" ").toLowerCase();
 
     return haystack.includes(query);
   });
@@ -113,130 +105,112 @@ export default async function OperationsUsersPage({ searchParams }: UsersPagePro
 
   return (
     <>
-      <div className="operations-topbar">
-        <div>
-          <span className="eyebrow">الهوية والصلاحيات</span>
-          <h1>الحسابات التشغيلية</h1>
-        </div>
-        <div className="operations-topbar-actions">
-          <p>{filteredProfiles.length} من {profilesResult.data.length} حساب</p>
-          <Link href="/operations/users/new" className="button button-primary">إنشاء حساب</Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="الهوية والصلاحيات"
+        title="الحسابات التشغيلية"
+        description="إدارة هوية الدخول والدور والارتباط التشغيلي من نقطة واحدة."
+        meta={`${filteredProfiles.length} من ${profilesResult.data.length} حساب`}
+        actions={<Link href="/operations/users/new" className="button button-primary">إنشاء حساب</Link>}
+      />
 
-      {successMessage ? <p className="form-success user-page-message" role="status">{successMessage}</p> : null}
-      {errorMessage ? <p className="form-error user-page-message" role="alert">{errorMessage}</p> : null}
+      {successMessage ? <FeedbackBanner tone="success">{successMessage}</FeedbackBanner> : null}
+      {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
 
-      <section className="user-filter-panel" aria-label="بحث وتصفية الحسابات">
-        <form method="get" className="user-filter-form">
-          <label className="user-search-field">
-            <span>بحث</span>
-            <input
-              name="q"
-              type="search"
-              defaultValue={params.q ?? ""}
-              placeholder="الاسم، البريد، الهاتف أو الكيان"
-              autoComplete="off"
-            />
-          </label>
+      <FilterBar label="بحث وتصفية الحسابات">
+        <form method="get">
+          <FilterGrid>
+            <FilterField label="بحث" wide>
+              <input
+                name="q"
+                type="search"
+                defaultValue={params.q ?? ""}
+                placeholder="الاسم، البريد، الهاتف أو الكيان"
+                autoComplete="off"
+              />
+            </FilterField>
 
-          <label>
-            <span>الدور</span>
-            <select name="role" defaultValue={roleFilter}>
-              <option value="">كل الأدوار</option>
-              <option value="admin">إدارة الشركة</option>
-              <option value="dealer">وكيل / موزع</option>
-              <option value="center">مركز تركيب</option>
-            </select>
-          </label>
+            <FilterField label="الدور">
+              <select name="role" defaultValue={roleFilter}>
+                <option value="">كل الأدوار</option>
+                <option value="admin">إدارة الشركة</option>
+                <option value="dealer">وكيل / موزع</option>
+                <option value="center">مركز تركيب</option>
+              </select>
+            </FilterField>
 
-          <label>
-            <span>الحالة</span>
-            <select name="status" defaultValue={statusFilter}>
-              <option value="">كل الحالات</option>
-              <option value="active">نشط</option>
-              <option value="suspended">موقوف</option>
-            </select>
-          </label>
+            <FilterField label="الحالة">
+              <select name="status" defaultValue={statusFilter}>
+                <option value="">كل الحالات</option>
+                <option value="active">نشط</option>
+                <option value="suspended">موقوف</option>
+              </select>
+            </FilterField>
 
-          <div className="user-filter-actions">
-            <button type="submit" className="button button-primary">تطبيق</button>
-            <Link href="/operations/users" className="button">مسح</Link>
-          </div>
+            <FilterActions>
+              <button type="submit" className="button button-primary">تطبيق</button>
+              <Link href="/operations/users" className="button button-ghost">مسح</Link>
+            </FilterActions>
+          </FilterGrid>
         </form>
-      </section>
+      </FilterBar>
 
       {profilesResult.data.length === 0 ? (
-        <section className="foundation-note">
-          <strong>لا توجد حسابات تشغيلية بعد.</strong>
-          <p>ابدأ بإنشاء حساب من الزر أعلى الصفحة.</p>
-        </section>
+        <EmptyState
+          eyebrow="الحسابات"
+          title="لا توجد حسابات تشغيلية بعد"
+          description="أنشئ أول حساب وحدد دوره والكيان الذي يمثله داخل المنصة."
+          action={<Link href="/operations/users/new" className="button button-primary">إنشاء حساب</Link>}
+        />
       ) : filteredProfiles.length === 0 ? (
-        <section className="foundation-note">
-          <strong>لا توجد نتائج مطابقة.</strong>
-          <p>غيّر نص البحث أو الفلاتر الحالية.</p>
-        </section>
+        <EmptyState
+          eyebrow="نتيجة البحث"
+          title="لا توجد نتائج مطابقة"
+          description="غيّر نص البحث أو امسح أحد الفلاتر الحالية."
+          action={<Link href="/operations/users" className="button button-ghost">مسح الفلاتر</Link>}
+        />
       ) : (
-        <section className="card-grid" aria-label="قائمة الحسابات التشغيلية">
+        <RecordList label="قائمة الحسابات التشغيلية">
           {filteredProfiles.map((profile) => {
             const authUser = authById.get(profile.id);
             const isActive = profile.status === "active";
             const isSelf = profile.id === adminProfile.id;
 
             return (
-              <article className="card" key={profile.id}>
-                <span className="card-kicker">{roleLabels[profile.role] ?? profile.role}</span>
-                <h2>{profile.display_name}</h2>
-                <p className="account-email" dir="ltr">
-                  {authUser?.email ?? "Auth email unavailable"}
-                </p>
-
-                <div className="record-meta">
-                  <div className="record-meta-row">
-                    <span>الارتباط</span>
-                    <strong>{entityLabel(profile)}</strong>
-                  </div>
-                  <div className="record-meta-row">
-                    <span>الهاتف</span>
-                    <strong dir={profile.phone ? "ltr" : undefined}>{profile.phone ?? "غير مسجل"}</strong>
-                  </div>
-                  <div className="record-meta-row">
-                    <span>الحالة</span>
-                    <strong>
-                      <span className={`status-chip ${isActive ? "is-active" : "is-suspended"}`}>
-                        {statusLabels[profile.status] ?? profile.status}
-                      </span>
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="card-actions">
-                  <Link href={`/operations/users/${profile.id}/edit`} className="button">إدارة الحساب</Link>
-
-                  {isSelf ? (
-                    <span className="current-account-note">الحساب الحالي</span>
-                  ) : (
-                    <form action={setOperationalUserStatus}>
-                      <input type="hidden" name="user_id" value={profile.id} />
-                      <input type="hidden" name="return_to" value="list" />
-                      <input
-                        type="hidden"
-                        name="target_status"
-                        value={isActive ? "suspended" : "active"}
-                      />
-                      <button
-                        type="submit"
-                        className={`button ${isActive ? "button-danger" : "button-primary"}`}
-                      >
-                        {isActive ? "إيقاف" : "إعادة التفعيل"}
-                      </button>
-                    </form>
-                  )}
-                </div>
-              </article>
+              <RecordItem
+                key={profile.id}
+                kicker={roleLabels[profile.role] ?? profile.role}
+                title={profile.display_name}
+                subtitle={<span dir="ltr">{authUser?.email ?? "Auth email unavailable"}</span>}
+                facts={[
+                  { label: "الارتباط", value: entityLabel(profile) },
+                  { label: "الهاتف", value: profile.phone ?? "غير مسجل", dir: profile.phone ? "ltr" : undefined },
+                ]}
+                status={
+                  <StatusBadge tone={isActive ? "success" : "neutral"}>
+                    {statusLabels[profile.status] ?? profile.status}
+                  </StatusBadge>
+                }
+                actions={
+                  <>
+                    <Link href={`/operations/users/${profile.id}/edit`} className="button button-ghost">إدارة الحساب</Link>
+                    {isSelf ? (
+                      <span className="current-account-note">الحساب الحالي</span>
+                    ) : (
+                      <form action={setOperationalUserStatus}>
+                        <input type="hidden" name="user_id" value={profile.id} />
+                        <input type="hidden" name="return_to" value="list" />
+                        <input type="hidden" name="target_status" value={isActive ? "suspended" : "active"} />
+                        <button type="submit" className={isActive ? "button button-danger" : "button button-primary"}>
+                          {isActive ? "إيقاف" : "إعادة التفعيل"}
+                        </button>
+                      </form>
+                    )}
+                  </>
+                }
+              />
             );
           })}
-        </section>
+        </RecordList>
       )}
     </>
   );
