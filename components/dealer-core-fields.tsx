@@ -1,3 +1,6 @@
+import { FormField } from "@/components/ui/form-field";
+import { FormGrid } from "@/components/ui/form-layout";
+
 type DealerCoreFieldValues = {
   code: string;
   name: string;
@@ -10,9 +13,11 @@ type DealerCoreFieldsProps = {
 
 export function DealerCoreFields({ values }: DealerCoreFieldsProps) {
   return (
-    <>
-      <label>
-        <span>كود الوكيل / الموزع</span>
+    <FormGrid>
+      <FormField
+        label="كود الوكيل / الموزع"
+        hint="حروف إنجليزية وأرقام وشرطة أو شرطة سفلية. يتم حفظ الكود بحروف كبيرة."
+      >
         <input
           name="code"
           type="text"
@@ -26,16 +31,13 @@ export function DealerCoreFields({ values }: DealerCoreFieldsProps) {
           defaultValue={values?.code}
           required
         />
-        <small>حروف إنجليزية وأرقام وشرطة أو شرطة سفلية. يتم حفظ الكود بحروف كبيرة.</small>
-      </label>
+      </FormField>
 
-      <label>
-        <span>اسم الوكيل / الموزع</span>
+      <FormField label="اسم الوكيل / الموزع">
         <input name="name" type="text" minLength={2} maxLength={160} defaultValue={values?.name} required />
-      </label>
+      </FormField>
 
-      <label>
-        <span>كود الدولة</span>
+      <FormField label="كود الدولة" hint="رمز الدولة من حرفين مثل EG أو SA أو AE.">
         <input
           name="country_code"
           type="text"
@@ -49,8 +51,7 @@ export function DealerCoreFields({ values }: DealerCoreFieldsProps) {
           defaultValue={values?.countryCode}
           required
         />
-        <small>رمز الدولة من حرفين مثل EG أو SA أو AE.</small>
-      </label>
-    </>
+      </FormField>
+    </FormGrid>
   );
 }
