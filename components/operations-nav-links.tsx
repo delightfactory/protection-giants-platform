@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
+import styles from "./operations-nav-links.module.css";
 
 type OperationalRole = "admin" | "dealer" | "center";
 type NavVariant = "desktop" | "mobile";
@@ -49,7 +50,7 @@ export function OperationsNavLinks({ role, variant }: { role: OperationalRole; v
             aria-current={active ? "page" : undefined}
           >
             <span className="operations-nav-icon" aria-hidden="true"><Icon name={item.icon} /></span>
-            <span>{item.label}</span>
+            <span className={variant === "mobile" ? styles.mobileLabel : undefined}>{item.label}</span>
           </Link>
         );
       })}
