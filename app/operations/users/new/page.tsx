@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { OperationalUserFields } from "@/components/operational-user-fields";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { FormField } from "@/components/ui/form-field";
+import { FormGrid, FormPanel, FormSection } from "@/components/ui/form-layout";
+import { Icon } from "@/components/ui/icon";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOperationalUser } from "./actions";
@@ -24,16 +29,8 @@ export default async function UserCreatePage({ searchParams }: UserCreatePagePro
 
   const supabase = await createSupabaseServerClient();
   const [dealersResult, centersResult] = await Promise.all([
-    supabase
-      .from("dealers")
-      .select("id, code, name, status")
-      .eq("status", "active")
-      .order("name"),
-    supabase
-      .from("installation_centers")
-      .select("id, code, name, status")
-      .eq("status", "active")
-      .order("name"),
+    supabase.from("dealers").select("id, code, name, status").eq("status", "active").order("name"),
+    supabase.from("installation_centers").select("id, code, name, status").eq("status", "active").order("name"),
   ]);
 
   if (dealersResult.error) throw dealersResult.error;
@@ -41,68 +38,66 @@ export default async function UserCreatePage({ searchParams }: UserCreatePagePro
 
   return (
     <>
-      <div className="operations-topbar">
-        <div>
-          <span className="eyebrow">الحسابات التشغيلية</span>
-          <h1>إنشاء حساب جديد</h1>
-        </div>
-        <Link href="/operations/users" className="button">العودة للحسابات</Link>
-      </div>
+      <PageHeader
+        eyebrow="الحسابات التشغيلية"
+        title="إنشاء حساب جديد"
+        description="أنشئ هوية الدخول ثم حدد الدور والكيان الذي يمثله الحساب داخل المنصة."
+        actions={
+          <Link href="/operations/users" className="button button-ghost">
+            <Icon name="back" />
+            العودة للحسابات
+          </Link>
+        }
+      />
 
-      <section className="operations-form-panel user-form-panel">
-        {errorMessage ? <p className="form-error" role="alert">{errorMessage}</p> : null}
+      <FormPanel className="user-form-panel">
+        {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
 
         <form action={createOperationalUser} className="operations-form">
-          <div className="user-form-intro">
-            <strong>بيانات تسجيل الدخول</strong>
-            <p>البريد هو هوية الدخول الحالية. كلمة المرور هنا مؤقتة ويجب تسليمها لصاحب الحساب عبر قناة آمنة.</p>
-          </div>
+          <FormSection
+            title="بيانات تسجيل الدخول"
+            description="البريد هو هوية الدخول الحالية. سلّم كلمة المرور المؤقتة لصاحب الحساب عبر قناة آمنة."
+          >
+            <FormGrid>
+              <FormField label="البريد الإلكتروني">
+                <input
+                  name="email"
+                  type="email"
+                  maxLength={254}
+                  required
+                  autoComplete="email"
+                  inputMode="email"
+                  dir="ltr"
+                />
+              </FormField>
 
-          <label>
-            البريد الإلكتروني
-            <input
-              name="email"
-              type="email"
-              maxLength={254}
-              required
-              autoComplete="email"
-              inputMode="email"
-              dir="ltr"
-            />
-          </label>
+              <FormField label="كلمة المرور المؤقتة" hint="12 حرفًا على الأقل، مع الالتزام بأي سياسة أقوى في Supabase Auth.">
+                <input
+                  name="password"
+                  type="password"
+                  minLength={12}
+                  maxLength={128}
+                  required
+                  autoComplete="new-password"
+                  dir="ltr"
+                />
+              </FormField>
+            </FormGrid>
+          </FormSection>
 
-          <label>
-            كلمة المرور المؤقتة
-            <input
-              name="password"
-              type="password"
-              minLength={12}
-              maxLength={128}
-              required
-              autoComplete="new-password"
-              dir="ltr"
-            />
-            <small>12 حرفًا على الأقل، مع الالتزام بأي سياسة أقوى يتم تفعيلها لاحقًا داخل Supabase Auth.</small>
-          </label>
-
-          <div className="user-form-divider" aria-hidden="true" />
-
-          <div className="user-form-intro">
-            <strong>الهوية والصلاحية التشغيلية</strong>
-            <p>اختيار الدور يحدد الكيان الذي يمثله الحساب وما يمكنه الوصول إليه داخل المنصة.</p>
-          </div>
-
-          <OperationalUserFields
-            dealers={dealersResult.data}
-            centers={centersResult.data}
-          />
+          <FormSection
+            title="الهوية والصلاحية التشغيلية"
+            description="الدور والارتباط هما مصدر الصلاحية الفعلي داخل التطبيق."
+          >
+            <OperationalUserFields dealers={dealersResult.data} centers={centersResult.data} />
+          </FormSection>
 
           <div className="operations-form-actions">
             <button type="submit" className="button button-primary">إنشاء الحساب</button>
-            <Link href="/operations/users" className="button">إلغاء</Link>
+            <Link href="/operations/users" className="button button-ghost">إلغاء</Link>
           </div>
         </form>
-      </section>
+      </FormPanel>
     </>
   );
 }
