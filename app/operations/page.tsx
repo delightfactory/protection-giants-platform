@@ -1,11 +1,13 @@
-import Link from "next/link";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ModuleCard } from "@/components/ui/module-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 
 const adminModules = [
-  { href: "/operations/users", title: "الحسابات التشغيلية", description: "مراجعة المستخدمين وأدوارهم وارتباطهم بالكيانات التشغيلية." },
-  { href: "/operations/dealers", title: "الوكلاء والموزعون", description: "إدارة الكيانات الموزعة وحالتها التشغيلية." },
-  { href: "/operations/centers", title: "مراكز التركيب", description: "إدارة المراكز المعتمدة وربطها بالوكيل المناسب." },
-  { href: "/operations/products", title: "المنتجات", description: "إدارة هوية المنتج ومدة الضمان والحالة." },
+  { href: "/operations/users", title: "الحسابات التشغيلية", description: "المستخدمون والأدوار والارتباطات التشغيلية.", icon: "users" as const },
+  { href: "/operations/dealers", title: "الوكلاء والموزعون", description: "إدارة الكيانات الموزعة وحالتها التشغيلية.", icon: "dealers" as const },
+  { href: "/operations/centers", title: "مراكز التركيب", description: "إدارة المراكز المعتمدة وتبعيتها التشغيلية.", icon: "centers" as const },
+  { href: "/operations/products", title: "المنتجات", description: "هوية المنتج ومدة الضمان وحالة الإتاحة.", icon: "products" as const },
 ];
 
 export default async function OperationsPage() {
@@ -14,28 +16,22 @@ export default async function OperationsPage() {
 
   return (
     <>
-      <div className="operations-topbar">
-        <div>
-          <span className="eyebrow">بوابة التشغيل</span>
-          <h1>مرحبًا، {profile.display_name}</h1>
-        </div>
-        <p>{isAdmin ? "الوحدات الإدارية المتاحة حاليًا" : "مساحتك التشغيلية"}</p>
-      </div>
+      <PageHeader
+        eyebrow="بوابة التشغيل"
+        title={<>مرحبًا، <span className="ui-heading-accent">{profile.display_name}</span></>}
+        description={isAdmin ? "الوحدات الإدارية المتاحة حاليًا في المنصة." : "مساحتك التشغيلية داخل منصة عمالقة الحماية."}
+      />
 
       {isAdmin ? (
-        <section className="operations-quick-grid" aria-label="الوحدات الإدارية المتاحة">
-          {adminModules.map((module) => (
-            <Link href={module.href} className="operations-quick-link" key={module.href}>
-              <strong>{module.title}</strong>
-              <span>{module.description}</span>
-            </Link>
-          ))}
+        <section className="ui-module-grid" aria-label="الوحدات الإدارية المتاحة">
+          {adminModules.map((module) => <ModuleCard key={module.href} {...module} />)}
         </section>
       ) : (
-        <section className="foundation-note">
-          <strong>الحساب جاهز للتشغيل.</strong>
-          <p>ستظهر هنا الوحدات الخاصة بدورك عند اكتمال مكعباتها التشغيلية. لا توجد أزرار أو بيانات شكلية قبل وجود وظيفة حقيقية خلفها.</p>
-        </section>
+        <EmptyState
+          eyebrow="المساحة التشغيلية"
+          title="الحساب جاهز للتشغيل"
+          description="ستظهر هنا الوحدات الخاصة بدورك عند اكتمال مكعباتها التشغيلية. لا توجد وظائف شكلية قبل وجود مسار حقيقي خلفها."
+        />
       )}
     </>
   );
