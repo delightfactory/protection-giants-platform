@@ -9,7 +9,7 @@ export default function CentersPage() {
         title="مراكز التركيب المعتمدة"
         description="ستعرض هذه الصفحة المراكز التي تعتمدها الإدارة فقط، مع المعلومات العامة المناسبة للعميل بعد اكتمال طبقة النشر العام للمراكز."
       />
-      <div className="container public-state-wrap">
+      <div className="container section">
         <EmptyState
           eyebrow="النشر العام"
           title="دليل المراكز العام قيد التجهيز"
