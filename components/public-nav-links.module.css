@@ -1,0 +1,14 @@
+.active {
+  color: var(--text);
+  background: var(--surface-selected);
+  border-color: rgba(223, 37, 38, 0.16);
+}
+
+.active::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  margin-inline-start: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
