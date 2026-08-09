@@ -1,3 +1,6 @@
+import { FormField } from "@/components/ui/form-field";
+import { FormGrid } from "@/components/ui/form-layout";
+
 type DealerOption = {
   id: string;
   code: string;
@@ -20,9 +23,11 @@ type CenterCoreFieldsProps = {
 
 export function CenterCoreFields({ dealers, values }: CenterCoreFieldsProps) {
   return (
-    <>
-      <label>
-        <span>كود مركز التركيب</span>
+    <FormGrid>
+      <FormField
+        label="كود مركز التركيب"
+        hint="حروف إنجليزية وأرقام وشرطة أو شرطة سفلية. يتم حفظ الكود بحروف كبيرة."
+      >
         <input
           name="code"
           type="text"
@@ -36,16 +41,17 @@ export function CenterCoreFields({ dealers, values }: CenterCoreFieldsProps) {
           defaultValue={values?.code}
           required
         />
-        <small>حروف إنجليزية وأرقام وشرطة أو شرطة سفلية. يتم حفظ الكود بحروف كبيرة.</small>
-      </label>
+      </FormField>
 
-      <label>
-        <span>اسم مركز التركيب</span>
+      <FormField label="اسم مركز التركيب">
         <input name="name" type="text" minLength={2} maxLength={160} defaultValue={values?.name} required />
-      </label>
+      </FormField>
 
-      <label>
-        <span>الوكيل / الموزع الأب</span>
+      <FormField
+        label="الوكيل / الموزع الأب"
+        hint="اختر «مباشر للشركة» إذا لم يكن المركز تابعًا لوكيل."
+        optional
+      >
         <select name="dealer_id" defaultValue={values?.dealerId ?? ""}>
           <option value="">مباشر للشركة</option>
           {dealers.map((dealer) => (
@@ -54,11 +60,9 @@ export function CenterCoreFields({ dealers, values }: CenterCoreFieldsProps) {
             </option>
           ))}
         </select>
-        <small>اتركه «مباشر للشركة» إذا لم يكن المركز تابعًا لوكيل.</small>
-      </label>
+      </FormField>
 
-      <label>
-        <span>كود الدولة</span>
+      <FormField label="كود الدولة">
         <input
           name="country_code"
           type="text"
@@ -72,12 +76,11 @@ export function CenterCoreFields({ dealers, values }: CenterCoreFieldsProps) {
           defaultValue={values?.countryCode}
           required
         />
-      </label>
+      </FormField>
 
-      <label>
-        <span>المدينة</span>
+      <FormField label="المدينة" full>
         <input name="city" type="text" minLength={2} maxLength={120} defaultValue={values?.city} required />
-      </label>
-    </>
+      </FormField>
+    </FormGrid>
   );
 }
