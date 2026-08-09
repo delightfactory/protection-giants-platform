@@ -19,27 +19,30 @@
 1. الإجراء الأساسي في كل شاشة يجب أن يكون واضحًا من أول نظرة.
 2. لا نعرض زرًا أو حالة شكلية بدون وظيفة حقيقية خلفها.
 3. لا نضع Card داخل Card إلا عندما يكون هناك فصل معلوماتي حقيقي.
-4. القوائم عالية الكثافة تستخدم Records/Table patterns على الشاشات الكبيرة، وتتحول إلى stacked records على الهاتف.
+4. القوائم عالية الكثافة تستخدم Record pattern على الشاشات الكبيرة، وتتحول إلى stacked records على الهاتف.
 5. النماذج تسير من الهوية الأساسية إلى الربط والصلاحية ثم الإجراء النهائي.
 6. الإجراءات التدميرية لا تنافس الإجراء اليومي بصريًا؛ تستخدم danger styling محدودًا.
 7. نجاح/فشل/فراغ/لا نتائج/تعطيل/تحميل حالات واجهة أصلية وليست رسائل لاحقة مضافة.
-8. Touch targets لا تقل عن 44px في الهاتف.
-9. صفحات المهام (إنشاء/تعديل) تقلل التشتيت وتخفي bottom navigation عند الحاجة.
+8. Touch targets لا تقل عن 44px في الهاتف متى كان العنصر تفاعليًا أساسيًا.
+9. صفحات المهام (إنشاء/تعديل) تقلل التشتيت وتخفي bottom navigation.
 10. لا تُستخدم animation إلا لتأكيد انتقال أو استجابة، مع احترام `prefers-reduced-motion`.
+11. لا نضيف metrics أو dashboard widgets ببيانات وهمية لمجرد ملء المساحة.
+12. أي تغيير UX يجب ألا يغير منطق الأعمال ضمن نفس التعديل إلا إذا كان ذلك مقصودًا ومختبرًا.
 
 ## 3. Typography
 
-الخط الأساسي للمنصة: **Cairo** عبر `next/font`، self-hosted بواسطة Next.js.
+الخط الأساسي للمنصة: **Cairo** عبر `next/font`، ويُخدم ذاتيًا بواسطة Next.js أثناء البناء.
 
 القواعد:
 
 - Page title: وزن 800، حجم responsive من 25–38px داخل التشغيل.
-- Section/card title: وزن 750 تقريبًا، 17–21px حسب السياق.
-- Body: 14–15px.
-- Labels: 12–13px، وزن 650–700.
-- Supporting/meta text: 10–12px بلون tertiary.
+- Section title: وزن 750 تقريبًا، 14–19px حسب السياق.
+- Body: 13–15px.
+- Labels: 10–12px، وزن 600–700.
+- Supporting/meta text: 9–12px بلون tertiary.
 - الأكواد والإيميلات والأرقام تعرض LTR عند الحاجة مع `tabular-nums`.
 - لا نستخدم letter spacing على النص العربي كزخرفة.
+- النص التقني اللاتيني يمكنه استخدام Arial/system sans محليًا عندما يحسن القراءة.
 
 ## 4. Color semantics
 
@@ -49,15 +52,16 @@
 
 - `--canvas`: خلفية التطبيق.
 - `--surface-0`: عناصر الإدخال والمناطق الغائرة.
-- `--surface-1`: Panels وCards الأساسية.
+- `--surface-1`: Panels وRecords الأساسية.
 - `--surface-2`: Controls الثانوية.
-- `--surface-3`: حالات hover/raised محدودة.
+- `--surface-3`: Raised/hover contexts المحدودة.
 
 ### Text
 
 - `--text`: النص الأساسي.
 - `--text-secondary`: المعلومات الثانوية.
 - `--text-tertiary`: Metadata والشرح الهادئ.
+- `--text-disabled`: البيانات غير المتاحة أو controls المعطلة.
 
 ### Brand/status
 
@@ -70,13 +74,37 @@
 
 ## 5. Shape and spacing
 
-- Controls: `--radius-sm` / `--radius-control`.
-- Cards: `--radius-md`.
+- Controls: `--radius-sm`.
+- Records/Cards: `--radius-md`.
 - Large panels: `--radius-lg`.
+- حالات pill فقط تستخدم `--radius-pill`.
 - لا نستخدم rounding كبيرًا لكل عنصر؛ الـradius يتبع مستوى العنصر في الهيكل.
 - المسافات مبنية على scale من 4px إلى 48px (`--space-1` … `--space-9`).
 
-## 6. Buttons
+## 6. Component architecture
+
+المكونات المشتركة الحالية موجودة تحت `components/ui/` ويجب إعادة استخدامها قبل إنشاء markup جديد يؤدي نفس الوظيفة.
+
+### Foundations / primitives
+
+- `BrandLockup`: هوية P.G الموحدة للهيدر/التشغيل/الدخول.
+- `Icon`: مجموعة الأيقونات التشغيلية الحالية بدون dependency خارجية.
+- `PageHeader`: عنوان الصفحة، الوصف، الـmeta والإجراءات.
+- `FeedbackBanner`: success/error/warning/info.
+- `StatusBadge`: حالات دلالية موحدة.
+- `EmptyState`: حالات no-data وno-results.
+- `FormField`: label/control/hint/optional anatomy.
+- `FormGrid`, `FormPanel`, `FormSection`: بناء النماذج.
+- `FilterBar`, `FilterGrid`, `FilterField`, `FilterActions`: البحث والفلاتر.
+
+### Composite operational patterns
+
+- `RecordList` + `RecordItem`: القوائم التشغيلية عالية الكثافة؛ row-like على desktop وstacked cards على الهاتف.
+- `ModuleCard`: مدخل موحد لوحدات Dashboard الحقيقية فقط.
+
+إذا احتاجت شاشة جديدة مكوّنًا غير موجود، نضيفه للمكتبة فقط عندما يوجد استخدام فعلي واضح، وليس تحسبًا لاحتمال مستقبلي.
+
+## 7. Buttons
 
 ### Primary
 
@@ -86,13 +114,13 @@ Class: `.button.button-primary`
 
 ### Secondary
 
-للإجراءات اليومية غير الرئيسية: تعديل، رجوع، إدارة الحساب.
+للإجراءات اليومية غير الرئيسية.
 
 Class: `.button`
 
 ### Ghost
 
-للإجراءات منخفضة الأولوية داخل toolbars أو headers.
+للرجوع، التعديل أو الأفعال منخفضة الأولوية في headers/lists.
 
 Class: `.button.button-ghost`
 
@@ -104,95 +132,119 @@ Class: `.button.button-danger`
 
 لا يجوز استخدام danger كزر أحمر ممتلئ افتراضيًا؛ الهدف إبقاء الإجراء التدميري واضحًا لكن غير مهيمن.
 
-## 7. Forms
+## 8. Forms
 
-- Control height الأساسي 46–50px.
+- Control height الأساسي 44–50px.
+- `FormField` هو الشكل القياسي للحقل.
 - label فوق الحقل في العربية.
-- helper text قصير وهادئ أسفل الحقل فقط عندما يمنع خطأ أو يشرح أثرًا مهمًا.
+- helper text قصير وهادئ فقط عندما يمنع خطأ أو يشرح أثرًا مهمًا.
+- الحقول الاختيارية يوضحها الـlabel نفسه بدل افتراض المستخدم.
 - focus يظهر بالـaccent border + focus ring.
 - disabled state يجب أن يبدو غير قابل للتفاعل بوضوح.
-- على الهاتف لا نحول كل label إلى Card مستقل؛ النموذج نفسه هو الـpanel.
-- actions يمكن أن تصبح sticky على الهاتف في صفحات المهام الطويلة.
+- Desktop يستخدم 2-column grid عندما تكون الحقول مستقلة ويمكن قراءتها بسهولة.
+- Mobile يعود تلقائيًا إلى عمود واحد.
+- actions النهائية تصبح sticky على الهاتف في صفحات المهام الطويلة فقط؛ أزرار الأقسام الفرعية ليست sticky.
 
-## 8. Status and feedback
+## 9. Status and feedback
 
-- `status-chip.is-active`: نجاح/نشط.
-- `status-chip.is-suspended` / `is-archived`: حالة غير فعالة ومحايدة بصريًا.
-- `.form-success`: نجاح العملية.
-- `.form-error`: فشل قابل للمعالجة.
-- Empty state يستخدم `.foundation-note` حتى يوجد Component مستقل مبرر.
+- `StatusBadge` هو المكوّن القياسي للحالات.
+- active/success = `tone="success"`.
+- suspended/archived = `tone="neutral"` ما لم توجد دلالة أخطر مطلوبة.
+- `FeedbackBanner` يستخدم لنتيجة عملية واضحة، وليس لتنسيق نص عادي.
+- `EmptyState` يستخدم للفراغ وعدم وجود نتائج، مع CTA فقط إذا كان هناك إجراء حقيقي مناسب.
 
 كل رسالة يجب أن تقول ما حدث وما الذي يستطيع المستخدم فعله إذا كان هناك إجراء تالٍ.
 
-## 9. Navigation
+## 10. Navigation
 
 ### Desktop
 
 - Sidebar ثابتة ومضغوطة.
-- active item = surface selected + accent indicator رفيع.
-- لا نستخدم glow أو gradients قوية في التنقل.
+- هوية المستخدم منفصلة بصريًا عن هوية العلامة.
+- active item = selected surface + accent indicator رفيع.
+- لا glow ولا gradients قوية في التنقل.
 
 ### Mobile
 
-- Header ثابت صغير يحافظ على هوية المستخدم الحالية.
-- Bottom navigation محصور في الوحدات الأعلى تكرارًا فقط.
+- Header ثابت صغير يعرض هوية المستخدم + P.G + sign-out كإجراء ثانوي صغير.
+- Bottom navigation للإدارة يعرض الوحدات الخمس الحالية: الرئيسية، الحسابات، الوكلاء، المراكز، المنتجات.
+- كل route أساسي يجب أن يملك active navigation state؛ لا توجد صفحة رئيسية “بلا مكان” في التنقل.
 - صفحات إنشاء/تعديل تخفي bottom navigation لتقليل التشتيت.
 - الـsafe-area جزء من التصميم وليس تصحيحًا لاحقًا.
 
-## 10. Page patterns
+## 11. Page patterns
 
 ### List
 
-Page header → optional feedback → compact filter toolbar → records → empty/no-results state.
+`PageHeader → Feedback → FilterBar عند الحاجة → RecordList → EmptyState/No-results`
 
 ### Create/Edit
 
-Page header → feedback → one or more logical form panels → sticky actions on phone.
+`PageHeader → Feedback → FormPanel → FormSection(s) → final actions`
 
 ### Dashboard
 
-Page header → high-value metrics/entry points فقط؛ لا نضيف widgets لمجرد ملء المساحة.
+`PageHeader → ModuleCard / high-value entry points الحقيقية فقط`
 
-### Detail/Operational record
+### User settings
 
-Identity → status → high-value metadata → primary action → secondary/destructive actions.
+`PageHeader + current status → primary identity/permissions panel → security stack (email/password/lifecycle)`
 
-## 11. RTL and mixed-direction data
+### Detail/Operational record لاحقًا
+
+`Identity → status → high-value metadata → primary action → secondary/destructive actions`
+
+## 12. RTL and mixed-direction data
 
 - الصفحة `dir="rtl"` افتراضيًا.
-- البريد، الهاتف، SKU، VIN، serial، UUID وأي قيم تقنية تستخدم `dir="ltr"` محليًا.
+- البريد، الهاتف، SKU، VIN، serial، UUID، slug وأي قيم تقنية تستخدم `dir="ltr"` محليًا.
 - العناوين العربية لا تُجبر على letter spacing لاتيني.
 - ترتيب الأيقونات والأسهم يتبع اتجاه المهمة لا النسخ الحرفي من LTR.
+- أي row يحتوي عربي + قيمة تقنية يجب اختباره بصريًا على الهاتف.
 
-## 12. Accessibility baseline
+## 13. Accessibility baseline
 
 - Contrast واضح بين text/surface/status.
-- focus-visible موجود على كل interactive controls.
-- tap target لا يقل عن 44px على الهاتف.
+- `focus-visible` موجود على كل interactive controls.
+- tap target الأساسي لا يقل عن 44px على الهاتف.
 - لا نعتمد على اللون وحده في الحالات الحرجة؛ النص يظل موجودًا.
 - `prefers-reduced-motion` مدعوم عالميًا.
-- Semantic HTML وARIA labels تستمر كجزء من Definition of Done.
+- Semantic HTML وARIA labels جزء من Definition of Done.
+- icon-only controls يجب أن تملك `aria-label` أو نصًا متاحًا لقارئ الشاشة.
 
-## 13. Definition of Done لأي شاشة جديدة
+## 14. Responsive rules
+
+- الحد الأدنى المدعوم: 320px بدون horizontal overflow.
+- Lists تتحول من dense rows إلى stacked records تحت 700px تقريبًا.
+- Filters: البحث يمتد بعرض كامل ثم role/status في صف قابل للضغط، والإجراءات في صف مستقل عند الحاجة.
+- Forms: 2 columns → 1 column.
+- Bottom navigation تبقى ثابتة ولا تغطي آخر محتوى في صفحات الإدارة.
+- Task forms لا تعتمد على bottom navigation، وتستخدم sticky final actions فقط عند الحاجة.
+
+## 15. Definition of Done لأي شاشة جديدة
 
 لا تعتبر الشاشة مكتملة بصريًا حتى:
 
 1. تستخدم tokens بدل ألوان/spacing عشوائية غير مبررة.
-2. تعمل على 320px بدون horizontal overflow.
-3. تملك focus/hover/active/disabled states المناسبة.
-4. تملك حالات empty/error/success المطلوبة وظيفيًا.
-5. البيانات المختلطة عربي/LTR تظهر صحيحة.
-6. primary action واضح ولا ينافسه destructive action.
-7. المسافات والأحجام تتبع page pattern موجودًا أو سببًا موثقًا للخروج عنه.
-8. تمر TypeScript وproduction build.
-9. تتم مراجعة screenshot فعلي من browser على الهاتف والديسكتوب عندما تصبح بيئة runtime متاحة.
+2. تستخدم component/pattern موجودًا قبل إنشاء نسخة محلية منه.
+3. تعمل على 320px بدون horizontal overflow.
+4. تملك focus/hover/active/disabled states المناسبة.
+5. تملك حالات empty/error/success المطلوبة وظيفيًا.
+6. البيانات المختلطة عربي/LTR تظهر صحيحة.
+7. primary action واضح ولا ينافسه destructive action.
+8. المسافات والأحجام تتبع page pattern موجودًا أو سببًا موثقًا للخروج عنه.
+9. لا توجد route أساسية بلا navigation context مناسب.
+10. تمر TypeScript وproduction build.
+11. تتم مراجعة screenshot فعلي من browser على الهاتف والديسكتوب قبل اعتماد أي تغيير بصري كبير.
+12. لا نعتبر screenshot مولدًا أو mockup دليلًا على جودة الكود الفعلي.
 
-## 14. ما لا نفعله
+## 16. ما لا نفعله
 
 - لا Glassmorphism استعراضي.
 - لا gradients كثيرة لإيهام الحداثة.
-- لا Cards لكل سطر أو label بلا سبب.
+- لا Cards لكل label أو سطر بلا سبب.
 - لا عشر درجات من الأحمر داخل نفس الشاشة.
 - لا animation مستمر.
+- لا metrics أو بيانات وهمية لملء Dashboard.
 - لا مكتبة UI ضخمة قبل وجود حاجة حقيقية لها.
-- لا تغيير لمنطق الأعمال أثناء تحسين بصري إلا في PR مستقل ومبرر.
+- لا تغيير لمنطق الأعمال أثناء تحسين بصري إلا في تعديل مستقل ومبرر.
