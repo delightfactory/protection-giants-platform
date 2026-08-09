@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OperationalUserFields } from "@/components/operational-user-fields";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { FormField } from "@/components/ui/form-field";
+import { FormGrid, FormPanel, FormSection } from "@/components/ui/form-layout";
+import { Icon } from "@/components/ui/icon";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -65,133 +71,134 @@ export default async function UserEditPage({ params, searchParams }: UserEditPag
   const profile = profileResult.data;
   const authUser = authResult.data.user;
   const isSelf = profile.id === adminProfile.id;
+  const isActive = profile.status === "active";
   const errorMessage = error ? errorMessages[error] : undefined;
   const successMessage = success ? successMessages[success] : undefined;
 
   return (
     <>
-      <div className="operations-topbar">
-        <div>
-          <span className="eyebrow">الحسابات التشغيلية</span>
-          <h1>{profile.display_name}</h1>
-        </div>
-        <Link href="/operations/users" className="button">العودة للحسابات</Link>
-      </div>
+      <PageHeader
+        eyebrow="الحسابات التشغيلية"
+        title={profile.display_name}
+        description="إدارة الهوية والصلاحية وبيانات الدخول وحالة الحساب من شاشة واحدة."
+        meta={<StatusBadge tone={isActive ? "success" : "neutral"}>{isActive ? "نشط" : "موقوف"}</StatusBadge>}
+        actions={
+          <Link href="/operations/users" className="button button-ghost">
+            <Icon name="back" />
+            العودة للحسابات
+          </Link>
+        }
+      />
 
-      {errorMessage ? <p className="form-error user-page-message" role="alert">{errorMessage}</p> : null}
-      {successMessage ? <p className="form-success user-page-message" role="status">{successMessage}</p> : null}
+      {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
+      {successMessage ? <FeedbackBanner tone="success">{successMessage}</FeedbackBanner> : null}
 
       <div className="user-settings-stack">
-        <section className="operations-form-panel user-form-panel">
-          <div className="user-form-intro">
-            <strong>الهوية والصلاحية التشغيلية</strong>
-            <p>هذه البيانات هي مصدر الصلاحية الفعلي داخل المنصة.</p>
-          </div>
-
+        <FormPanel className="user-form-panel user-settings-primary">
           <form action={updateOperationalUserProfile} className="operations-form">
             <input type="hidden" name="user_id" value={profile.id} />
-            <OperationalUserFields
-              dealers={dealersResult.data}
-              centers={centersResult.data}
-              lockRole={isSelf}
-              defaultValues={{
-                displayName: profile.display_name,
-                phone: profile.phone,
-                role: profile.role as "admin" | "dealer" | "center",
-                dealerId: profile.dealer_id,
-                centerId: profile.installation_center_id,
-              }}
-            />
-            <div className="operations-form-actions">
+            <FormSection
+              title="الهوية والصلاحية التشغيلية"
+              description="هذه البيانات هي مصدر الصلاحية الفعلي داخل المنصة."
+            >
+              <OperationalUserFields
+                dealers={dealersResult.data}
+                centers={centersResult.data}
+                lockRole={isSelf}
+                defaultValues={{
+                  displayName: profile.display_name,
+                  phone: profile.phone,
+                  role: profile.role as "admin" | "dealer" | "center",
+                  dealerId: profile.dealer_id,
+                  centerId: profile.installation_center_id,
+                }}
+              />
+            </FormSection>
+            <div className="operations-form-actions is-inline">
               <button type="submit" className="button button-primary">حفظ البيانات</button>
             </div>
           </form>
-        </section>
+        </FormPanel>
 
-        <section className="operations-form-panel user-form-panel">
-          <div className="user-form-intro">
-            <strong>بريد تسجيل الدخول</strong>
-            <p>تغييره هنا يتم مباشرة من خلال Supabase Auth Admin ولا يحتاج مسار تأكيد من المستخدم.</p>
-          </div>
-          <form action={updateOperationalUserEmail} className="operations-form">
-            <input type="hidden" name="user_id" value={profile.id} />
-            <label>
-              البريد الإلكتروني
-              <input
-                name="email"
-                type="email"
-                maxLength={254}
-                required
-                defaultValue={authUser.email ?? ""}
-                autoComplete="email"
-                inputMode="email"
-                dir="ltr"
-              />
-            </label>
-            <div className="operations-form-actions">
-              <button type="submit" className="button button-primary">تغيير البريد</button>
-            </div>
-          </form>
-        </section>
+        <div className="user-security-stack">
+          <FormPanel className="user-form-panel">
+            <form action={updateOperationalUserEmail} className="operations-form">
+              <input type="hidden" name="user_id" value={profile.id} />
+              <FormSection
+                title="بريد تسجيل الدخول"
+                description="يتم تغييره مباشرة بواسطة الإدارة عبر Supabase Auth Admin."
+              >
+                <FormGrid columns={1}>
+                  <FormField label="البريد الإلكتروني">
+                    <input
+                      name="email"
+                      type="email"
+                      maxLength={254}
+                      required
+                      defaultValue={authUser.email ?? ""}
+                      autoComplete="email"
+                      inputMode="email"
+                      dir="ltr"
+                    />
+                  </FormField>
+                </FormGrid>
+              </FormSection>
+              <div className="operations-form-actions is-inline">
+                <button type="submit" className="button">تغيير البريد</button>
+              </div>
+            </form>
+          </FormPanel>
 
-        <section className="operations-form-panel user-form-panel">
-          <div className="user-form-intro">
-            <strong>إعادة ضبط كلمة المرور</strong>
-            <p>يتم تعيين كلمة مرور جديدة مباشرة. لا يتم عرض أو تخزين كلمة المرور الحالية في المنصة.</p>
-          </div>
-          <form action={resetOperationalUserPassword} className="operations-form">
-            <input type="hidden" name="user_id" value={profile.id} />
-            <label>
-              كلمة المرور الجديدة
-              <input
-                name="new_password"
-                type="password"
-                minLength={12}
-                maxLength={128}
-                required
-                autoComplete="new-password"
-                dir="ltr"
-              />
-              <small>12 حرفًا على الأقل، وقد ترفض Auth كلمة المرور إذا كانت سياسة المشروع أقوى.</small>
-            </label>
-            <div className="operations-form-actions">
-              <button type="submit" className="button button-primary">تعيين كلمة المرور</button>
-            </div>
-          </form>
-        </section>
+          <FormPanel className="user-form-panel">
+            <form action={resetOperationalUserPassword} className="operations-form">
+              <input type="hidden" name="user_id" value={profile.id} />
+              <FormSection
+                title="إعادة ضبط كلمة المرور"
+                description="لا يتم عرض أو تخزين كلمة المرور الحالية داخل المنصة."
+              >
+                <FormGrid columns={1}>
+                  <FormField label="كلمة المرور الجديدة" hint="12 حرفًا على الأقل، وقد ترفض Auth كلمة المرور إذا كانت سياسة المشروع أقوى.">
+                    <input
+                      name="new_password"
+                      type="password"
+                      minLength={12}
+                      maxLength={128}
+                      required
+                      autoComplete="new-password"
+                      dir="ltr"
+                    />
+                  </FormField>
+                </FormGrid>
+              </FormSection>
+              <div className="operations-form-actions is-inline">
+                <button type="submit" className="button">تعيين كلمة المرور</button>
+              </div>
+            </form>
+          </FormPanel>
 
-        <section className="operations-form-panel user-form-panel user-lifecycle-panel">
-          <div className="user-form-intro">
-            <strong>حالة الحساب</strong>
-            <p>الإيقاف يوقف الملف التشغيلي ويمنع تسجيل الدخول في Auth. إعادة التفعيل تعيد الاثنين معًا.</p>
-          </div>
-
-          <div className="user-lifecycle-row">
-            <span className={`status-chip ${profile.status === "active" ? "is-active" : "is-suspended"}`}>
-              {profile.status === "active" ? "نشط" : "موقوف"}
-            </span>
-
-            {isSelf ? (
-              <span className="current-account-note">الحساب الحالي محمي من الإيقاف الذاتي.</span>
-            ) : (
-              <form action={setOperationalUserStatus}>
-                <input type="hidden" name="user_id" value={profile.id} />
-                <input type="hidden" name="return_to" value="edit" />
-                <input
-                  type="hidden"
-                  name="target_status"
-                  value={profile.status === "active" ? "suspended" : "active"}
-                />
-                <button
-                  type="submit"
-                  className={`button ${profile.status === "active" ? "button-danger" : "button-primary"}`}
-                >
-                  {profile.status === "active" ? "إيقاف الحساب" : "إعادة التفعيل"}
-                </button>
-              </form>
-            )}
-          </div>
-        </section>
+          <FormPanel className="user-form-panel user-lifecycle-panel">
+            <FormSection
+              title="حالة الحساب"
+              description="الإيقاف يمنع تسجيل الدخول ويوقف الملف التشغيلي، وإعادة التفعيل تعيد الاثنين معًا."
+            >
+              <div className="user-lifecycle-row">
+                <StatusBadge tone={isActive ? "success" : "neutral"}>{isActive ? "نشط" : "موقوف"}</StatusBadge>
+                {isSelf ? (
+                  <span className="current-account-note">الحساب الحالي محمي من الإيقاف الذاتي.</span>
+                ) : (
+                  <form action={setOperationalUserStatus}>
+                    <input type="hidden" name="user_id" value={profile.id} />
+                    <input type="hidden" name="return_to" value="edit" />
+                    <input type="hidden" name="target_status" value={isActive ? "suspended" : "active"} />
+                    <button type="submit" className={`button ${isActive ? "button-danger" : "button-primary"}`}>
+                      {isActive ? "إيقاف الحساب" : "إعادة التفعيل"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </FormSection>
+          </FormPanel>
+        </div>
       </div>
     </>
   );
