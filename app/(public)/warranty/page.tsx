@@ -9,7 +9,7 @@ export default function WarrantyPage() {
         title="تحقق من ضمانك"
         description="سيتم ربط هذه الصفحة برمز الضمان الآمن بعد اكتمال دورة الرول وتفعيل ضمان العميل."
       />
-      <div className="container public-state-wrap">
+      <div className="container section">
         <EmptyState
           eyebrow="التحقق العام"
           title="التحقق من الضمان لم يُفعّل للعامة بعد"
