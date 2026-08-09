@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { CenterCoreFields } from "@/components/center-core-fields";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormPanel, FormSection } from "@/components/ui/form-layout";
-import { Icon } from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
+import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { updateCenter } from "./actions";
@@ -53,12 +53,7 @@ export default async function CenterEditPage({ params, searchParams }: CenterEdi
         eyebrow="مراكز التركيب"
         title={center.name}
         description="تعديل هوية المركز وموقعه وتبعيته التشغيلية."
-        actions={
-          <Link href="/operations/centers" className="button button-ghost">
-            <Icon name="back" />
-            العودة للمراكز
-          </Link>
-        }
+        actions={<TaskBackLink href="/operations/centers" label="العودة للمراكز" />}
       />
 
       <FormPanel>

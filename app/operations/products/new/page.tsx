@@ -2,8 +2,8 @@ import Link from "next/link";
 import { ProductCoreFields } from "@/components/product-core-fields";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormPanel, FormSection } from "@/components/ui/form-layout";
-import { Icon } from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
+import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createProduct } from "./actions";
 
@@ -28,12 +28,7 @@ export default async function ProductCreatePage({ searchParams }: ProductCreateP
         eyebrow="المنتجات"
         title="إضافة منتج"
         description="أنشئ الهوية التشغيلية الأساسية للمنتج قبل استخدامه في دورات الإنتاج والضمان."
-        actions={
-          <Link href="/operations/products" className="button button-ghost">
-            <Icon name="back" />
-            العودة للمنتجات
-          </Link>
-        }
+        actions={<TaskBackLink href="/operations/products" label="العودة للمنتجات" />}
       />
 
       <FormPanel>

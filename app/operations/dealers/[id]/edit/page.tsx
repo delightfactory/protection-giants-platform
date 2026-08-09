@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { DealerCoreFields } from "@/components/dealer-core-fields";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormPanel, FormSection } from "@/components/ui/form-layout";
-import { Icon } from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
+import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { updateDealer } from "./actions";
@@ -47,12 +47,7 @@ export default async function DealerEditPage({ params, searchParams }: DealerEdi
         eyebrow="الوكلاء والموزعون"
         title={dealer.name}
         description="تعديل هوية الوكيل أو الموزع مع الحفاظ على علاقاته التشغيلية الحالية."
-        actions={
-          <Link href="/operations/dealers" className="button button-ghost">
-            <Icon name="back" />
-            العودة للوكلاء
-          </Link>
-        }
+        actions={<TaskBackLink href="/operations/dealers" label="العودة للوكلاء" />}
       />
 
       <FormPanel>

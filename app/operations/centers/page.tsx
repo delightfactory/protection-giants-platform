@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { PageHeader } from "@/components/ui/page-header";
@@ -86,9 +87,17 @@ export default async function OperationsCentersPage({ searchParams }: Operations
                     <form action={setCenterStatus}>
                       <input type="hidden" name="center_id" value={center.id} />
                       <input type="hidden" name="status" value={isSuspended ? "active" : "suspended"} />
-                      <button type="submit" className={isSuspended ? "button button-primary" : "button button-danger"}>
-                        {isSuspended ? "إعادة تفعيل" : "إيقاف"}
-                      </button>
+                      {isSuspended ? (
+                        <button type="submit" className="button button-primary">إعادة تفعيل</button>
+                      ) : (
+                        <ConfirmSubmitButton
+                          title="إيقاف مركز التركيب؟"
+                          description="سيظل المركز محفوظًا داخل النظام، لكن حالته التشغيلية ستصبح موقوفة حتى إعادة التفعيل."
+                          confirmLabel="تأكيد الإيقاف"
+                        >
+                          إيقاف
+                        </ConfirmSubmitButton>
+                      )}
                     </form>
                   </>
                 }

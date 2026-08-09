@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { PageHeader } from "@/components/ui/page-header";
@@ -72,9 +73,17 @@ export default async function OperationsProductsPage({ searchParams }: Operation
                     <form action={setProductStatus}>
                       <input type="hidden" name="product_id" value={product.id} />
                       <input type="hidden" name="status" value={isArchived ? "active" : "archived"} />
-                      <button type="submit" className={isArchived ? "button button-primary" : "button button-danger"}>
-                        {isArchived ? "إعادة تفعيل" : "أرشفة"}
-                      </button>
+                      {isArchived ? (
+                        <button type="submit" className="button button-primary">إعادة تفعيل</button>
+                      ) : (
+                        <ConfirmSubmitButton
+                          title="أرشفة المنتج؟"
+                          description="سيظل المنتج محفوظًا داخل النظام، لكنه لن يكون متاحًا للاستخدام التشغيلي الجديد حتى إعادة تفعيله."
+                          confirmLabel="تأكيد الأرشفة"
+                        >
+                          أرشفة
+                        </ConfirmSubmitButton>
+                      )}
                     </form>
                   </>
                 }

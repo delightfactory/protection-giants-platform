@@ -1,0 +1,112 @@
+/* Interaction-quality layer: mobile-native behavior, confirmations and task navigation. */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-block-start: 84px;
+}
+
+[dir="ltr"] { unicode-bidi: isolate; }
+
+.ui-task-back { white-space: nowrap; }
+.ui-task-back svg { flex: 0 0 auto; }
+
+.ui-confirm-dialog {
+  width: min(calc(100% - 28px), 430px);
+  max-width: 430px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text);
+  overflow: visible;
+}
+.ui-confirm-dialog::backdrop {
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.ui-confirm-card {
+  padding: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-raised);
+}
+.ui-confirm-copy h2 {
+  margin: 5px 0 7px;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.ui-confirm-copy p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.75;
+}
+.ui-confirm-actions {
+  display: grid;
+  grid-template-columns: .8fr 1.2fr;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-subtle);
+}
+.ui-confirm-actions .button { width: 100%; min-height: 46px; }
+
+@media (max-width: 700px) {
+  html { scroll-padding-block-end: 112px; }
+
+  .ui-form-field input,
+  .ui-form-field select,
+  .ui-form-field textarea,
+  .operations-form input,
+  .operations-form select,
+  .auth-form input,
+  .ui-filter-field input,
+  .ui-filter-field select {
+    font-size: 16px;
+  }
+
+  .ui-page-actions .button,
+  .ui-filter-actions .button,
+  .ui-record-actions .button,
+  .auth-back-link,
+  .ui-icon-button {
+    min-height: 44px;
+  }
+
+  .ui-task-back {
+    min-height: 44px;
+    padding-inline: 10px 12px;
+  }
+
+  .ui-form-field,
+  .ui-filter-field { scroll-margin-block: 78px 118px; }
+}
+
+@media (max-width: 560px) {
+  .ui-confirm-dialog {
+    width: 100%;
+    max-width: none;
+    max-height: 82dvh;
+    margin: auto 0 0;
+    border-radius: 20px 20px 0 0;
+  }
+  .ui-confirm-card {
+    padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
+    border-inline: 0;
+    border-bottom: 0;
+    border-radius: 20px 20px 0 0;
+  }
+  .ui-confirm-copy h2 { font-size: 19px; }
+  .ui-confirm-copy p { font-size: 13px; }
+  .ui-confirm-actions .button { min-height: 48px; }
+}
+
+@media (max-width: 360px) {
+  .ui-page-actions { gap: 6px; }
+  .ui-page-meta { white-space: normal; }
+  .ui-task-back span { font-size: 11px; }
+}

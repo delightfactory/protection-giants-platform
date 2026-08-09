@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
+import "./interaction.css";
 import { brandConfig } from "@/lib/brand-config";
 
 const cairo = Cairo({

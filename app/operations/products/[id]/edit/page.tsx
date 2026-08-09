@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { ProductCoreFields } from "@/components/product-core-fields";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormPanel, FormSection } from "@/components/ui/form-layout";
-import { Icon } from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
+import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { updateProduct } from "./actions";
@@ -47,12 +47,7 @@ export default async function ProductEditPage({ params, searchParams }: ProductE
         eyebrow="المنتجات"
         title={product.name}
         description="تعديل البيانات المرجعية للمنتج دون تغيير دورة حياته التشغيلية."
-        actions={
-          <Link href="/operations/products" className="button button-ghost">
-            <Icon name="back" />
-            العودة للمنتجات
-          </Link>
-        }
+        actions={<TaskBackLink href="/operations/products" label="العودة للمنتجات" />}
       />
 
       <FormPanel>

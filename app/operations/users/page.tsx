@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FilterActions, FilterBar, FilterField, FilterGrid } from "@/components/ui/filter-bar";
@@ -200,9 +201,17 @@ export default async function OperationsUsersPage({ searchParams }: UsersPagePro
                         <input type="hidden" name="user_id" value={profile.id} />
                         <input type="hidden" name="return_to" value="list" />
                         <input type="hidden" name="target_status" value={isActive ? "suspended" : "active"} />
-                        <button type="submit" className={isActive ? "button button-danger" : "button button-primary"}>
-                          {isActive ? "إيقاف" : "إعادة التفعيل"}
-                        </button>
+                        {isActive ? (
+                          <ConfirmSubmitButton
+                            title="إيقاف الحساب؟"
+                            description="سيتم منع تسجيل الدخول وإيقاف الملف التشغيلي لهذا الحساب حتى إعادة تفعيله."
+                            confirmLabel="تأكيد الإيقاف"
+                          >
+                            إيقاف
+                          </ConfirmSubmitButton>
+                        ) : (
+                          <button type="submit" className="button button-primary">إعادة التفعيل</button>
+                        )}
                       </form>
                     )}
                   </>

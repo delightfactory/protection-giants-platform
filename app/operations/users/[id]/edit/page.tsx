@@ -1,12 +1,12 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OperationalUserFields } from "@/components/operational-user-fields";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { FormGrid, FormPanel, FormSection } from "@/components/ui/form-layout";
-import { Icon } from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -82,12 +82,7 @@ export default async function UserEditPage({ params, searchParams }: UserEditPag
         title={profile.display_name}
         description="إدارة الهوية والصلاحية وبيانات الدخول وحالة الحساب من شاشة واحدة."
         meta={<StatusBadge tone={isActive ? "success" : "neutral"}>{isActive ? "نشط" : "موقوف"}</StatusBadge>}
-        actions={
-          <Link href="/operations/users" className="button button-ghost">
-            <Icon name="back" />
-            العودة للحسابات
-          </Link>
-        }
+        actions={<TaskBackLink href="/operations/users" label="العودة للحسابات" />}
       />
 
       {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
@@ -190,9 +185,17 @@ export default async function UserEditPage({ params, searchParams }: UserEditPag
                     <input type="hidden" name="user_id" value={profile.id} />
                     <input type="hidden" name="return_to" value="edit" />
                     <input type="hidden" name="target_status" value={isActive ? "suspended" : "active"} />
-                    <button type="submit" className={`button ${isActive ? "button-danger" : "button-primary"}`}>
-                      {isActive ? "إيقاف الحساب" : "إعادة التفعيل"}
-                    </button>
+                    {isActive ? (
+                      <ConfirmSubmitButton
+                        title="إيقاف الحساب؟"
+                        description="سيتم منع تسجيل الدخول وإيقاف الملف التشغيلي لهذا الحساب حتى إعادة تفعيله."
+                        confirmLabel="تأكيد الإيقاف"
+                      >
+                        إيقاف الحساب
+                      </ConfirmSubmitButton>
+                    ) : (
+                      <button type="submit" className="button button-primary">إعادة التفعيل</button>
+                    )}
                   </form>
                 )}
               </div>
