@@ -1,0 +1,12 @@
+@media (max-width: 900px) {
+  .mobileLabel {
+    font-size: 9px;
+    font-weight: 650;
+  }
+}
+
+@media (max-width: 390px) {
+  .mobileLabel {
+    font-size: 8.5px;
+  }
+}
