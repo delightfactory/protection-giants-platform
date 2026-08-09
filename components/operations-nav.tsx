@@ -50,7 +50,14 @@ export function OperationsNav({ profile }: OperationsNavProps) {
             <span>{roleLabels[profile.role]}</span>
           </span>
         </div>
-        <BrandLockup href="/operations" compact className="operations-mobile-brand" />
+        <div className="operations-mobile-tools">
+          <BrandLockup href="/operations" compact className="operations-mobile-brand" />
+          <form action={signOut}>
+            <button type="submit" className="operations-mobile-signout" aria-label="تسجيل الخروج" title="تسجيل الخروج">
+              <Icon name="logout" />
+            </button>
+          </form>
+        </div>
       </header>
 
       <OperationsNavLinks role={profile.role} variant="mobile" />
