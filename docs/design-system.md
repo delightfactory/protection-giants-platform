@@ -40,6 +40,7 @@
 - Body: 13–15px.
 - Labels: 10–12px، وزن 600–700.
 - Supporting/meta text: 9–12px بلون tertiary.
+- Mobile bottom-navigation labels لا تقل عن 8.5–9px في أضيق المقاسات الحالية مع touch target مستقل لا يقل عن 44px.
 - الأكواد والإيميلات والأرقام تعرض LTR عند الحاجة مع `tabular-nums`.
 - لا نستخدم letter spacing على النص العربي كزخرفة.
 - النص التقني اللاتيني يمكنه استخدام Arial/system sans محليًا عندما يحسن القراءة.
@@ -99,8 +100,10 @@
 
 ### Composite operational patterns
 
-- `RecordList` + `RecordItem`: القوائم التشغيلية عالية الكثافة؛ row-like على desktop وstacked cards على الهاتف.
+- `RecordList` + `RecordItem`: القوائم التشغيلية عالية الكثافة؛ row-like على desktop وstacked cards على الهاتف. على الهاتف تتحول إجراءات الـghost اليومية إلى controls ذات affordance أوضح، بينما يظل destructive action منفصلًا بصريًا.
 - `ModuleCard`: مدخل موحد لوحدات Dashboard الحقيقية فقط.
+- `PublicNavLinks`: التنقل العام مع active state واضح و`aria-current`.
+- `OperationsNavLinks`: التنقل التشغيلي المتجاوب مع active state وحالة task routes.
 
 إذا احتاجت شاشة جديدة مكوّنًا غير موجود، نضيفه للمكتبة فقط عندما يوجد استخدام فعلي واضح، وليس تحسبًا لاحتمال مستقبلي.
 
@@ -120,7 +123,7 @@ Class: `.button`
 
 ### Ghost
 
-للرجوع، التعديل أو الأفعال منخفضة الأولوية في headers/lists.
+للرجوع، التعديل أو الأفعال منخفضة الأولوية في headers/lists. على الهاتف يمكن تقوية affordance بصريًا داخل record actions دون تحويله إلى primary.
 
 Class: `.button.button-ghost`
 
@@ -152,6 +155,7 @@ Class: `.button.button-danger`
 - suspended/archived = `tone="neutral"` ما لم توجد دلالة أخطر مطلوبة.
 - `FeedbackBanner` يستخدم لنتيجة عملية واضحة، وليس لتنسيق نص عادي.
 - `EmptyState` يستخدم للفراغ وعدم وجود نتائج، مع CTA فقط إذا كان هناك إجراء حقيقي مناسب.
+- Loading/Error/Not-found داخل بوابة التشغيل لها حالات مصممة بنفس النظام ولا تعتمد على صفحات Next.js الافتراضية.
 
 كل رسالة يجب أن تقول ما حدث وما الذي يستطيع المستخدم فعله إذا كان هناك إجراء تالٍ.
 
@@ -172,6 +176,11 @@ Class: `.button.button-danger`
 - صفحات إنشاء/تعديل تخفي bottom navigation لتقليل التشتيت.
 - الـsafe-area جزء من التصميم وليس تصحيحًا لاحقًا.
 
+### Public
+
+- الرابط الحالي يملك active state بصريًا و`aria-current="page"`.
+- CTA الخاص ببوابة التشغيل يظل منفصلًا عن الروابط المعلوماتية العامة.
+
 ## 11. Page patterns
 
 ### List
@@ -189,6 +198,10 @@ Class: `.button.button-danger`
 ### User settings
 
 `PageHeader + current status → primary identity/permissions panel → security stack (email/password/lifecycle)`
+
+### System states
+
+`Loading / Error / Not-found → branded state → clear next action when one exists`
 
 ### Detail/Operational record لاحقًا
 
@@ -218,7 +231,7 @@ Class: `.button.button-danger`
 - Lists تتحول من dense rows إلى stacked records تحت 700px تقريبًا.
 - Filters: البحث يمتد بعرض كامل ثم role/status في صف قابل للضغط، والإجراءات في صف مستقل عند الحاجة.
 - Forms: 2 columns → 1 column.
-- Bottom navigation تبقى ثابتة ولا تغطي آخر محتوى في صفحات الإدارة.
+- Bottom navigation تبقى ثابتة ولا تمنع الوصول لآخر محتوى في صفحات الإدارة.
 - Task forms لا تعتمد على bottom navigation، وتستخدم sticky final actions فقط عند الحاجة.
 
 ## 15. Definition of Done لأي شاشة جديدة
@@ -229,7 +242,7 @@ Class: `.button.button-danger`
 2. تستخدم component/pattern موجودًا قبل إنشاء نسخة محلية منه.
 3. تعمل على 320px بدون horizontal overflow.
 4. تملك focus/hover/active/disabled states المناسبة.
-5. تملك حالات empty/error/success المطلوبة وظيفيًا.
+5. تملك حالات empty/error/success/loading/not-found المطلوبة وظيفيًا.
 6. البيانات المختلطة عربي/LTR تظهر صحيحة.
 7. primary action واضح ولا ينافسه destructive action.
 8. المسافات والأحجام تتبع page pattern موجودًا أو سببًا موثقًا للخروج عنه.
@@ -248,3 +261,8 @@ Class: `.button.button-danger`
 - لا metrics أو بيانات وهمية لملء Dashboard.
 - لا مكتبة UI ضخمة قبل وجود حاجة حقيقية لها.
 - لا تغيير لمنطق الأعمال أثناء تحسين بصري إلا في تعديل مستقل ومبرر.
+
+## 17. ملاحظات الهوية الحالية
+
+- الـP.G mark الحالي داخل الكود هو monogram نصي مؤقت ومقصود، وليس ادعاءً بأنه الشعار الرسمي النهائي.
+- لا يتم اختراع شعار أو asset بصري غير معتمد داخل الكود. عند توفير أصل رسمي معتمد يتم استبدال الـmark داخل `BrandLockup` فقط، فتتوارثه بقية المنصة تلقائيًا.
