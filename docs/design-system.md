@@ -21,9 +21,9 @@
 3. لا نضع Card داخل Card إلا عندما يكون هناك فصل معلوماتي حقيقي.
 4. القوائم عالية الكثافة تستخدم Record pattern على الشاشات الكبيرة، وتتحول إلى stacked records على الهاتف.
 5. النماذج تسير من الهوية الأساسية إلى الربط والصلاحية ثم الإجراء النهائي.
-6. الإجراءات التدميرية لا تنافس الإجراء اليومي بصريًا؛ تستخدم danger styling محدودًا.
+6. الإجراءات التدميرية لا تنافس الإجراء اليومي بصريًا؛ تستخدم danger styling محدودًا ولا تنفذ مباشرة عندما يترتب عليها تعطيل تشغيلي.
 7. نجاح/فشل/فراغ/لا نتائج/تعطيل/تحميل حالات واجهة أصلية وليست رسائل لاحقة مضافة.
-8. Touch targets لا تقل عن 44px في الهاتف متى كان العنصر تفاعليًا أساسيًا.
+8. Touch targets لا تقل عن 44px في الهاتف للعناصر التفاعلية الأساسية.
 9. صفحات المهام (إنشاء/تعديل) تقلل التشتيت وتخفي bottom navigation.
 10. لا تُستخدم animation إلا لتأكيد انتقال أو استجابة، مع احترام `prefers-reduced-motion`.
 11. لا نضيف metrics أو dashboard widgets ببيانات وهمية لمجرد ملء المساحة.
@@ -40,7 +40,8 @@
 - Body: 13–15px.
 - Labels: 10–12px، وزن 600–700.
 - Supporting/meta text: 9–12px بلون tertiary.
-- Mobile bottom-navigation labels لا تقل عن 8.5–9px في أضيق المقاسات الحالية مع touch target مستقل لا يقل عن 44px.
+- Mobile bottom-navigation labels لا تقل عن 8.5px في أضيق المقاسات الحالية مع touch target مستقل لا يقل عن 44px.
+- Form controls على الهاتف تستخدم 16px للنص لتجنب سلوك التكبير غير المرغوب في بعض متصفحات الهاتف.
 - الأكواد والإيميلات والأرقام تعرض LTR عند الحاجة مع `tabular-nums`.
 - لا نستخدم letter spacing على النص العربي كزخرفة.
 - النص التقني اللاتيني يمكنه استخدام Arial/system sans محليًا عندما يحسن القراءة.
@@ -97,6 +98,8 @@
 - `FormField`: label/control/hint/optional anatomy.
 - `FormGrid`, `FormPanel`, `FormSection`: بناء النماذج.
 - `FilterBar`, `FilterGrid`, `FilterField`, `FilterActions`: البحث والفلاتر.
+- `TaskBackLink`: رجوع موحد وصريح من صفحات الإنشاء والتعديل إلى قائمة الكيان.
+- `ConfirmSubmitButton`: confirmation dialog للإجراءات الحساسة داخل form موجود بالفعل؛ Modal على الشاشات الكبيرة وBottom Sheet على الهاتف.
 
 ### Composite operational patterns
 
@@ -133,7 +136,7 @@ Class: `.button.button-ghost`
 
 Class: `.button.button-danger`
 
-لا يجوز استخدام danger كزر أحمر ممتلئ افتراضيًا؛ الهدف إبقاء الإجراء التدميري واضحًا لكن غير مهيمن.
+لا يجوز استخدام danger كزر أحمر ممتلئ افتراضيًا؛ الهدف إبقاء الإجراء التدميري واضحًا لكن غير مهيمن. الإيقاف والأرشفة اللذان يؤثران على التشغيل يمران عبر `ConfirmSubmitButton` قبل التنفيذ، بينما إعادة التفعيل لا تحتاج confirmation إضافي عادةً.
 
 ## 8. Forms
 
@@ -146,7 +149,10 @@ Class: `.button.button-danger`
 - disabled state يجب أن يبدو غير قابل للتفاعل بوضوح.
 - Desktop يستخدم 2-column grid عندما تكون الحقول مستقلة ويمكن قراءتها بسهولة.
 - Mobile يعود تلقائيًا إلى عمود واحد.
+- Form inputs/selects/textarea على الهاتف تستخدم 16px للنص.
 - actions النهائية تصبح sticky على الهاتف في صفحات المهام الطويلة فقط؛ أزرار الأقسام الفرعية ليست sticky.
+- sticky actions تحترم `env(safe-area-inset-bottom)` ولا تعتمد على قيمة bottom ثابتة فقط.
+- حقول النموذج والفلاتر تملك scroll margin مناسبًا حتى لا يصبح الحقل النشط ملاصقًا للهيدر أو شريط الإجراءات عند التنقل/التركيز.
 
 ## 9. Status and feedback
 
@@ -170,11 +176,14 @@ Class: `.button.button-danger`
 
 ### Mobile
 
-- Header ثابت صغير يعرض هوية المستخدم + P.G + sign-out كإجراء ثانوي صغير.
+- Header ثابت صغير يعرض هوية المستخدم + P.G + sign-out كإجراء ثانوي.
+- sign-out والـbrand touch area لا يقلان عن 44px حتى عندما يكون الرمز البصري أصغر.
 - Bottom navigation للإدارة يعرض الوحدات الخمس الحالية: الرئيسية، الحسابات، الوكلاء، المراكز، المنتجات.
 - كل route أساسي يجب أن يملك active navigation state؛ لا توجد صفحة رئيسية “بلا مكان” في التنقل.
 - صفحات إنشاء/تعديل تخفي bottom navigation لتقليل التشتيت.
+- صفحات المهام تستخدم `TaskBackLink` بدل سلوك رجوع مختلف من شاشة لأخرى.
 - الـsafe-area جزء من التصميم وليس تصحيحًا لاحقًا.
+- Landscape القصير يقلل الاعتماد على sticky header حتى لا يستهلك مساحة عمودية غير مناسبة.
 
 ### Public
 
@@ -189,7 +198,13 @@ Class: `.button.button-danger`
 
 ### Create/Edit
 
-`PageHeader → Feedback → FormPanel → FormSection(s) → final actions`
+`PageHeader + TaskBackLink → Feedback → FormPanel → FormSection(s) → final actions`
+
+### Sensitive action
+
+`destructive trigger → ConfirmSubmitButton → explicit consequence → cancel / confirm`
+
+على الهاتف يظهر التأكيد كـBottom Sheet قريب من منطقة الإبهام، وعلى الشاشات الكبيرة يظهر كـModal مركزي. لا نستخدم native browser confirm في تجربة المنتج.
 
 ### Dashboard
 
@@ -211,6 +226,7 @@ Class: `.button.button-danger`
 
 - الصفحة `dir="rtl"` افتراضيًا.
 - البريد، الهاتف، SKU، VIN، serial، UUID، slug وأي قيم تقنية تستخدم `dir="ltr"` محليًا.
+- عناصر LTR تعزل اتجاهها محليًا حتى لا تعيد ترتيب النص العربي المجاور.
 - العناوين العربية لا تُجبر على letter spacing لاتيني.
 - ترتيب الأيقونات والأسهم يتبع اتجاه المهمة لا النسخ الحرفي من LTR.
 - أي row يحتوي عربي + قيمة تقنية يجب اختباره بصريًا على الهاتف.
@@ -224,15 +240,19 @@ Class: `.button.button-danger`
 - `prefers-reduced-motion` مدعوم عالميًا.
 - Semantic HTML وARIA labels جزء من Definition of Done.
 - icon-only controls يجب أن تملك `aria-label` أو نصًا متاحًا لقارئ الشاشة.
+- confirmation يستخدم عنصر `dialog` الدلالي، يفتح بـ`showModal()` ويقبل Escape، ويضع الإلغاء كخيار واضح بجوار التأكيد.
 
 ## 14. Responsive rules
 
 - الحد الأدنى المدعوم: 320px بدون horizontal overflow.
+- مراجعة الهاتف القياسية تغطي 320 / 360 / 390 / 430px على الأقل عند التغييرات المؤثرة على layout أو navigation.
 - Lists تتحول من dense rows إلى stacked records تحت 700px تقريبًا.
 - Filters: البحث يمتد بعرض كامل ثم role/status في صف قابل للضغط، والإجراءات في صف مستقل عند الحاجة.
 - Forms: 2 columns → 1 column.
 - Bottom navigation تبقى ثابتة ولا تمنع الوصول لآخر محتوى في صفحات الإدارة.
 - Task forms لا تعتمد على bottom navigation، وتستخدم sticky final actions فقط عند الحاجة.
+- يجب اختبار long Arabic names وlong email/code values بدون overflow.
+- يجب إجراء reduced-height review لمحاكاة المساحة المتاحة عند ظهور لوحة المفاتيح، إضافة إلى مراجعة landscape القصير عندما تتأثر الشاشة بالارتفاع.
 
 ## 15. Definition of Done لأي شاشة جديدة
 
@@ -245,11 +265,13 @@ Class: `.button.button-danger`
 5. تملك حالات empty/error/success/loading/not-found المطلوبة وظيفيًا.
 6. البيانات المختلطة عربي/LTR تظهر صحيحة.
 7. primary action واضح ولا ينافسه destructive action.
-8. المسافات والأحجام تتبع page pattern موجودًا أو سببًا موثقًا للخروج عنه.
-9. لا توجد route أساسية بلا navigation context مناسب.
-10. تمر TypeScript وproduction build.
-11. تتم مراجعة screenshot فعلي من browser على الهاتف والديسكتوب قبل اعتماد أي تغيير بصري كبير.
-12. لا نعتبر screenshot مولدًا أو mockup دليلًا على جودة الكود الفعلي.
+8. destructive action المؤثر تشغيليًا يملك confirmation مناسبًا ولا ينفذ باللمس العرضي.
+9. المسافات والأحجام تتبع page pattern موجودًا أو سببًا موثقًا للخروج عنه.
+10. لا توجد route أساسية بلا navigation context مناسب.
+11. تمر TypeScript وproduction build.
+12. تتم مراجعة screenshot فعلي من browser على الهاتف والديسكتوب قبل اعتماد أي تغيير بصري كبير.
+13. التغييرات المؤثرة على الهاتف تُراجع على 320/360/390/430px مع اختبار محتوى طويل، وعند الحاجة reduced-height/keyboard scenario.
+14. لا نعتبر screenshot مولدًا أو mockup دليلًا على جودة الكود الفعلي.
 
 ## 16. ما لا نفعله
 
@@ -258,6 +280,7 @@ Class: `.button.button-danger`
 - لا Cards لكل label أو سطر بلا سبب.
 - لا عشر درجات من الأحمر داخل نفس الشاشة.
 - لا animation مستمر.
+- لا native browser confirm للإجراءات الحساسة عندما نملك pattern منتج موحدًا.
 - لا metrics أو بيانات وهمية لملء Dashboard.
 - لا مكتبة UI ضخمة قبل وجود حاجة حقيقية لها.
 - لا تغيير لمنطق الأعمال أثناء تحسين بصري إلا في تعديل مستقل ومبرر.
