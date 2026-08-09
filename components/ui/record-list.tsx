@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import styles from "./record-list.module.css";
 
 type RecordFact = {
   label: string;
@@ -45,7 +46,7 @@ export function RecordItem({ kicker, title, subtitle, facts = [], status, action
       ) : <div />}
 
       <div className="ui-record-state">{status}</div>
-      <div className="ui-record-actions">{actions}</div>
+      <div className={`ui-record-actions ${styles.actions}`}>{actions}</div>
     </article>
   );
 }
