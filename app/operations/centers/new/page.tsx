@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { CenterCoreFields } from "@/components/center-core-fields";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { FormPanel, FormSection } from "@/components/ui/form-layout";
+import { Icon } from "@/components/ui/icon";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createCenter } from "./actions";
@@ -25,34 +29,36 @@ export default async function CenterCreatePage({ searchParams }: CenterCreatePag
     .select("id, code, name, status")
     .order("name", { ascending: true });
 
-  if (dealersError) {
-    throw dealersError;
-  }
-
+  if (dealersError) throw dealersError;
   const errorMessage = error ? errorMessages[error] : undefined;
 
   return (
     <>
-      <div className="operations-topbar">
-        <div>
-          <span className="eyebrow">مراكز التركيب</span>
-          <h1>إضافة مركز تركيب</h1>
-        </div>
-        <Link href="/operations/centers" className="button">العودة للمراكز</Link>
-      </div>
+      <PageHeader
+        eyebrow="مراكز التركيب"
+        title="إضافة مركز تركيب"
+        description="سجّل المركز وموقعه وحدد تبعيته التشغيلية قبل إنشاء حساباته."
+        actions={
+          <Link href="/operations/centers" className="button button-ghost">
+            <Icon name="back" />
+            العودة للمراكز
+          </Link>
+        }
+      />
 
-      <section className="operations-form-panel">
-        {errorMessage ? <p className="form-error" role="alert">{errorMessage}</p> : null}
-
+      <FormPanel>
+        {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
         <form action={createCenter} className="operations-form">
-          <CenterCoreFields dealers={dealers} />
+          <FormSection title="بيانات مركز التركيب" description="هوية المركز وموقعه والعلاقة مع الوكيل أو الشركة مباشرة.">
+            <CenterCoreFields dealers={dealers} />
+          </FormSection>
 
           <div className="operations-form-actions">
             <button type="submit" className="button button-primary">حفظ المركز</button>
-            <Link href="/operations/centers" className="button">إلغاء</Link>
+            <Link href="/operations/centers" className="button button-ghost">إلغاء</Link>
           </div>
         </form>
-      </section>
+      </FormPanel>
     </>
   );
 }
