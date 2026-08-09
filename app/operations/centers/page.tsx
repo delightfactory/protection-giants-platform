@@ -1,4 +1,9 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { PageHeader } from "@/components/ui/page-header";
+import { RecordItem, RecordList } from "@/components/ui/record-list";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { setCenterStatus } from "./actions";
@@ -25,13 +30,8 @@ export default async function OperationsCentersPage({ searchParams }: Operations
     supabase.from("dealers").select("id, code, name"),
   ]);
 
-  if (centersResult.error) {
-    throw centersResult.error;
-  }
-
-  if (dealersResult.error) {
-    throw dealersResult.error;
-  }
+  if (centersResult.error) throw centersResult.error;
+  if (dealersResult.error) throw dealersResult.error;
 
   const dealerNames = new Map(
     dealersResult.data.map((dealer) => [dealer.id, `${dealer.name} (${dealer.code})`]),
@@ -39,28 +39,27 @@ export default async function OperationsCentersPage({ searchParams }: Operations
 
   return (
     <>
-      <div className="operations-topbar">
-        <div>
-          <span className="eyebrow">الهيكل التشغيلي</span>
-          <h1>مراكز التركيب</h1>
-        </div>
-        <div className="operations-topbar-actions">
-          <p>{centersResult.data.length} مركز مسجل</p>
-          <Link href="/operations/centers/new" className="button button-primary">إضافة مركز</Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="الهيكل التشغيلي"
+        title="مراكز التركيب"
+        description="إدارة المراكز المعتمدة وموقعها والتبعية التشغيلية لكل مركز."
+        meta={`${centersResult.data.length} مركز مسجل`}
+        actions={<Link href="/operations/centers/new" className="button button-primary">إضافة مركز</Link>}
+      />
 
       {pageError === "lifecycle" ? (
-        <p className="form-error" role="alert">تعذر تغيير حالة مركز التركيب. حاول مرة أخرى.</p>
+        <FeedbackBanner tone="error">تعذر تغيير حالة مركز التركيب. حاول مرة أخرى.</FeedbackBanner>
       ) : null}
 
       {centersResult.data.length === 0 ? (
-        <section className="foundation-note">
-          <strong>لا توجد مراكز تركيب مسجلة بعد.</strong>
-          <p>استخدم زر إضافة مركز لإنشاء أول مركز تركيب تشغيلي.</p>
-        </section>
+        <EmptyState
+          eyebrow="مراكز التركيب"
+          title="لا توجد مراكز تركيب مسجلة بعد"
+          description="أنشئ أول مركز تشغيلي وحدد إن كان مباشرًا للشركة أو تابعًا لوكيل."
+          action={<Link href="/operations/centers/new" className="button button-primary">إضافة مركز</Link>}
+        />
       ) : (
-        <section className="card-grid" aria-label="قائمة مراكز التركيب">
+        <RecordList label="قائمة مراكز التركيب">
           {centersResult.data.map((center) => {
             const isSuspended = center.status === "suspended";
             const parentName = center.dealer_id
@@ -68,39 +67,35 @@ export default async function OperationsCentersPage({ searchParams }: Operations
               : "مباشر للشركة";
 
             return (
-              <article className="card" key={center.id}>
-                <span className="card-kicker" dir="ltr">{center.code}</span>
-                <h2>{center.name}</h2>
-                <div className="record-meta">
-                  <div className="record-meta-row">
-                    <span>الموقع</span>
-                    <strong>{center.city} · <span dir="ltr">{center.country_code}</span></strong>
-                  </div>
-                  <div className="record-meta-row">
-                    <span>التبعية</span>
-                    <strong>{parentName}</strong>
-                  </div>
-                  <div className="record-meta-row">
-                    <span>الحالة</span>
-                    <span className={`status-chip ${isSuspended ? "is-suspended" : "is-active"}`}>
-                      {statusLabels[center.status] ?? center.status}
-                    </span>
-                  </div>
-                </div>
-                <div className="card-actions">
-                  <Link href={`/operations/centers/${center.id}/edit`} className="button">تعديل</Link>
-                  <form action={setCenterStatus}>
-                    <input type="hidden" name="center_id" value={center.id} />
-                    <input type="hidden" name="status" value={isSuspended ? "active" : "suspended"} />
-                    <button type="submit" className={isSuspended ? "button button-primary" : "button button-danger"}>
-                      {isSuspended ? "إعادة تفعيل" : "إيقاف"}
-                    </button>
-                  </form>
-                </div>
-              </article>
+              <RecordItem
+                key={center.id}
+                kicker={<span dir="ltr">{center.code}</span>}
+                title={center.name}
+                facts={[
+                  { label: "الموقع", value: <>{center.city} · <span dir="ltr">{center.country_code}</span></> },
+                  { label: "التبعية", value: parentName },
+                ]}
+                status={
+                  <StatusBadge tone={isSuspended ? "neutral" : "success"}>
+                    {statusLabels[center.status] ?? center.status}
+                  </StatusBadge>
+                }
+                actions={
+                  <>
+                    <Link href={`/operations/centers/${center.id}/edit`} className="button button-ghost">تعديل</Link>
+                    <form action={setCenterStatus}>
+                      <input type="hidden" name="center_id" value={center.id} />
+                      <input type="hidden" name="status" value={isSuspended ? "active" : "suspended"} />
+                      <button type="submit" className={isSuspended ? "button button-primary" : "button button-danger"}>
+                        {isSuspended ? "إعادة تفعيل" : "إيقاف"}
+                      </button>
+                    </form>
+                  </>
+                }
+              />
             );
           })}
-        </section>
+        </RecordList>
       )}
     </>
   );
