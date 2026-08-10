@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { ProductCoreFields } from "@/components/product-core-fields";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { FormPanel, FormSection } from "@/components/ui/form-layout";
+import { PageHeader } from "@/components/ui/page-header";
+import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createProduct } from "./actions";
 
@@ -20,26 +24,26 @@ export default async function ProductCreatePage({ searchParams }: ProductCreateP
 
   return (
     <>
-      <div className="operations-topbar">
-        <div>
-          <span className="eyebrow">المنتجات</span>
-          <h1>إضافة منتج</h1>
-        </div>
-        <Link href="/operations/products" className="button">العودة للمنتجات</Link>
-      </div>
+      <PageHeader
+        eyebrow="المنتجات"
+        title="إضافة منتج"
+        description="أنشئ الهوية التشغيلية الأساسية للمنتج قبل استخدامه في دورات الإنتاج والضمان."
+        actions={<TaskBackLink href="/operations/products" label="العودة للمنتجات" />}
+      />
 
-      <section className="operations-form-panel">
-        {errorMessage ? <p className="form-error" role="alert">{errorMessage}</p> : null}
-
+      <FormPanel>
+        {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
         <form action={createProduct} className="operations-form">
-          <ProductCoreFields />
+          <FormSection title="بيانات المنتج" description="الحقول المرجعية التي تعرّف المنتج داخل المنصة.">
+            <ProductCoreFields />
+          </FormSection>
 
           <div className="operations-form-actions">
             <button type="submit" className="button button-primary">حفظ المنتج</button>
-            <Link href="/operations/products" className="button">إلغاء</Link>
+            <Link href="/operations/products" className="button button-ghost">إلغاء</Link>
           </div>
         </form>
-      </section>
+      </FormPanel>
     </>
   );
 }

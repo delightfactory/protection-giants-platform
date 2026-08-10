@@ -1,4 +1,5 @@
 import { PageIntro } from "@/components/page-intro";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function WarrantyPage() {
   return (
@@ -8,9 +9,12 @@ export default function WarrantyPage() {
         title="تحقق من ضمانك"
         description="سيتم ربط هذه الصفحة برمز الضمان الآمن بعد اكتمال دورة الرول وتفعيل ضمان العميل."
       />
-      <div className="container placeholder-panel">
-        <strong>التحقق من الضمان لم يُفعّل للعامة بعد.</strong>
-        <p>لن يظهر نموذج تحقق شكلي قبل وجود مسار ضمان حقيقي وآمن يمكن الاعتماد عليه.</p>
+      <div className="container section">
+        <EmptyState
+          eyebrow="التحقق العام"
+          title="التحقق من الضمان لم يُفعّل للعامة بعد"
+          description="لن يظهر نموذج تحقق شكلي قبل وجود مسار ضمان حقيقي وآمن يمكن الاعتماد عليه."
+        />
       </div>
     </>
   );

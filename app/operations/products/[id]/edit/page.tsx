@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCoreFields } from "@/components/product-core-fields";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { FormPanel, FormSection } from "@/components/ui/form-layout";
+import { PageHeader } from "@/components/ui/page-header";
+import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { updateProduct } from "./actions";
@@ -23,9 +27,7 @@ export default async function ProductEditPage({ params, searchParams }: ProductE
   const { id } = await params;
   const { error } = await searchParams;
 
-  if (!uuidPattern.test(id)) {
-    notFound();
-  }
+  if (!uuidPattern.test(id)) notFound();
 
   const supabase = await createSupabaseServerClient();
   const { data: product, error: productError } = await supabase
@@ -34,46 +36,41 @@ export default async function ProductEditPage({ params, searchParams }: ProductE
     .eq("id", id)
     .maybeSingle();
 
-  if (productError) {
-    throw productError;
-  }
-
-  if (!product) {
-    notFound();
-  }
+  if (productError) throw productError;
+  if (!product) notFound();
 
   const errorMessage = error ? errorMessages[error] : undefined;
 
   return (
     <>
-      <div className="operations-topbar">
-        <div>
-          <span className="eyebrow">المنتجات</span>
-          <h1>تعديل المنتج</h1>
-        </div>
-        <Link href="/operations/products" className="button">العودة للمنتجات</Link>
-      </div>
+      <PageHeader
+        eyebrow="المنتجات"
+        title={product.name}
+        description="تعديل البيانات المرجعية للمنتج دون تغيير دورة حياته التشغيلية."
+        actions={<TaskBackLink href="/operations/products" label="العودة للمنتجات" />}
+      />
 
-      <section className="operations-form-panel">
-        {errorMessage ? <p className="form-error" role="alert">{errorMessage}</p> : null}
-
+      <FormPanel>
+        {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
         <form action={updateProduct} className="operations-form">
           <input type="hidden" name="product_id" value={product.id} />
-          <ProductCoreFields
-            values={{
-              code: product.code,
-              name: product.name,
-              slug: product.slug,
-              defaultWarrantyMonths: product.default_warranty_months,
-            }}
-          />
+          <FormSection title="بيانات المنتج" description="راجع القيم الأساسية واحفظ التغييرات المطلوبة فقط.">
+            <ProductCoreFields
+              values={{
+                code: product.code,
+                name: product.name,
+                slug: product.slug,
+                defaultWarrantyMonths: product.default_warranty_months,
+              }}
+            />
+          </FormSection>
 
           <div className="operations-form-actions">
             <button type="submit" className="button button-primary">حفظ التعديلات</button>
-            <Link href="/operations/products" className="button">إلغاء</Link>
+            <Link href="/operations/products" className="button button-ghost">إلغاء</Link>
           </div>
         </form>
-      </section>
+      </FormPanel>
     </>
   );
 }

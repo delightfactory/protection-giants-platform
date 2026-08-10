@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { FormField } from "@/components/ui/form-field";
+import { FormGrid } from "@/components/ui/form-layout";
 import type { OperationalUserRole } from "@/lib/users/operational-user-input";
 
 type EntityOption = {
@@ -34,14 +36,11 @@ export function OperationalUserFields({
   defaultValues,
   lockRole = false,
 }: OperationalUserFieldsProps) {
-  const [role, setRole] = useState<OperationalUserRole | "">(
-    defaultValues?.role ?? "",
-  );
+  const [role, setRole] = useState<OperationalUserRole | "">(defaultValues?.role ?? "");
 
   return (
-    <>
-      <label>
-        الاسم الظاهر
+    <FormGrid>
+      <FormField label="الاسم الظاهر" hint="الاسم الذي يظهر داخل بوابة التشغيل ويعرّف صاحب الحساب.">
         <input
           name="display_name"
           type="text"
@@ -51,11 +50,13 @@ export function OperationalUserFields({
           defaultValue={defaultValues?.displayName ?? ""}
           autoComplete="name"
         />
-        <small>اسم واضح يظهر داخل لوحة العمليات ويعرّف صاحب الحساب.</small>
-      </label>
+      </FormField>
 
-      <label>
-        رقم الهاتف
+      <FormField
+        label="رقم الهاتف"
+        hint="محفوظ كبيان تشغيلي وداعم للتفعيل المستقبلي دون استخدامه حاليًا كهوية دخول."
+        optional
+      >
         <input
           name="phone"
           type="tel"
@@ -66,18 +67,18 @@ export function OperationalUserFields({
           inputMode="tel"
           dir="ltr"
         />
-        <small>اختياري حاليًا، ومحفوظ من البداية لدعم التحقق أو تسجيل الدخول بالهاتف مستقبلًا دون إعادة تصميم الحساب.</small>
-      </label>
+      </FormField>
 
-      <label>
-        الدور التشغيلي
+      <FormField
+        label="الدور التشغيلي"
+        hint={lockRole ? "الحساب الإداري الحالي محمي من خفض الصلاحية ذاتيًا." : "الدور يحدد نطاق الوصول والكيان الذي يمثله الحساب."}
+      >
         {lockRole ? (
           <>
             <input type="hidden" name="role" value={role} />
             <select value={role} disabled aria-disabled="true">
               <option value="admin">إدارة الشركة</option>
             </select>
-            <small>لا يمكن خفض صلاحية الحساب الإداري الذي تستخدمه الآن.</small>
           </>
         ) : (
           <select
@@ -92,47 +93,35 @@ export function OperationalUserFields({
             <option value="center">مركز تركيب</option>
           </select>
         )}
-      </label>
+      </FormField>
 
       {role === "dealer" ? (
-        <label>
-          الوكيل / الموزع المرتبط
+        <FormField label="الوكيل / الموزع المرتبط" hint="الحساب سيمثل هذا الكيان فقط داخل النظام.">
           <select name="dealer_id" required defaultValue={defaultValues?.dealerId ?? ""}>
             <option value="" disabled>اختر الوكيل أو الموزع</option>
             {dealers.map((dealer) => (
-              <option key={dealer.id} value={dealer.id}>
-                {optionLabel(dealer)}
-              </option>
+              <option key={dealer.id} value={dealer.id}>{optionLabel(dealer)}</option>
             ))}
           </select>
-          <small>الحساب سيمثل هذا الكيان فقط داخل النظام.</small>
-        </label>
+        </FormField>
       ) : null}
 
       {role === "center" ? (
-        <label>
-          مركز التركيب المرتبط
-          <select
-            name="installation_center_id"
-            required
-            defaultValue={defaultValues?.centerId ?? ""}
-          >
+        <FormField label="مركز التركيب المرتبط" hint="الحساب سيمثل مركز التركيب المحدد فقط داخل النظام.">
+          <select name="installation_center_id" required defaultValue={defaultValues?.centerId ?? ""}>
             <option value="" disabled>اختر مركز التركيب</option>
             {centers.map((center) => (
-              <option key={center.id} value={center.id}>
-                {optionLabel(center)}
-              </option>
+              <option key={center.id} value={center.id}>{optionLabel(center)}</option>
             ))}
           </select>
-          <small>الحساب سيمثل مركز التركيب المحدد فقط داخل النظام.</small>
-        </label>
+        </FormField>
       ) : null}
 
       {role === "admin" ? (
-        <div className="user-role-note">
+        <div className="user-role-note ui-form-grid-full">
           حساب إدارة الشركة لا يرتبط بوكيل أو مركز تركيب.
         </div>
       ) : null}
-    </>
+    </FormGrid>
   );
 }

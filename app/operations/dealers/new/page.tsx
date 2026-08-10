@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { DealerCoreFields } from "@/components/dealer-core-fields";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { FormPanel, FormSection } from "@/components/ui/form-layout";
+import { PageHeader } from "@/components/ui/page-header";
+import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createDealer } from "./actions";
 
@@ -20,26 +24,26 @@ export default async function DealerCreatePage({ searchParams }: DealerCreatePag
 
   return (
     <>
-      <div className="operations-topbar">
-        <div>
-          <span className="eyebrow">الوكلاء والموزعون</span>
-          <h1>إضافة وكيل / موزع</h1>
-        </div>
-        <Link href="/operations/dealers" className="button">العودة للوكلاء</Link>
-      </div>
+      <PageHeader
+        eyebrow="الوكلاء والموزعون"
+        title="إضافة وكيل / موزع"
+        description="أنشئ الكيان التشغيلي الذي يمكن ربط مراكز التركيب والحسابات به."
+        actions={<TaskBackLink href="/operations/dealers" label="العودة للوكلاء" />}
+      />
 
-      <section className="operations-form-panel">
-        {errorMessage ? <p className="form-error" role="alert">{errorMessage}</p> : null}
-
+      <FormPanel>
+        {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
         <form action={createDealer} className="operations-form">
-          <DealerCoreFields />
+          <FormSection title="بيانات الوكيل" description="هوية الكيان الأساسية المستخدمة في الربط والتشغيل.">
+            <DealerCoreFields />
+          </FormSection>
 
           <div className="operations-form-actions">
             <button type="submit" className="button button-primary">حفظ الوكيل</button>
-            <Link href="/operations/dealers" className="button">إلغاء</Link>
+            <Link href="/operations/dealers" className="button button-ghost">إلغاء</Link>
           </div>
         </form>
-      </section>
+      </FormPanel>
     </>
   );
 }

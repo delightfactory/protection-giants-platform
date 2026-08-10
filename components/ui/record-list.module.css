@@ -1,0 +1,13 @@
+@media (max-width: 700px) {
+  .actions :global(.button-ghost) {
+    border-color: var(--line);
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .actions :global(.button-ghost):hover,
+  .actions :global(.button-ghost):focus-visible {
+    border-color: var(--line-strong);
+    background: var(--surface-hover);
+  }
+}

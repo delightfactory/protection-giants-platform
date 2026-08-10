@@ -1,3 +1,6 @@
+import { FormField } from "@/components/ui/form-field";
+import { FormGrid } from "@/components/ui/form-layout";
+
 type ProductCoreFieldValues = {
   code: string;
   name: string;
@@ -11,9 +14,8 @@ type ProductCoreFieldsProps = {
 
 export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
   return (
-    <>
-      <label>
-        <span>كود المنتج</span>
+    <FormGrid>
+      <FormField label="كود المنتج">
         <input
           name="code"
           type="text"
@@ -24,15 +26,16 @@ export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
           defaultValue={values?.code}
           required
         />
-      </label>
+      </FormField>
 
-      <label>
-        <span>اسم المنتج</span>
+      <FormField label="اسم المنتج">
         <input name="name" type="text" minLength={2} maxLength={120} defaultValue={values?.name} required />
-      </label>
+      </FormField>
 
-      <label>
-        <span>رابط المنتج</span>
+      <FormField
+        label="رابط المنتج"
+        hint="حروف إنجليزية صغيرة وأرقام وشرطات فقط. سيُستخدم في رابط صفحة المنتج العامة."
+      >
         <input
           name="slug"
           type="text"
@@ -45,11 +48,9 @@ export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
           defaultValue={values?.slug}
           required
         />
-        <small>حروف إنجليزية صغيرة وأرقام وشرطات فقط. سيُستخدم في رابط صفحة المنتج العامة.</small>
-      </label>
+      </FormField>
 
-      <label>
-        <span>مدة الضمان الافتراضية بالشهور</span>
+      <FormField label="مدة الضمان الافتراضية بالشهور">
         <input
           name="default_warranty_months"
           type="number"
@@ -60,7 +61,7 @@ export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
           defaultValue={values?.defaultWarrantyMonths}
           required
         />
-      </label>
-    </>
+      </FormField>
+    </FormGrid>
   );
 }

@@ -1,0 +1,6 @@
+@media (max-width: 900px) {
+  .mobileLabel {
+    font-size: 9px;
+    font-weight: 650;
+  }
+}

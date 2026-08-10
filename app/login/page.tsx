@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { BrandLockup } from "@/components/ui/brand-lockup";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { FormField } from "@/components/ui/form-field";
 import { signIn } from "./actions";
-import { brandConfig } from "@/lib/brand-config";
 
 type LoginPageProps = {
   searchParams: Promise<{ error?: string }>;
@@ -18,24 +20,18 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="auth-shell">
       <section className="auth-card" aria-labelledby="login-title">
-        <Link href="/" className="brand auth-brand" aria-label={`${brandConfig.name} - الرئيسية`}>
-          <span className="brand-mark" aria-hidden="true">{brandConfig.shortName}</span>
-          <span>{brandConfig.name}</span>
-        </Link>
+        <BrandLockup className="auth-brand" />
 
-        <div>
+        <div className="auth-heading">
           <span className="eyebrow">بوابة التشغيل</span>
           <h1 id="login-title">تسجيل الدخول</h1>
-          <p>الدخول مخصص لمستخدمي الشركة والوكلاء ومراكز التركيب المعتمدة.</p>
+          <p>دخول آمن لمستخدمي الشركة والوكلاء ومراكز التركيب المعتمدة.</p>
         </div>
 
-        {errorMessage ? (
-          <p className="form-error" role="alert">{errorMessage}</p>
-        ) : null}
+        {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
 
         <form action={signIn} className="auth-form">
-          <label>
-            <span>البريد الإلكتروني</span>
+          <FormField label="البريد الإلكتروني">
             <input
               name="email"
               type="email"
@@ -46,12 +42,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               dir="ltr"
               required
             />
-          </label>
+          </FormField>
 
-          <label>
-            <span>كلمة المرور</span>
+          <FormField label="كلمة المرور">
             <input name="password" type="password" autoComplete="current-password" dir="ltr" required />
-          </label>
+          </FormField>
 
           <button type="submit" className="button button-primary">دخول</button>
         </form>

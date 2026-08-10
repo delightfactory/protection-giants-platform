@@ -1,4 +1,10 @@
 import Link from "next/link";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { PageHeader } from "@/components/ui/page-header";
+import { RecordItem, RecordList } from "@/components/ui/record-list";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { setDealerStatus } from "./actions";
@@ -22,67 +28,68 @@ export default async function OperationsDealersPage({ searchParams }: Operations
     .select("id, code, name, country_code, status")
     .order("name", { ascending: true });
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
 
   return (
     <>
-      <div className="operations-topbar">
-        <div>
-          <span className="eyebrow">الهيكل التشغيلي</span>
-          <h1>الوكلاء والموزعون</h1>
-        </div>
-        <div className="operations-topbar-actions">
-          <p>{dealers.length} وكيل / موزع مسجل</p>
-          <Link href="/operations/dealers/new" className="button button-primary">إضافة وكيل</Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="الهيكل التشغيلي"
+        title="الوكلاء والموزعون"
+        description="إدارة الكيانات الموزعة وحالتها التشغيلية قبل ربط المراكز والحسابات بها."
+        meta={`${dealers.length} وكيل / موزع مسجل`}
+        actions={<Link href="/operations/dealers/new" className="button button-primary">إضافة وكيل</Link>}
+      />
 
       {pageError === "lifecycle" ? (
-        <p className="form-error" role="alert">تعذر تغيير حالة الوكيل أو الموزع. حاول مرة أخرى.</p>
+        <FeedbackBanner tone="error">تعذر تغيير حالة الوكيل أو الموزع. حاول مرة أخرى.</FeedbackBanner>
       ) : null}
 
       {dealers.length === 0 ? (
-        <section className="foundation-note">
-          <strong>لا يوجد وكلاء أو موزعون مسجلون بعد.</strong>
-          <p>استخدم زر إضافة وكيل لإنشاء أول كيان موزع في المنصة.</p>
-        </section>
+        <EmptyState
+          eyebrow="الوكلاء"
+          title="لا يوجد وكلاء أو موزعون مسجلون بعد"
+          description="أنشئ أول كيان موزع، ثم يمكنك ربط مراكز التركيب والحسابات التشغيلية به."
+          action={<Link href="/operations/dealers/new" className="button button-primary">إضافة وكيل</Link>}
+        />
       ) : (
-        <section className="card-grid" aria-label="قائمة الوكلاء والموزعين">
+        <RecordList label="قائمة الوكلاء والموزعين">
           {dealers.map((dealer) => {
             const isSuspended = dealer.status === "suspended";
-
             return (
-              <article className="card" key={dealer.id}>
-                <span className="card-kicker" dir="ltr">{dealer.code}</span>
-                <h2>{dealer.name}</h2>
-                <div className="record-meta">
-                  <div className="record-meta-row">
-                    <span>الدولة</span>
-                    <strong dir="ltr">{dealer.country_code}</strong>
-                  </div>
-                  <div className="record-meta-row">
-                    <span>الحالة</span>
-                    <span className={`status-chip ${isSuspended ? "is-suspended" : "is-active"}`}>
-                      {statusLabels[dealer.status] ?? dealer.status}
-                    </span>
-                  </div>
-                </div>
-                <div className="card-actions">
-                  <Link href={`/operations/dealers/${dealer.id}/edit`} className="button">تعديل</Link>
-                  <form action={setDealerStatus}>
-                    <input type="hidden" name="dealer_id" value={dealer.id} />
-                    <input type="hidden" name="status" value={isSuspended ? "active" : "suspended"} />
-                    <button type="submit" className={isSuspended ? "button button-primary" : "button button-danger"}>
-                      {isSuspended ? "إعادة تفعيل" : "إيقاف"}
-                    </button>
-                  </form>
-                </div>
-              </article>
+              <RecordItem
+                key={dealer.id}
+                kicker={<span dir="ltr">{dealer.code}</span>}
+                title={dealer.name}
+                facts={[{ label: "الدولة", value: dealer.country_code, dir: "ltr" }]}
+                status={
+                  <StatusBadge tone={isSuspended ? "neutral" : "success"}>
+                    {statusLabels[dealer.status] ?? dealer.status}
+                  </StatusBadge>
+                }
+                actions={
+                  <>
+                    <Link href={`/operations/dealers/${dealer.id}/edit`} className="button button-ghost">تعديل</Link>
+                    <form action={setDealerStatus}>
+                      <input type="hidden" name="dealer_id" value={dealer.id} />
+                      <input type="hidden" name="status" value={isSuspended ? "active" : "suspended"} />
+                      {isSuspended ? (
+                        <button type="submit" className="button button-primary">إعادة تفعيل</button>
+                      ) : (
+                        <ConfirmSubmitButton
+                          title="إيقاف الوكيل / الموزع؟"
+                          description="سيظل الكيان وبياناته محفوظين، لكن حالته التشغيلية ستصبح موقوفة حتى إعادة التفعيل."
+                          confirmLabel="تأكيد الإيقاف"
+                        >
+                          إيقاف
+                        </ConfirmSubmitButton>
+                      )}
+                    </form>
+                  </>
+                }
+              />
             );
           })}
-        </section>
+        </RecordList>
       )}
     </>
   );

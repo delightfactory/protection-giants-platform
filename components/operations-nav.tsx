@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { signOut } from "@/lib/auth/actions";
 import type { OperationalProfile } from "@/lib/auth/operational-profile";
-import { brandConfig } from "@/lib/brand-config";
+import { BrandLockup } from "@/components/ui/brand-lockup";
+import { Icon } from "@/components/ui/icon";
 import { OperationsNavLinks } from "@/components/operations-nav-links";
 
 const roleLabels = {
@@ -18,34 +18,46 @@ export function OperationsNav({ profile }: OperationsNavProps) {
   return (
     <>
       <aside className="operations-sidebar">
-        <Link href="/operations" className="brand" aria-label={`${brandConfig.name} - بوابة التشغيل`}>
-          <span className="brand-mark" aria-hidden="true">{brandConfig.shortName}</span>
-          <span>{brandConfig.name}</span>
-        </Link>
+        <BrandLockup href="/operations" />
 
         <div className="operations-user" aria-label="المستخدم الحالي">
-          <strong>{profile.display_name}</strong>
-          <span>{roleLabels[profile.role]}</span>
+          <span className="operations-user-avatar" aria-hidden="true">
+            {profile.display_name.trim().slice(0, 1)}
+          </span>
+          <span className="operations-user-copy">
+            <strong>{profile.display_name}</strong>
+            <span>{roleLabels[profile.role]}</span>
+          </span>
         </div>
 
         <OperationsNavLinks role={profile.role} variant="desktop" />
 
         <form action={signOut} className="operations-signout">
-          <button type="submit">تسجيل الخروج</button>
+          <button type="submit">
+            <Icon name="logout" />
+            <span>تسجيل الخروج</span>
+          </button>
         </form>
       </aside>
 
       <header className="operations-mobile-header">
-        <Link href="/operations" className="operations-mobile-identity" aria-label={`${brandConfig.name} - بوابة التشغيل`}>
-          <span className="brand-mark" aria-hidden="true">{brandConfig.shortName}</span>
+        <div className="operations-mobile-identity">
+          <span className="operations-user-avatar" aria-hidden="true">
+            {profile.display_name.trim().slice(0, 1)}
+          </span>
           <span className="operations-mobile-user">
             <strong>{profile.display_name}</strong>
             <span>{roleLabels[profile.role]}</span>
           </span>
-        </Link>
-        <form action={signOut}>
-          <button type="submit" className="operations-mobile-signout">خروج</button>
-        </form>
+        </div>
+        <div className="operations-mobile-tools">
+          <BrandLockup href="/operations" compact className="operations-mobile-brand" />
+          <form action={signOut}>
+            <button type="submit" className="operations-mobile-signout" aria-label="تسجيل الخروج" title="تسجيل الخروج">
+              <Icon name="logout" />
+            </button>
+          </form>
+        </div>
       </header>
 
       <OperationsNavLinks role={profile.role} variant="mobile" />
