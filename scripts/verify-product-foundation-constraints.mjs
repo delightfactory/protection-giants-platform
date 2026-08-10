@@ -52,6 +52,21 @@ async function rest(path, { method = "GET", body = undefined } = {}) {
   return { response, body: await readJson(response) };
 }
 
+const unsupportedType = await rest("products?select=id", {
+  method: "POST",
+  body: {
+    code: "PG-UNSUPPORTED-TYPE",
+    slug: "unsupported-type",
+    name: "Unsupported Type",
+    product_type: "WINDOW_FILM",
+    default_warranty_months: 12,
+  },
+});
+
+if (unsupportedType.response.ok) {
+  throw new Error(`Database unexpectedly accepted an unsupported Product type: ${JSON.stringify(unsupportedType.body)}`);
+}
+
 const legacyDraft = await rest("products?select=id", {
   method: "POST",
   body: {
