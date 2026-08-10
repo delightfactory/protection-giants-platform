@@ -12,6 +12,7 @@ name: Database Quality
       - "scripts/verify-profile-admin-read.mjs"
       - "scripts/verify-data-api-grants.mjs"
       - "scripts/verify-user-admin-lifecycle.mjs"
+      - "scripts/verify-operational-entities-lifecycle.mjs"
       - "scripts/verify-product-foundation.mjs"
       - "scripts/verify-product-foundation-constraints.mjs"
       - "scripts/verify-product-storage.mjs"
@@ -82,7 +83,7 @@ jobs:
           drop function public.__ci_default_function_privilege_probe();
           SQL
 
-      - name: Verify Auth, Data API grants, RLS, user lifecycle and Product contracts
+      - name: Verify Auth, Data API grants, RLS, entity lifecycle and Product contracts
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
@@ -108,6 +109,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-user-admin-lifecycle.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-operational-entities-lifecycle.mjs
             test_status=$?
           fi
 
