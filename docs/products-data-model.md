@@ -1,71 +1,110 @@
 # Products Data Model
 
-This block introduces the product identity that future production orders, lots, rolls, and warranties can reference.
+This document defines the stable Product Foundation used by future production orders, lots, rolls, labels, public product pages, and warranties.
 
-## Core product fields
+## Product boundary
 
-`public.products` contains only fields that belong to the product's stable operational identity:
+`public.products` represents a reusable product definition. It stores values that describe the product itself and remain meaningful across many production orders and physical rolls.
+
+It must not store production-instance data such as lot numbers, batch dates, physical roll serials, ownership, transfers, installation events, activation codes, or customer warranty records.
+
+## Canonical identity
 
 - `id`: internal UUID.
-- `code`: unique operational product code.
-- `slug`: unique stable URL identifier for the future public product page.
+- `code`: canonical SKU / operational product code for the first release.
+- `slug`: unique stable lowercase ASCII URL identifier.
 - `name`: product name.
-- `default_warranty_months`: default warranty duration for future warranty activation logic.
-- `status`: `active` or `archived`.
+- `product_type`: operational product type. The first release defaults to `PPF`.
+- `category`: optional business category.
+- `version_name`: optional model/version designation.
+- `status`: operational lifecycle state: `active` or `archived`.
 - `created_at`: creation timestamp.
 
-## Why there are no families or variants yet
+A second SKU field is intentionally not introduced. Physical roll serials, ERP serials, lot numbers, and warranty/activation codes are separate identifiers owned by their later business objects.
 
-The earlier reference architecture included product families and variants. The approved current scope does not require those layers for the Protection Giants PPF flow.
+## Reference commercial data
 
-The platform therefore starts with one concrete product entity. A future requirement must demonstrate a real operational distinction before another product hierarchy is introduced.
+- `reference_price`: optional non-negative reference/display price.
+- `currency_code`: required three-letter uppercase currency code when a reference price is present.
 
-## Deferred product data
+This is not a transaction ledger. Future orders, invoices, or sales must snapshot their own financial values if historical pricing is required.
 
-The following concerns remain outside the core table and will be introduced as separate cubes only when needed:
+## Nominal PPF specification data
 
-- Public descriptions and translated content.
-- Technical specifications.
-- Product features.
-- Images and media.
-- PDF catalogues and datasheets.
-- Warranty terms or policy versions.
-- Public publish/unpublish state.
+The product can store the stable nominal values required by the client and future labels/production flows:
+
+- `width_mm`;
+- `length_m`;
+- `thickness_mil`;
+- `weight_kg`;
+- `origin_country`.
+
+These values describe the product definition. Actual lot/roll measurements, if later required, belong to those later records rather than overwriting product reference data.
+
+## Product content
+
+- `marketing_description`: customer/public-facing description.
+- `technical_description`: technical product description.
+- `features`: ordered feature statements stored as a text array.
+- `publication_status`: `draft` or `published`, separate from operational `status`.
+
+A product may remain operationally active while its public content is still a draft. Publishing requires a non-empty marketing description.
+
+The marketing QR defined by PD-005 is derived from the public product route/slug and is informational only; no QR token is stored on the Product row.
+
+## Warranty policy source
+
+- `default_warranty_months`: current default warranty duration.
+- `warranty_coverage`: current customer-facing coverage information.
+- `care_instructions`: current customer-facing care information.
+
+When customer warranties are implemented, each created warranty must snapshot the applicable policy values. Historical warranties must not change when Product Foundation values are edited later.
+
+## Product assets
+
+Images, datasheets, catalogues, and related documents are part of the Product module but are not embedded as URL/path columns on `public.products`.
+
+They will be represented by a small product-assets relation backed by Supabase Storage in the next Product Foundation sub-step. This preserves multiple assets per product without turning the product row into a file-management structure.
+
+## Product types and categories
+
+The first release remains PPF-first according to PD-002. `product_type`, `category`, and `version_name` provide the required classification data without introducing an unused family/variant hierarchy.
+
+A separate taxonomy-management subsystem is not introduced unless a later operational requirement demonstrates that centrally managed category/type records are necessary.
 
 ## Security boundary
 
-RLS is enabled on the core table.
+RLS remains enabled on `public.products`.
 
-Authenticated users receive table-level `SELECT`, but `products_admin_read` only returns rows when the current profile is both `active` and `admin`.
+Authenticated users have table-level read/insert/update capabilities only where explicitly granted, while the existing product RLS policies require an active parent-company admin for every operational Product action.
 
-Authenticated users receive `INSERT`, but `products_admin_insert` only accepts rows from an active admin.
+The Product Foundation completion migration extends the existing column-scoped update grant only to the new Product fields. `status` remains controlled by the separate lifecycle grant/action.
 
-Update access is column-scoped. Product Core editing grants UPDATE only for `code`, `name`, `slug`, and `default_warranty_months`. The lifecycle block separately grants UPDATE on `status`. Both paths remain subject to the same `products_admin_update` RLS policy, which requires an active admin profile for the existing and resulting row.
+`id` and `created_at` remain outside the editable Product contract. There is no hard delete and no anonymous Product table access at this stage.
 
-The operational interface mirrors those rules with an admin route gate. Create and edit actions use the same Product Core parser, while lifecycle actions accept only the two approved states.
+The modern explicit Data API migration continues to deny `service_role` table access to Products because current Product CRUD uses the authenticated admin server session and RLS rather than the Auth Admin client.
 
-`id` and `created_at` remain outside all current UPDATE grants. No delete or anonymous access is granted.
+## Creation and editing contract
 
-## Creation and editing
+The operational form and service parser will treat these as the required stable PPF values before Product Foundation is considered complete for normal use:
 
-Product Core accepts only:
-
-- product code;
+- canonical SKU / product code;
 - product name;
-- explicit lowercase ASCII URL slug;
-- default warranty duration in months.
+- product type;
+- explicit public slug;
+- nominal width, length, thickness, and weight;
+- origin country;
+- default warranty duration;
+- warranty coverage;
+- care instructions.
 
-New products use the database default `active` status. The edit form does not change lifecycle state.
-
-The slug is explicit rather than silently generated from the Arabic product name because it becomes a stable public URL identifier later.
+Category, version, reference price/currency, descriptions, and feature statements remain optional unless the product is published. A published product requires a marketing description.
 
 ## Lifecycle
 
-Products are not physically deleted through the operational interface. Lifecycle is intentionally limited to two reversible states:
+Products are not physically deleted through the operational interface:
 
-- `active`: available for current operational use.
-- `archived`: retained for historical references but no longer considered current.
+- `active`: available for current operational use;
+- `archived`: retained for historical references and no longer considered current.
 
-Only an active parent-company admin may archive or reactivate a product. The database constraint rejects any status outside the two approved values.
-
-Historical rolls and warranties will continue to reference archived products when those modules are introduced.
+Historical production records, rolls, and warranties will continue to reference archived products when those modules are introduced.
