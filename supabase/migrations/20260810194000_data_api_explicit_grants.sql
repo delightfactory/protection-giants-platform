@@ -8,7 +8,9 @@ alter default privileges for role postgres in schema public
 alter default privileges for role postgres in schema public
   revoke execute on functions from anon, authenticated, service_role;
 
-alter default privileges for role postgres in schema public
+-- PostgreSQL grants EXECUTE on new functions to PUBLIC as a global default.
+-- A schema-scoped REVOKE cannot remove a globally granted default privilege.
+alter default privileges for role postgres
   revoke execute on functions from public;
 
 alter default privileges for role postgres in schema public
