@@ -51,6 +51,34 @@ jobs:
       - name: Lint local database
         run: supabase db lint --local --level warning --fail-on error
 
+      - name: Verify new public functions require explicit grants
+        run: |
+          db_container="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1 || true)"
+          if [ -z "$db_container" ]; then
+            echo "Supabase database container was not found."
+            exit 1
+          fi
+
+          docker exec -i "$db_container" psql -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
+          create function public.__ci_default_function_privilege_probe()
+          returns boolean
+          language sql
+          as 'select true';
+
+          do $$
+          begin
+            if has_function_privilege('anon', 'public.__ci_default_function_privilege_probe()', 'EXECUTE')
+              or has_function_privilege('authenticated', 'public.__ci_default_function_privilege_probe()', 'EXECUTE')
+              or has_function_privilege('service_role', 'public.__ci_default_function_privilege_probe()', 'EXECUTE')
+            then
+              raise exception 'new public functions still inherit Data API EXECUTE privileges';
+            end if;
+          end;
+          $$;
+
+          drop function public.__ci_default_function_privilege_probe();
+          SQL
+
       - name: Verify Auth, Data API grants, RLS and user lifecycle contracts
         run: |
           eval "$(supabase status -o env)"
