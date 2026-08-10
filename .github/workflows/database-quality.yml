@@ -13,6 +13,8 @@ name: Database Quality
       - "scripts/verify-data-api-grants.mjs"
       - "scripts/verify-user-admin-lifecycle.mjs"
       - "scripts/verify-product-foundation.mjs"
+      - "scripts/verify-product-foundation-constraints.mjs"
+      - "scripts/verify-product-storage.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -111,6 +113,16 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-product-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-foundation-constraints.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-storage.mjs
             test_status=$?
           fi
           set -e
