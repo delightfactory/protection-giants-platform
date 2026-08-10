@@ -115,6 +115,7 @@ using (
 -- Public pages can read only explicitly public columns and only active, published products.
 -- Reference price/currency remain internal until a later business decision explicitly publishes them.
 grant select (
+  id,
   code,
   slug,
   name,
