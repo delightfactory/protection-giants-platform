@@ -94,3 +94,55 @@ grant update (
 )
 on table public.products
 to authenticated;
+
+-- Product reference data is required by future dealer/center operational flows.
+-- Replace the admin-only read policy with one active-account policy; admin write policies remain unchanged.
+drop policy "products_admin_read" on public.products;
+
+create policy "products_operational_read"
+on public.products
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles
+    where profiles.id = (select auth.uid())
+      and profiles.status = 'active'
+  )
+);
+
+-- Public pages can read only explicitly public columns and only active, published products.
+-- Reference price/currency remain internal until a later business decision explicitly publishes them.
+grant select (
+  code,
+  slug,
+  name,
+  product_type,
+  category,
+  version_name,
+  width_mm,
+  length_m,
+  thickness_mil,
+  weight_kg,
+  origin_country,
+  marketing_description,
+  technical_description,
+  features,
+  default_warranty_months,
+  warranty_coverage,
+  care_instructions,
+  publication_status,
+  status
+)
+on table public.products
+to anon;
+
+create policy "products_public_read"
+on public.products
+for select
+to anon
+using (
+  status = 'active'
+  and publication_status = 'published'
+);
