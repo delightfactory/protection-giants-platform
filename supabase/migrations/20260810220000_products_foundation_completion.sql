@@ -25,8 +25,8 @@ alter table public.products
       code = upper(btrim(code))
       and code ~ '^[A-Z0-9][A-Z0-9._-]*$'
     ),
-  add constraint products_product_type_length
-    check (char_length(btrim(product_type)) between 2 and 60),
+  add constraint products_product_type_allowed
+    check (product_type = 'PPF'),
   add constraint products_category_length
     check (category is null or char_length(btrim(category)) between 2 and 80),
   add constraint products_version_name_length
