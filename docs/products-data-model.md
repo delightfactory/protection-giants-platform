@@ -14,7 +14,7 @@ It must not store production-instance data such as lot numbers, batch dates, phy
 - `code`: canonical SKU / operational product code for the first release.
 - `slug`: unique stable lowercase ASCII URL identifier.
 - `name`: product name.
-- `product_type`: operational product type. The first release defaults to `PPF`.
+- `product_type`: operational product type. The first release supports `PPF` only.
 - `category`: optional business category.
 - `version_name`: optional model/version designation.
 - `status`: operational lifecycle state: `active` or `archived`.
@@ -87,7 +87,7 @@ Each asset stores:
 
 Allowed files are JPEG, PNG, WEBP, AVIF, and PDF with a 20 MiB maximum. Database constraints keep asset kind consistent with MIME type: images must be image MIME types; datasheets/catalogues/documents are PDF in the first release.
 
-The configured Supabase Storage bucket is `product-assets` and is private. Upload/delete operations use the Storage API from server-only admin actions. Storage tables are not mutated directly.
+The configured Supabase Storage bucket is `product-assets` and is private. Upload/delete operations use the Storage API from server-only admin actions. Storage tables are not mutated directly. Next.js request limits are configured with a small multipart margin above the 20 MiB Product file ceiling so the application layer does not silently impose a smaller limit.
 
 Normal authenticated admin sessions manage Product asset metadata under RLS. Public pages do not receive anonymous access to `product_assets`; instead, a server-only client reads only metadata marked `public` and creates short-lived signed URLs for those objects. Internal/draft assets remain private even if their Storage path is known.
 
@@ -107,9 +107,11 @@ Production Site URLs/redirects and environment keys must still be configured for
 
 ## Product types and categories
 
-The first release remains PPF-first according to PD-002. `product_type`, `category`, and `version_name` provide the required classification data without introducing an unused family/variant hierarchy.
+The first release is deliberately PPF-only according to PD-002. The database, service parser, and operational form all enforce `product_type = 'PPF'` so unsupported film families cannot enter workflows whose activation rules have not been implemented.
 
-A separate taxonomy-management subsystem is not introduced unless a later operational requirement demonstrates that centrally managed category/type records are necessary.
+`category` and `version_name` provide the required PPF classification detail without introducing an unused family/variant hierarchy. Support for Window Film or another family requires a later explicit business decision and migration alongside that family's workflow rules.
+
+A separate taxonomy-management subsystem is not introduced unless a later operational requirement demonstrates that centrally managed category records are necessary.
 
 ## Security boundary
 
@@ -129,7 +131,7 @@ The operational form and service parser require these stable PPF values for norm
 
 - canonical SKU / product code;
 - product name;
-- product type;
+- `PPF` product type;
 - explicit public slug;
 - nominal width, length, thickness, and weight;
 - origin country;
