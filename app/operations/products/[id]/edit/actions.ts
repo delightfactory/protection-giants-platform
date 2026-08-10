@@ -4,7 +4,12 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
-import { parseProductAssetUpload, PRODUCT_ASSET_BUCKET, productAssetKinds, productAssetVisibilities } from "@/lib/products/product-assets";
+import {
+  parseProductAssetUpload,
+  PRODUCT_ASSET_BUCKET,
+  productAssetKinds,
+  productAssetVisibilities,
+} from "@/lib/products/product-assets";
 import { parseProductCoreInput } from "@/lib/products/product-core-input";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -127,7 +132,13 @@ export async function uploadProductAsset(formData: FormData) {
   });
 
   if (metadataError) {
-    await admin.storage.from(PRODUCT_ASSET_BUCKET).remove([storagePath]);
+    const { error: cleanupError } = await admin.storage.from(PRODUCT_ASSET_BUCKET).remove([storagePath]);
+    if (cleanupError) {
+      throw new Error("Product asset metadata creation failed and uploaded-object compensation also failed.", {
+        cause: cleanupError,
+      });
+    }
+
     redirect(`${productEditPath(productId)}?asset_error=${encodeURIComponent("تعذر حفظ بيانات الملف، وتم التراجع عن الرفع.")}#product-assets`);
   }
 
