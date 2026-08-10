@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PageIntro } from "@/components/page-intro";
 import { PRODUCT_ASSET_BUCKET } from "@/lib/products/product-assets";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabasePublicClient } from "@/lib/supabase/public";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ const assetKindLabels: Record<string, string> = {
 
 export default async function PublicProductPage({ params }: PublicProductPageProps) {
   const { slug } = await params;
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   const { data: product, error } = await supabase
     .from("products")
     .select("id, code, slug, name, product_type, category, version_name, width_mm, length_m, thickness_mil, weight_kg, origin_country, marketing_description, technical_description, features, default_warranty_months, warranty_coverage, care_instructions")
