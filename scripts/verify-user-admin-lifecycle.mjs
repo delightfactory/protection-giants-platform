@@ -32,33 +32,32 @@ async function request(path, { method = "GET", key = anonKey, token = key, body,
   return { response, body: await readJson(response) };
 }
 
-async function createEntity(path, body) {
-  const result = await request(path, {
+async function adminCreateUser({ email, password, role, displayName, dealerId, centerId }) {
+  const result = await request("/auth/v1/admin/users", {
     method: "POST",
     key: serviceRoleKey,
     token: serviceRoleKey,
-    headers: { Prefer: "return=representation" },
-    body,
+    body: {
+      email,
+      password,
+      email_confirm: true,
+      app_metadata: {
+        pg_provisioning: {
+          version: "operational-v1",
+          role,
+          ...(dealerId ? { dealer_id: dealerId } : {}),
+          ...(centerId ? { installation_center_id: centerId } : {}),
+        },
+      },
+      user_metadata: { display_name: displayName },
+    },
   });
 
-  if (!result.response.ok || !Array.isArray(result.body) || !result.body[0]?.id) {
-    throw new Error(`Entity setup failed (${result.response.status}): ${JSON.stringify(result.body)}`);
+  if (!result.response.ok || !result.body?.id) {
+    throw new Error(`Operational user create failed (${result.response.status}): ${JSON.stringify(result.body)}`);
   }
 
-  return result.body[0];
-}
-
-async function readProfile(userId) {
-  const result = await request(
-    `/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=id,display_name,role,status,phone,dealer_id,installation_center_id`,
-    { key: serviceRoleKey, token: serviceRoleKey },
-  );
-
-  if (!result.response.ok || !Array.isArray(result.body) || result.body.length !== 1) {
-    throw new Error(`Profile read failed (${result.response.status}): ${JSON.stringify(result.body)}`);
-  }
-
-  return result.body[0];
+  return result.body;
 }
 
 async function signIn(email, password, shouldSucceed = true) {
@@ -79,12 +78,51 @@ async function signIn(email, password, shouldSucceed = true) {
   return result;
 }
 
+async function createEntity(path, body, accessToken) {
+  const result = await request(path, {
+    method: "POST",
+    token: accessToken,
+    headers: { Prefer: "return=representation" },
+    body,
+  });
+
+  if (!result.response.ok || !Array.isArray(result.body) || !result.body[0]?.id) {
+    throw new Error(`Authenticated admin entity setup failed (${result.response.status}): ${JSON.stringify(result.body)}`);
+  }
+
+  return result.body[0];
+}
+
+async function readProfile(userId) {
+  const result = await request(
+    `/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=id,display_name,role,status,phone,dealer_id,installation_center_id`,
+    { key: serviceRoleKey, token: serviceRoleKey },
+  );
+
+  if (!result.response.ok || !Array.isArray(result.body) || result.body.length !== 1) {
+    throw new Error(`Profile read failed (${result.response.status}): ${JSON.stringify(result.body)}`);
+  }
+
+  return result.body[0];
+}
+
+const adminEmail = "user-lifecycle-admin@example.test";
+const adminPassword = "User-Lifecycle-Admin-2026!";
+await adminCreateUser({
+  email: adminEmail,
+  password: adminPassword,
+  role: "admin",
+  displayName: "مسؤول تجهيز دورة المستخدم",
+});
+const adminSession = await signIn(adminEmail, adminPassword, true);
+const adminToken = adminSession.body.access_token;
+
 const dealer = await createEntity("/rest/v1/dealers", {
   code: "CI-USER-LIFECYCLE-DEALER",
   name: "وكيل اختبار دورة المستخدم",
   country_code: "EG",
   status: "active",
-});
+}, adminToken);
 
 const center = await createEntity("/rest/v1/installation_centers", {
   code: "CI-USER-LIFECYCLE-CENTER",
@@ -93,40 +131,22 @@ const center = await createEntity("/rest/v1/installation_centers", {
   country_code: "EG",
   city: "Tanta",
   status: "active",
-});
+}, adminToken);
 
 const originalEmail = "user-lifecycle-center@example.test";
 const changedEmail = "user-lifecycle-center-updated@example.test";
 const originalPassword = "User-Lifecycle-Original-2026!";
 const changedPassword = "User-Lifecycle-Changed-2026!";
 
-const createResult = await request("/auth/v1/admin/users", {
-  method: "POST",
-  key: serviceRoleKey,
-  token: serviceRoleKey,
-  body: {
-    email: originalEmail,
-    password: originalPassword,
-    email_confirm: true,
-    app_metadata: {
-      pg_provisioning: {
-        version: "operational-v1",
-        role: "center",
-        installation_center_id: center.id,
-      },
-    },
-    user_metadata: {
-      display_name: "مستخدم دورة الحسابات",
-      phone: "+201000000099",
-    },
-  },
+const createdUser = await adminCreateUser({
+  email: originalEmail,
+  password: originalPassword,
+  role: "center",
+  displayName: "مستخدم دورة الحسابات",
+  centerId: center.id,
 });
 
-if (!createResult.response.ok || !createResult.body?.id) {
-  throw new Error(`Operational user create failed (${createResult.response.status}): ${JSON.stringify(createResult.body)}`);
-}
-
-const userId = createResult.body.id;
+const userId = createdUser.id;
 let profile = await readProfile(userId);
 
 if (

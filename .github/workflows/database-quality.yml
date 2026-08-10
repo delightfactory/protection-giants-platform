@@ -9,6 +9,7 @@ name: Database Quality
       - "lib/supabase/database.types.ts"
       - "scripts/verify-profile-auto-provisioning.mjs"
       - "scripts/verify-profile-admin-read.mjs"
+      - "scripts/verify-data-api-grants.mjs"
       - "scripts/verify-user-admin-lifecycle.mjs"
       - ".github/workflows/database-quality.yml"
 
@@ -31,19 +32,25 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
-          version: 2.101.0
+          version: 2.106.0
           github-token: ${{ github.token }}
 
-      - name: Initialize local project
-        run: supabase init --force
+      - name: Verify committed local configuration
+        run: test -f supabase/config.toml
 
       - name: Start fresh local Supabase stack
         run: supabase start
 
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
       - name: Verify local stack
         run: supabase status
 
-      - name: Verify Auth and profile access contracts
+      - name: Lint local database
+        run: supabase db lint --local --level warning --fail-on error
+
+      - name: Verify Auth, Data API grants, RLS and user lifecycle contracts
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
@@ -51,6 +58,11 @@ jobs:
           set +e
           node scripts/verify-profile-auto-provisioning.mjs
           test_status=$?
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-data-api-grants.mjs
+            test_status=$?
+          fi
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-profile-admin-read.mjs
@@ -87,7 +99,7 @@ jobs:
 
       - name: Verify generated database types
         run: |
-          supabase gen types typescript --local > /tmp/database.types.ts
+          supabase gen types --local > /tmp/database.types.ts
           if ! diff -u lib/supabase/database.types.ts /tmp/database.types.ts; then
             echo "Committed database types are out of sync with the local schema."
             exit 1
