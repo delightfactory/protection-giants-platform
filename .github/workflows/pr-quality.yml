@@ -27,3 +27,5 @@ jobs:
         run: npm run typecheck
       - name: Build
         run: npm run build
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- package-lock.json tsconfig.json next-env.d.ts

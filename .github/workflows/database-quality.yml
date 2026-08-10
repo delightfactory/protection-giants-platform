@@ -7,6 +7,7 @@ name: Database Quality
     paths:
       - "supabase/**"
       - "lib/supabase/database.types.ts"
+      - "scripts/verify-auth-config.mjs"
       - "scripts/verify-profile-auto-provisioning.mjs"
       - "scripts/verify-profile-admin-read.mjs"
       - "scripts/verify-data-api-grants.mjs"
@@ -56,8 +57,13 @@ jobs:
           export API_URL ANON_KEY SERVICE_ROLE_KEY
 
           set +e
-          node scripts/verify-profile-auto-provisioning.mjs
+          node scripts/verify-auth-config.mjs
           test_status=$?
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-profile-auto-provisioning.mjs
+            test_status=$?
+          fi
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-data-api-grants.mjs
