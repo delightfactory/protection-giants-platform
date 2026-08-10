@@ -2,7 +2,7 @@ export type ProductCoreInput = {
   code: string;
   name: string;
   slug: string;
-  productType: string;
+  productType: "PPF";
   category: string | null;
   versionName: string | null;
   referencePrice: number | null;
@@ -49,7 +49,7 @@ export function parseProductCoreInput(formData: FormData): ProductCoreInputResul
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
   const name = String(formData.get("name") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
-  const productType = String(formData.get("product_type") ?? "PPF").trim();
+  const productType = String(formData.get("product_type") ?? "PPF").trim().toUpperCase();
   const category = optionalText(formData.get("category"));
   const versionName = optionalText(formData.get("version_name"));
   const widthMm = requiredPositiveNumber(formData.get("width_mm"));
@@ -77,8 +77,8 @@ export function parseProductCoreInput(formData: FormData): ProductCoreInputResul
     return { ok: false, error: "رابط المنتج يجب أن يحتوي على حروف إنجليزية صغيرة وأرقام وشرطات فقط." };
   }
 
-  if (productType.length < 2 || productType.length > 60) {
-    return { ok: false, error: "نوع المنتج يجب أن يكون من 2 إلى 60 حرفًا." };
+  if (productType !== "PPF") {
+    return { ok: false, error: "الإصدار الحالي يدعم منتجات PPF فقط." };
   }
 
   if (category && (category.length < 2 || category.length > 80)) {
@@ -154,7 +154,7 @@ export function parseProductCoreInput(formData: FormData): ProductCoreInputResul
       code,
       name,
       slug,
-      productType,
+      productType: "PPF",
       category,
       versionName,
       referencePrice,
