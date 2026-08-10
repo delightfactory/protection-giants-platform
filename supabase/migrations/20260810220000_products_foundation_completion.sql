@@ -70,6 +70,22 @@ alter table public.products
         marketing_description is not null
         and char_length(btrim(marketing_description)) >= 2
       )
+    ),
+  add constraint products_published_definition_complete
+    check (
+      publication_status <> 'published'
+      or (
+        width_mm is not null
+        and length_m is not null
+        and thickness_mil is not null
+        and weight_kg is not null
+        and origin_country is not null
+        and char_length(btrim(origin_country)) >= 2
+        and warranty_coverage is not null
+        and char_length(btrim(warranty_coverage)) >= 2
+        and care_instructions is not null
+        and char_length(btrim(care_instructions)) >= 2
+      )
     );
 
 -- Product code is the canonical SKU/operational code in the first release.
