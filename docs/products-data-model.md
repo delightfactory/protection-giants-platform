@@ -117,7 +117,9 @@ A separate taxonomy-management subsystem is not introduced unless a later operat
 
 RLS remains enabled on `public.products`.
 
-Every active authenticated operational profile (`admin`, `dealer`, or `center`) may read Product reference rows because downstream roll and warranty flows need the Product definition. Product create/edit/lifecycle policies remain restricted to an active parent-company admin.
+Operational Product reads require an active authenticated profile and, for bound roles, an active bound operational entity: dealer users require their dealer to remain active and center users require their installation center to remain active. Admin profiles remain unbound and active. Product create/edit/lifecycle policies remain restricted to an active parent-company admin.
+
+Suspending a dealer blocks dealer-bound users from Product and dealer-scope reads. It intentionally does not suspend a separately active center-bound user under that dealer; whether dealer suspension should cascade to its centers remains a deferred business rule rather than an implicit RLS side effect.
 
 The Product Foundation completion migration extends the existing column-scoped admin update grant only to the new Product fields. `status` remains controlled by the separate lifecycle grant/action.
 
