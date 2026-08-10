@@ -7,8 +7,10 @@ name: Database Quality
     paths:
       - "supabase/**"
       - "lib/supabase/database.types.ts"
+      - "scripts/verify-auth-config.mjs"
       - "scripts/verify-profile-auto-provisioning.mjs"
       - "scripts/verify-profile-admin-read.mjs"
+      - "scripts/verify-data-api-grants.mjs"
       - "scripts/verify-user-admin-lifecycle.mjs"
       - ".github/workflows/database-quality.yml"
 
@@ -31,26 +33,70 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
-          version: 2.101.0
+          version: 2.105.0
           github-token: ${{ github.token }}
 
-      - name: Initialize local project
-        run: supabase init --force
+      - name: Verify committed local configuration
+        run: test -f supabase/config.toml
 
       - name: Start fresh local Supabase stack
         run: supabase start
 
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
       - name: Verify local stack
         run: supabase status
 
-      - name: Verify Auth and profile access contracts
+      - name: Lint local database
+        run: supabase db lint --local --level warning --fail-on error
+
+      - name: Verify new public functions require explicit grants
+        run: |
+          db_container="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1 || true)"
+          if [ -z "$db_container" ]; then
+            echo "Supabase database container was not found."
+            exit 1
+          fi
+
+          docker exec -i "$db_container" psql -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
+          create function public.__ci_default_function_privilege_probe()
+          returns boolean
+          language sql
+          as 'select true';
+
+          do $$
+          begin
+            if has_function_privilege('anon', 'public.__ci_default_function_privilege_probe()', 'EXECUTE')
+              or has_function_privilege('authenticated', 'public.__ci_default_function_privilege_probe()', 'EXECUTE')
+              or has_function_privilege('service_role', 'public.__ci_default_function_privilege_probe()', 'EXECUTE')
+            then
+              raise exception 'new public functions still inherit Data API EXECUTE privileges';
+            end if;
+          end;
+          $$;
+
+          drop function public.__ci_default_function_privilege_probe();
+          SQL
+
+      - name: Verify Auth, Data API grants, RLS and user lifecycle contracts
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
 
           set +e
-          node scripts/verify-profile-auto-provisioning.mjs
+          node scripts/verify-auth-config.mjs
           test_status=$?
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-profile-auto-provisioning.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-data-api-grants.mjs
+            test_status=$?
+          fi
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-profile-admin-read.mjs
@@ -87,9 +133,21 @@ jobs:
 
       - name: Verify generated database types
         run: |
-          supabase gen types typescript --local > /tmp/database.types.ts
-          if ! diff -u lib/supabase/database.types.ts /tmp/database.types.ts; then
-            echo "Committed database types are out of sync with the local schema."
+          supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
+          cp lib/supabase/database.types.ts /tmp/committed.database.types.ts
+          # Compare semantic generated content while normalizing only trailing LF characters.
+          node <<'NODE'
+          const fs = require("node:fs");
+          for (const path of [
+            "/tmp/generated.database.types.ts",
+            "/tmp/committed.database.types.ts",
+          ]) {
+            const content = fs.readFileSync(path, "utf8").replace(/\n*$/, "\n");
+            fs.writeFileSync(path, content);
+          }
+          NODE
+          if ! diff -u /tmp/committed.database.types.ts /tmp/generated.database.types.ts; then
+            echo "Committed database types are out of sync with the public application schema."
             exit 1
           fi
 

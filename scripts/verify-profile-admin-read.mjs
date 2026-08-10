@@ -50,9 +50,7 @@ async function createOperationalUser({ email, displayName, role, dealerId }) {
           ...(dealerId ? { dealer_id: dealerId } : {}),
         },
       },
-      user_metadata: {
-        display_name: displayName,
-      },
+      user_metadata: { display_name: displayName },
     },
   });
 
@@ -77,6 +75,26 @@ async function signIn(email) {
   return result.body.access_token;
 }
 
+async function createDealer(accessToken) {
+  const result = await request("/rest/v1/dealers", {
+    method: "POST",
+    token: accessToken,
+    headers: { Prefer: "return=representation" },
+    body: {
+      code: "CI-USER-READ",
+      name: "وكيل اختبار قراءة المستخدمين",
+      country_code: "EG",
+      status: "active",
+    },
+  });
+
+  if (!result.response.ok || !Array.isArray(result.body) || !result.body[0]?.id) {
+    throw new Error(`Admin dealer setup failed (${result.response.status}): ${JSON.stringify(result.body)}`);
+  }
+
+  return result.body[0];
+}
+
 async function readSelectedProfiles(accessToken, ids) {
   const filter = `in.(${ids.join(",")})`;
   const result = await request(
@@ -91,24 +109,6 @@ async function readSelectedProfiles(accessToken, ids) {
   return result.body;
 }
 
-const dealerResult = await request("/rest/v1/dealers", {
-  method: "POST",
-  key: serviceRoleKey,
-  token: serviceRoleKey,
-  headers: { Prefer: "return=representation" },
-  body: {
-    code: "CI-USER-READ",
-    name: "وكيل اختبار قراءة المستخدمين",
-    country_code: "EG",
-    status: "active",
-  },
-});
-
-if (!dealerResult.response.ok || !Array.isArray(dealerResult.body) || !dealerResult.body[0]?.id) {
-  throw new Error(`Dealer setup failed (${dealerResult.response.status}): ${JSON.stringify(dealerResult.body)}`);
-}
-
-const dealerId = dealerResult.body[0].id;
 const adminEmail = "profile-read-admin@example.test";
 const dealerEmail = "profile-read-dealer@example.test";
 
@@ -117,16 +117,17 @@ const adminUser = await createOperationalUser({
   displayName: "مسؤول اختبار قراءة الحسابات",
   role: "admin",
 });
+const adminToken = await signIn(adminEmail);
+const dealer = await createDealer(adminToken);
 
 const dealerUser = await createOperationalUser({
   email: dealerEmail,
   displayName: "مستخدم وكيل اختبار القراءة",
   role: "dealer",
-  dealerId,
+  dealerId: dealer.id,
 });
 
 const ids = [adminUser.id, dealerUser.id];
-const adminToken = await signIn(adminEmail);
 const adminProfiles = await readSelectedProfiles(adminToken, ids);
 
 if (adminProfiles.length !== 2 || !ids.every((id) => adminProfiles.some((profile) => profile.id === id))) {
