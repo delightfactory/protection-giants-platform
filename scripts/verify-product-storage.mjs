@@ -1,8 +1,9 @@
 const apiUrl = process.env.API_URL;
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY;
+const anonKey = process.env.ANON_KEY;
 
-if (!apiUrl || !serviceRoleKey) {
-  throw new Error("Local Supabase API_URL and SERVICE_ROLE_KEY are required.");
+if (!apiUrl || !serviceRoleKey || !anonKey) {
+  throw new Error("Local Supabase API_URL, SERVICE_ROLE_KEY and ANON_KEY are required.");
 }
 
 const bucket = "product-assets";
@@ -68,8 +69,8 @@ try {
 
   const anonymousDownload = await fetch(`${apiUrl}/storage/v1/object/authenticated/${bucket}/${objectPath}`, {
     headers: {
-      apikey: process.env.ANON_KEY ?? "",
-      Authorization: `Bearer ${process.env.ANON_KEY ?? ""}`,
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
     },
   });
 
