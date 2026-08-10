@@ -33,5 +33,10 @@ secure_password_change = false
 enable_signup = false
 enable_confirmations = false
 
+[storage.buckets.product-assets]
+public = false
+file_size_limit = "20MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/avif", "application/pdf"]
+
 [analytics]
 enabled = false
