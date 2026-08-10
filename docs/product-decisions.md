@@ -85,3 +85,34 @@ When physical rolls are transferred to another operational holder, scanning is u
 **Status:** Approved
 
 Warranty duration and customer-facing care/coverage information come from the configured product/policy data, not hard-coded application constants.
+
+### PD-016 — Product code is the canonical SKU in the first release
+**Status:** Approved
+
+`products.code` is the canonical SKU/operational product code. A second duplicate SKU field is not introduced without a demonstrated business distinction.
+
+Physical roll serials, ERP serials, lot numbers, and generated warranty/activation codes are separate identifiers owned by their later business objects.
+
+### PD-017 — Product stores stable specification data, not production-instance data
+**Status:** Approved
+
+Stable nominal product data such as type, category, version, dimensions, thickness, weight, origin, descriptive content, and warranty policy belongs to the product definition.
+
+Production order, lot/batch, physical roll, ownership, serial, transfer, installation, and warranty-instance data must not be stored as product attributes.
+
+### PD-018 — Product price is reference data, not a transaction ledger
+**Status:** Approved
+
+The optional product price is a reference/display price with an explicit currency code. Future orders, invoices, transfers, or sales that require financial history must snapshot their own transactional values rather than depending on the current product reference price.
+
+### PD-019 — Warranty activation must snapshot the policy used
+**Status:** Approved
+
+The product stores the current default warranty duration plus customer-facing coverage and care information. When the warranty cube is implemented, the created warranty record must snapshot the applicable policy values so later product edits do not rewrite historical warranties.
+
+### PD-020 — One SKU maps to one fixed Product specification
+**Status:** Approved — 2026-08-11
+
+Each SKU identifies one Product definition with one stable nominal specification set. A commercially meaningful change in width, length, thickness, version/model, or another defining specification is represented by a separate Product/SKU rather than by a variant engine inside the same SKU.
+
+This keeps production orders, lots, rolls, labels, transfers, and warranties anchored to one unambiguous Product definition in the first release. A generalized variant subsystem is deferred unless a later business requirement demonstrates that multiple sellable configurations must share one SKU.

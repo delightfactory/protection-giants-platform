@@ -1,0 +1,120 @@
+.product-public-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow: hidden;
+}
+
+.product-public-card-image {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-subtle);
+  background: var(--surface-2);
+}
+
+.product-public-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.product-public-facts span {
+  padding: 5px 9px;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--surface-1);
+}
+
+.product-public-detail {
+  display: grid;
+  gap: var(--space-7);
+}
+
+.product-public-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: var(--space-4);
+}
+
+.product-public-image-frame {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+}
+
+.product-public-image-frame img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.product-public-image-frame figcaption {
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.product-public-sections {
+  align-items: stretch;
+}
+
+.product-public-content-card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.product-public-specs {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.7fr) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.product-public-specs dt {
+  color: var(--text-tertiary);
+}
+
+.product-public-specs dd {
+  margin: 0;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.product-public-feature-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: 1.3rem;
+  color: var(--text-secondary);
+}
+
+.product-public-documents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+@media (max-width: 700px) {
+  .product-public-detail {
+    gap: var(--space-5);
+  }
+
+  .product-public-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .product-public-specs {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .product-public-documents .button {
+    min-height: 44px;
+  }
+}

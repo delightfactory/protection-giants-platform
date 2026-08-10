@@ -77,33 +77,131 @@ export type Database = {
           },
         ]
       }
-      products: {
+      product_assets: {
         Row: {
-          code: string
           created_at: string
-          default_warranty_months: number
           id: string
-          name: string
-          slug: string
-          status: string
+          kind: string
+          label: string | null
+          mime_type: string
+          original_name: string
+          product_id: string
+          size_bytes: number
+          sort_order: number
+          storage_path: string
+          visibility: string
         }
         Insert: {
-          code: string
           created_at?: string
-          default_warranty_months: number
           id?: string
-          name: string
-          slug: string
-          status?: string
+          kind: string
+          label?: string | null
+          mime_type: string
+          original_name: string
+          product_id: string
+          size_bytes: number
+          sort_order?: number
+          storage_path: string
+          visibility?: string
         }
         Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          mime_type?: string
+          original_name?: string
+          product_id?: string
+          size_bytes?: number
+          sort_order?: number
+          storage_path?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_assets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          care_instructions: string | null
+          category: string | null
+          code: string
+          created_at: string
+          currency_code: string | null
+          default_warranty_months: number
+          features: string[]
+          id: string
+          length_m: number | null
+          marketing_description: string | null
+          name: string
+          origin_country: string | null
+          product_type: string
+          publication_status: string
+          reference_price: number | null
+          slug: string
+          status: string
+          technical_description: string | null
+          thickness_mil: number | null
+          version_name: string | null
+          warranty_coverage: string | null
+          weight_kg: number | null
+          width_mm: number | null
+        }
+        Insert: {
+          care_instructions?: string | null
+          category?: string | null
+          code: string
+          created_at?: string
+          currency_code?: string | null
+          default_warranty_months: number
+          features?: string[]
+          id?: string
+          length_m?: number | null
+          marketing_description?: string | null
+          name: string
+          origin_country?: string | null
+          product_type?: string
+          publication_status?: string
+          reference_price?: number | null
+          slug: string
+          status?: string
+          technical_description?: string | null
+          thickness_mil?: number | null
+          version_name?: string | null
+          warranty_coverage?: string | null
+          weight_kg?: number | null
+          width_mm?: number | null
+        }
+        Update: {
+          care_instructions?: string | null
+          category?: string | null
           code?: string
           created_at?: string
+          currency_code?: string | null
           default_warranty_months?: number
+          features?: string[]
           id?: string
+          length_m?: number | null
+          marketing_description?: string | null
           name?: string
+          origin_country?: string | null
+          product_type?: string
+          publication_status?: string
+          reference_price?: number | null
           slug?: string
           status?: string
+          technical_description?: string | null
+          thickness_mil?: number | null
+          version_name?: string | null
+          warranty_coverage?: string | null
+          weight_kg?: number | null
+          width_mm?: number | null
         }
         Relationships: []
       }

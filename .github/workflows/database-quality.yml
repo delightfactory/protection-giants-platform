@@ -12,6 +12,12 @@ name: Database Quality
       - "scripts/verify-profile-admin-read.mjs"
       - "scripts/verify-data-api-grants.mjs"
       - "scripts/verify-user-admin-lifecycle.mjs"
+      - "scripts/verify-operational-entities-lifecycle.mjs"
+      - "scripts/verify-operational-entity-access-status.mjs"
+      - "scripts/verify-product-foundation.mjs"
+      - "scripts/verify-product-foundation-constraints.mjs"
+      - "scripts/verify-product-operational-access.mjs"
+      - "scripts/verify-product-storage.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -79,7 +85,7 @@ jobs:
           drop function public.__ci_default_function_privilege_probe();
           SQL
 
-      - name: Verify Auth, Data API grants, RLS and user lifecycle contracts
+      - name: Verify Auth, Data API grants, RLS, entity lifecycle and Product contracts
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
@@ -107,6 +113,36 @@ jobs:
             node scripts/verify-user-admin-lifecycle.mjs
             test_status=$?
           fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-operational-entities-lifecycle.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-operational-entity-access-status.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-foundation-constraints.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-operational-access.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-storage.mjs
+            test_status=$?
+          fi
           set -e
 
           if [ "$test_status" -ne 0 ]; then
@@ -125,6 +161,15 @@ jobs:
               docker logs --tail 200 "$db_container" 2>&1 || true
             else
               echo "Supabase database container was not found."
+            fi
+            echo "::endgroup::"
+
+            echo "::group::Supabase Storage logs"
+            storage_container="$(docker ps --format '{{.Names}}' | grep '^supabase_storage_' | head -n 1 || true)"
+            if [ -n "$storage_container" ]; then
+              docker logs --tail 200 "$storage_container" 2>&1 || true
+            else
+              echo "Supabase Storage container was not found."
             fi
             echo "::endgroup::"
 

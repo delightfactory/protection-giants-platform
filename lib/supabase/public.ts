@@ -2,12 +2,12 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
-import { getSupabaseAdminEnv } from "@/lib/supabase/env";
+import { getSupabasePublicEnv } from "@/lib/supabase/env";
 
-export function createSupabaseAdminClient(): SupabaseClient<Database> {
-  const { url, secretKey } = getSupabaseAdminEnv();
+export function createSupabasePublicClient(): SupabaseClient<Database> {
+  const { url, publishableKey } = getSupabasePublicEnv();
 
-  return createClient<Database>(url, secretKey, {
+  return createClient<Database>(url, publishableKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

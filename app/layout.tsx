@@ -3,6 +3,7 @@ import { Cairo } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 import "./interaction.css";
+import "./product-public.css";
 import { brandConfig } from "@/lib/brand-config";
 
 const cairo = Cairo({
