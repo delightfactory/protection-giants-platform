@@ -112,7 +112,7 @@ on table public.products
 to authenticated;
 
 -- Product reference data is required by future dealer/center operational flows.
--- Replace the admin-only read policy with one active-account policy; admin write policies remain unchanged.
+-- Mirror the application operational gate at the RLS boundary: an active profile plus an active bound entity.
 drop policy "products_admin_read" on public.products;
 
 create policy "products_operational_read"
@@ -125,6 +125,35 @@ using (
     from public.profiles
     where profiles.id = (select auth.uid())
       and profiles.status = 'active'
+      and (
+        (
+          profiles.role = 'admin'
+          and profiles.dealer_id is null
+          and profiles.installation_center_id is null
+        )
+        or (
+          profiles.role = 'dealer'
+          and profiles.dealer_id is not null
+          and profiles.installation_center_id is null
+          and exists (
+            select 1
+            from public.dealers
+            where dealers.id = profiles.dealer_id
+              and dealers.status = 'active'
+          )
+        )
+        or (
+          profiles.role = 'center'
+          and profiles.dealer_id is null
+          and profiles.installation_center_id is not null
+          and exists (
+            select 1
+            from public.installation_centers
+            where installation_centers.id = profiles.installation_center_id
+              and installation_centers.status = 'active'
+          )
+        )
+      )
   )
 );
 
