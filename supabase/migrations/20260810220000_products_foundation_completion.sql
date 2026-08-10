@@ -57,6 +57,14 @@ alter table public.products
     check (marketing_description is null or char_length(marketing_description) <= 5000),
   add constraint products_technical_description_length
     check (technical_description is null or char_length(technical_description) <= 10000),
+  add constraint products_features_contract
+    check (
+      cardinality(features) <= 30
+      and not jsonb_path_exists(
+        to_jsonb(features),
+        '$[*] ? (@ like_regex "^.{241,}$" flag "s")'
+      )
+    ),
   add constraint products_warranty_coverage_length
     check (warranty_coverage is null or char_length(warranty_coverage) <= 12000),
   add constraint products_care_instructions_length
