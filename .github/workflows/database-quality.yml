@@ -15,6 +15,7 @@ name: Database Quality
       - "scripts/verify-operational-entities-lifecycle.mjs"
       - "scripts/verify-product-foundation.mjs"
       - "scripts/verify-product-foundation-constraints.mjs"
+      - "scripts/verify-product-operational-access.mjs"
       - "scripts/verify-product-storage.mjs"
       - ".github/workflows/database-quality.yml"
 
@@ -124,6 +125,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-product-foundation-constraints.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-operational-access.mjs
             test_status=$?
           fi
 
