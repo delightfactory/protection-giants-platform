@@ -13,6 +13,7 @@ name: Database Quality
       - "scripts/verify-data-api-grants.mjs"
       - "scripts/verify-user-admin-lifecycle.mjs"
       - "scripts/verify-operational-entities-lifecycle.mjs"
+      - "scripts/verify-operational-entity-access-status.mjs"
       - "scripts/verify-product-foundation.mjs"
       - "scripts/verify-product-foundation-constraints.mjs"
       - "scripts/verify-product-operational-access.mjs"
@@ -115,6 +116,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-operational-entities-lifecycle.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-operational-entity-access-status.mjs
             test_status=$?
           fi
 
