@@ -76,13 +76,13 @@ A separate taxonomy-management subsystem is not introduced unless a later operat
 
 RLS remains enabled on `public.products`.
 
-Authenticated users have table-level read/insert/update capabilities only where explicitly granted, while the existing product RLS policies require an active parent-company admin for every operational Product action.
+Every active authenticated operational profile (`admin`, `dealer`, or `center`) may read Product reference rows because downstream roll and warranty flows need the product definition. Product create/edit/lifecycle policies remain restricted to an active parent-company admin.
 
-The Product Foundation completion migration extends the existing column-scoped update grant only to the new Product fields. `status` remains controlled by the separate lifecycle grant/action.
+The Product Foundation completion migration extends the existing column-scoped admin update grant only to the new Product fields. `status` remains controlled by the separate lifecycle grant/action.
 
-`id` and `created_at` remain outside the editable Product contract. There is no hard delete and no anonymous Product table access at this stage.
+Anonymous access is intentionally narrower than operational access: only selected customer-facing Product columns are granted, and RLS returns rows only when both `status = 'active'` and `publication_status = 'published'`. Reference price/currency and internal identifiers such as `id`/`created_at` are not exposed anonymously.
 
-The modern explicit Data API migration continues to deny `service_role` table access to Products because current Product CRUD uses the authenticated admin server session and RLS rather than the Auth Admin client.
+There is no hard delete. The modern explicit Data API migration continues to deny `service_role` Product table access because current Product CRUD uses the authenticated admin server session and RLS rather than the Auth Admin client.
 
 ## Creation and editing contract
 
