@@ -51,8 +51,10 @@ export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
             <input name="name" type="text" minLength={2} maxLength={120} defaultValue={values?.name} required />
           </FormField>
 
-          <FormField label="نوع المنتج" hint="الإصدار الأول مخصص لأفلام PPF مع بقاء الحقل بسيطًا وقابلًا للتوسع.">
-            <input name="product_type" type="text" minLength={2} maxLength={60} defaultValue={values?.productType ?? "PPF"} required />
+          <FormField label="نوع المنتج" hint="الإصدار الحالي يدعم أفلام PPF فقط؛ أي عائلة مختلفة ستُضاف عند تنفيذ منطقها الخاص.">
+            <select name="product_type" defaultValue={values?.productType ?? "PPF"} required>
+              <option value="PPF">PPF</option>
+            </select>
           </FormField>
 
           <FormField label="التصنيف" optional>
