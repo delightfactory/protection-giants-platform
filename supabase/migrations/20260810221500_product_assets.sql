@@ -24,6 +24,11 @@ create table public.product_assets (
     check (char_length(btrim(original_name)) between 1 and 255),
   constraint product_assets_mime_type_allowed
     check (mime_type in ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'application/pdf')),
+  constraint product_assets_kind_mime_pair
+    check (
+      (kind = 'image' and mime_type in ('image/jpeg', 'image/png', 'image/webp', 'image/avif'))
+      or (kind in ('datasheet', 'catalogue', 'document') and mime_type = 'application/pdf')
+    ),
   constraint product_assets_size
     check (size_bytes > 0 and size_bytes <= 20971520),
   constraint product_assets_visibility_allowed
