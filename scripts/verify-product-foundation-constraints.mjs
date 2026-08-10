@@ -67,6 +67,36 @@ if (unsupportedType.response.ok) {
   throw new Error(`Database unexpectedly accepted an unsupported Product type: ${JSON.stringify(unsupportedType.body)}`);
 }
 
+const tooManyFeatures = await rest("products?select=id", {
+  method: "POST",
+  body: {
+    code: "PG-TOO-MANY-FEATURES",
+    slug: "too-many-features",
+    name: "Too Many Features",
+    default_warranty_months: 12,
+    features: Array.from({ length: 31 }, (_, index) => `Feature ${index + 1}`),
+  },
+});
+
+if (tooManyFeatures.response.ok) {
+  throw new Error(`Database unexpectedly accepted more than 30 Product features: ${JSON.stringify(tooManyFeatures.body)}`);
+}
+
+const tooLongFeature = await rest("products?select=id", {
+  method: "POST",
+  body: {
+    code: "PG-LONG-FEATURE",
+    slug: "long-feature",
+    name: "Long Feature",
+    default_warranty_months: 12,
+    features: ["x".repeat(241)],
+  },
+});
+
+if (tooLongFeature.response.ok) {
+  throw new Error(`Database unexpectedly accepted a Product feature longer than 240 characters: ${JSON.stringify(tooLongFeature.body)}`);
+}
+
 const legacyDraft = await rest("products?select=id", {
   method: "POST",
   body: {
