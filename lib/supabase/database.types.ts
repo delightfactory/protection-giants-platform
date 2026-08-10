@@ -77,6 +77,56 @@ export type Database = {
           },
         ]
       }
+      product_assets: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          label: string | null
+          mime_type: string
+          original_name: string
+          product_id: string
+          size_bytes: number
+          sort_order: number
+          storage_path: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          label?: string | null
+          mime_type: string
+          original_name: string
+          product_id: string
+          size_bytes: number
+          sort_order?: number
+          storage_path: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          mime_type?: string
+          original_name?: string
+          product_id?: string
+          size_bytes?: number
+          sort_order?: number
+          storage_path?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_assets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           care_instructions: string | null
@@ -180,7 +230,7 @@ export type Database = {
           created_at?: string
           dealer_id?: string | null
           display_name?: string
-          id?: string
+          id: string
           installation_center_id?: string | null
           phone?: string | null
           role?: string
