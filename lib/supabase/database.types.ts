@@ -230,7 +230,7 @@ export type Database = {
           created_at?: string
           dealer_id?: string | null
           display_name?: string
-          id: string
+          id?: string
           installation_center_id?: string | null
           phone?: string | null
           role?: string
