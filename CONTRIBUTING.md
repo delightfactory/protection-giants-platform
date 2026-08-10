@@ -30,6 +30,14 @@ Use concise professional messages describing the actual change:
 - `test: cover inactive center activation`
 - `docs: record approved roll-opening flow`
 
+## Local toolchain
+
+Use Node 22, matching `.nvmrc` and CI. Install application dependencies with `npm ci` from the committed lockfile.
+
+For local Supabase work, use the CLI version pinned by Database Quality (`2.105.0`) until the upstream `2.106.0` local type-generation regression is resolved. The committed `supabase/config.toml` is the local project configuration; do not run `supabase init --force` over it.
+
+The normal database verification path is a fresh `supabase start`, `supabase db reset --local --no-seed`, database lint, the committed smoke tests, and public-schema type generation.
+
 ## Pull request requirements
 
 Before review:
