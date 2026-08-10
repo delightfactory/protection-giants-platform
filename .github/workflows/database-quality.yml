@@ -99,7 +99,7 @@ jobs:
 
       - name: Verify generated database types
         run: |
-          supabase gen types --local > /tmp/database.types.ts
+          supabase gen types typescript --local > /tmp/database.types.ts
           if ! diff -u lib/supabase/database.types.ts /tmp/database.types.ts; then
             echo "Committed database types are out of sync with the local schema."
             exit 1
