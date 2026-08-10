@@ -79,31 +79,79 @@ export type Database = {
       }
       products: {
         Row: {
+          care_instructions: string | null
+          category: string | null
           code: string
           created_at: string
+          currency_code: string | null
           default_warranty_months: number
+          features: string[]
           id: string
+          length_m: number | null
+          marketing_description: string | null
           name: string
+          origin_country: string | null
+          product_type: string
+          publication_status: string
+          reference_price: number | null
           slug: string
           status: string
+          technical_description: string | null
+          thickness_mil: number | null
+          version_name: string | null
+          warranty_coverage: string | null
+          weight_kg: number | null
+          width_mm: number | null
         }
         Insert: {
+          care_instructions?: string | null
+          category?: string | null
           code: string
           created_at?: string
+          currency_code?: string | null
           default_warranty_months: number
+          features?: string[]
           id?: string
+          length_m?: number | null
+          marketing_description?: string | null
           name: string
+          origin_country?: string | null
+          product_type?: string
+          publication_status?: string
+          reference_price?: number | null
           slug: string
           status?: string
+          technical_description?: string | null
+          thickness_mil?: number | null
+          version_name?: string | null
+          warranty_coverage?: string | null
+          weight_kg?: number | null
+          width_mm?: number | null
         }
         Update: {
+          care_instructions?: string | null
+          category?: string | null
           code?: string
           created_at?: string
+          currency_code?: string | null
           default_warranty_months?: number
+          features?: string[]
           id?: string
+          length_m?: number | null
+          marketing_description?: string | null
           name?: string
+          origin_country?: string | null
+          product_type?: string
+          publication_status?: string
+          reference_price?: number | null
           slug?: string
           status?: string
+          technical_description?: string | null
+          thickness_mil?: number | null
+          version_name?: string | null
+          warranty_coverage?: string | null
+          weight_kg?: number | null
+          width_mm?: number | null
         }
         Relationships: []
       }
