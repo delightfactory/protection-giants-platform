@@ -3,12 +3,12 @@ import { PageIntro } from "@/components/page-intro";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PRODUCT_ASSET_BUCKET } from "@/lib/products/product-assets";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabasePublicClient } from "@/lib/supabase/public";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductsPage() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   const { data: products, error } = await supabase
     .from("products")
     .select("id, code, slug, name, product_type, category, version_name, width_mm, length_m, thickness_mil, origin_country, marketing_description, default_warranty_months")
