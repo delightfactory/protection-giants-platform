@@ -133,10 +133,20 @@ jobs:
 
       - name: Verify generated database types
         run: |
-          supabase gen types typescript --local --schema public > /tmp/database.types.ts
-          # CLI 2.105.0 emits one extra terminal blank line; normalize only that terminator.
-          sed -i '${/^$/d;}' /tmp/database.types.ts
-          if ! diff -u lib/supabase/database.types.ts /tmp/database.types.ts; then
+          supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
+          cp lib/supabase/database.types.ts /tmp/committed.database.types.ts
+          # Compare semantic generated content while normalizing only trailing LF characters.
+          node <<'NODE'
+          const fs = require("node:fs");
+          for (const path of [
+            "/tmp/generated.database.types.ts",
+            "/tmp/committed.database.types.ts",
+          ]) {
+            const content = fs.readFileSync(path, "utf8").replace(/\n*$/, "\n");
+            fs.writeFileSync(path, content);
+          }
+          NODE
+          if ! diff -u /tmp/committed.database.types.ts /tmp/generated.database.types.ts; then
             echo "Committed database types are out of sync with the public application schema."
             exit 1
           fi
