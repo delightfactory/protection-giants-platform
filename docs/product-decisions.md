@@ -85,3 +85,27 @@ When physical rolls are transferred to another operational holder, scanning is u
 **Status:** Approved
 
 Warranty duration and customer-facing care/coverage information come from the configured product/policy data, not hard-coded application constants.
+
+### PD-016 — Product code is the canonical SKU in the first release
+**Status:** Approved
+
+`products.code` is the canonical SKU/operational product code. A second duplicate SKU field is not introduced without a demonstrated business distinction.
+
+Physical roll serials, ERP serials, lot numbers, and generated warranty/activation codes are separate identifiers owned by their later business objects.
+
+### PD-017 — Product stores stable specification data, not production-instance data
+**Status:** Approved
+
+Stable nominal product data such as type, category, version, dimensions, thickness, weight, origin, descriptive content, and warranty policy belongs to the product definition.
+
+Production order, lot/batch, physical roll, ownership, serial, transfer, installation, and warranty-instance data must not be stored as product attributes.
+
+### PD-018 — Product price is reference data, not a transaction ledger
+**Status:** Approved
+
+The optional product price is a reference/display price with an explicit currency code. Future orders, invoices, transfers, or sales that require financial history must snapshot their own transactional values rather than depending on the current product reference price.
+
+### PD-019 — Warranty activation must snapshot the policy used
+**Status:** Approved
+
+The product stores the current default warranty duration plus customer-facing coverage and care information. When the warranty cube is implemented, the created warranty record must snapshot the applicable policy values so later product edits do not rewrite historical warranties.
