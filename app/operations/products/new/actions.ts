@@ -54,5 +54,5 @@ export async function createProduct(formData: FormData) {
 
   revalidatePath("/operations/products");
   revalidatePath("/products");
-  redirect(`/operations/products/${data.id}/edit?created=1#product-assets`);
+  redirect(`/operations/products/${data.id}/edit#product-assets`);
 }
