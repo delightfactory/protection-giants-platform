@@ -3,6 +3,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FilterActions, FilterBar, FilterField, FilterGrid } from "@/components/ui/filter-bar";
 import { PageHeader } from "@/components/ui/page-header";
 import { RecordItem, RecordList } from "@/components/ui/record-list";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -12,6 +13,8 @@ type RollsPageProps = {
   searchParams: Promise<{ q?: string; order?: string }>;
 };
 
+const orderFields = "id, order_number, production_date, product_id, product_code_snapshot, product_name_snapshot, status";
+
 export default async function RollsPage({ searchParams }: RollsPageProps) {
   await requireAdminProfile();
   const params = await searchParams;
@@ -19,15 +22,11 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
   const orderFilter = uuidPattern.test(params.order ?? "") ? params.order ?? "" : "";
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: products, error: productsError }, { data: recentOrders, error: ordersError }] = await Promise.all([
-    supabase.from("products").select("id, code, name").order("name", { ascending: true }),
-    supabase
-      .from("production_orders")
-      .select("id, order_number, production_date, product_id")
-      .order("created_at", { ascending: false })
-      .limit(100),
-  ]);
-  if (productsError) throw productsError;
+  const { data: recentOrders, error: ordersError } = await supabase
+    .from("production_orders")
+    .select(orderFields)
+    .order("created_at", { ascending: false })
+    .limit(100);
   if (ordersError) throw ordersError;
 
   let rollsQuery = supabase
@@ -55,13 +54,13 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
     referencedOrderIds.length
       ? supabase
           .from("production_orders")
-          .select("id, order_number, production_date, product_id")
+          .select(orderFields)
           .in("id", referencedOrderIds)
       : Promise.resolve({ data: [], error: null }),
     orderFilter && !selectedOrderIsRecent
       ? supabase
           .from("production_orders")
-          .select("id, order_number, production_date, product_id")
+          .select(orderFields)
           .eq("id", orderFilter)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -71,7 +70,6 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
   if (referencedOrdersResult.error) throw referencedOrdersResult.error;
   if (selectedOrderResult.error) throw selectedOrderResult.error;
 
-  const productsById = new Map(products.map((product) => [product.id, product]));
   const allKnownOrders = [
     ...recentOrders,
     ...referencedOrdersResult.data,
@@ -104,7 +102,9 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
               <select name="order" defaultValue={orderFilter}>
                 <option value="">كل الأوامر</option>
                 {dropdownOrders.map((order) => (
-                  <option key={order.id} value={order.id}>{order.order_number}</option>
+                  <option key={order.id} value={order.id}>
+                    {order.order_number}{order.status === "voided" ? " — مُبطل" : ""}
+                  </option>
                 ))}
               </select>
             </FilterField>
@@ -128,22 +128,23 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
       ) : (
         <RecordList label="قائمة اللفات">
           {rolls.map((roll) => {
-            const product = productsById.get(roll.product_id);
             const order = ordersById.get(roll.production_order_id);
             const lot = lotsById.get(roll.production_lot_id);
+            const isVoided = order?.status === "voided";
 
             return (
               <RecordItem
                 key={roll.id}
-                kicker={product ? <span dir="ltr">{product.code}</span> : undefined}
+                kicker={order ? <span dir="ltr">{order.product_code_snapshot}</span> : undefined}
                 title={<span dir="ltr">{roll.serial_number}</span>}
-                subtitle={product?.name}
+                subtitle={order?.product_name_snapshot}
                 facts={[
                   { label: "ERP Serial", value: roll.erp_serial, dir: "ltr" },
                   { label: "Lot", value: lot?.lot_number ?? "—", dir: lot ? "ltr" : "rtl" },
                   { label: "أمر الإنتاج", value: order?.order_number ?? "—", dir: order ? "ltr" : "rtl" },
                   { label: "ترتيب اللفة", value: roll.roll_index.toLocaleString("en-US"), dir: "ltr" },
                 ]}
+                status={order ? <StatusBadge tone={isVoided ? "danger" : "success"}>{isVoided ? "أمر مُبطل" : "صالح تشغيليًا"}</StatusBadge> : undefined}
                 actions={order ? <Link href={`/operations/production-orders/${order.id}`} className="button button-ghost">فتح الأمر</Link> : undefined}
               />
             );
