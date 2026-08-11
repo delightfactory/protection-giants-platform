@@ -127,6 +127,105 @@ export type Database = {
           },
         ]
       }
+      production_lots: {
+        Row: {
+          created_at: string
+          id: string
+          lot_number: string
+          lot_sequence: number
+          product_id: string
+          production_order_id: string
+          roll_count: number
+          source_lot_reference: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lot_number: string
+          lot_sequence: number
+          product_id: string
+          production_order_id: string
+          roll_count: number
+          source_lot_reference?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lot_number?: string
+          lot_sequence?: number
+          product_id?: string
+          production_order_id?: string
+          roll_count?: number
+          source_lot_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_lots_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_lots_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_orders: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          order_number: string
+          product_id: string
+          production_date: string
+          source_reference: string | null
+          total_rolls: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          order_number: string
+          product_id: string
+          production_date: string
+          source_reference?: string | null
+          total_rolls: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          order_number?: string
+          product_id?: string
+          production_date?: string
+          source_reference?: string | null
+          total_rolls?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_orders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           care_instructions: string | null
@@ -253,12 +352,76 @@ export type Database = {
           },
         ]
       }
+      rolls: {
+        Row: {
+          created_at: string
+          erp_serial: string
+          id: string
+          product_id: string
+          production_lot_id: string
+          production_order_id: string
+          roll_index: number
+          serial_number: string
+        }
+        Insert: {
+          created_at?: string
+          erp_serial: string
+          id?: string
+          product_id: string
+          production_lot_id: string
+          production_order_id: string
+          roll_index: number
+          serial_number: string
+        }
+        Update: {
+          created_at?: string
+          erp_serial?: string
+          id?: string
+          product_id?: string
+          production_lot_id?: string
+          production_order_id?: string
+          roll_index?: number
+          serial_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rolls_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rolls_production_lot_id_fkey"
+            columns: ["production_lot_id"]
+            isOneToOne: false
+            referencedRelation: "production_lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rolls_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_production_order: {
+        Args: {
+          p_product_id: string
+          p_production_date: string
+          p_lots: Json
+          p_source_reference?: string
+          p_notes?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
@@ -284,8 +447,8 @@ export type Tables<
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
+    schema: keyof DatabaseWithoutInternals
+  }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
@@ -312,8 +475,8 @@ export type TablesInsert<
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
+    schema: keyof DatabaseWithoutInternals
+  }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
@@ -337,8 +500,8 @@ export type TablesUpdate<
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
+    schema: keyof DatabaseWithoutInternals
+  }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
@@ -362,8 +525,8 @@ export type Enums<
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
+    schema: keyof DatabaseWithoutInternals
+  }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
@@ -379,8 +542,8 @@ export type CompositeTypes<
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
+    schema: keyof DatabaseWithoutInternals
+  }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
