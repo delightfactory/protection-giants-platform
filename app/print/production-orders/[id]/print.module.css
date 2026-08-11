@@ -59,6 +59,30 @@
   font-size: 18px;
 }
 
+.voidBanner {
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  border: 2px solid #111;
+  background: #f2f2f2;
+  break-inside: avoid;
+}
+
+.voidBanner strong {
+  display: block;
+  font-size: 15px;
+}
+
+.voidBanner p {
+  margin: 6px 0;
+  white-space: pre-wrap;
+  font-size: 11px;
+}
+
+.voidBanner small {
+  color: #555;
+  font-size: 9px;
+}
+
 .title {
   margin: 26px 0 18px;
 }
@@ -173,7 +197,8 @@
   }
 
   .table tr,
-  .fact {
+  .fact,
+  .voidBanner {
     break-inside: avoid;
   }
 }
