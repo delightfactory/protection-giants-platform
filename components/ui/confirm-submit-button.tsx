@@ -10,6 +10,7 @@ type ConfirmSubmitButtonProps = {
   confirmLabel: string;
   tone?: "danger" | "primary";
   className?: string;
+  disabled?: boolean;
 };
 
 export function ConfirmSubmitButton({
@@ -19,6 +20,7 @@ export function ConfirmSubmitButton({
   confirmLabel,
   tone = "danger",
   className = "",
+  disabled = false,
 }: ConfirmSubmitButtonProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -26,8 +28,11 @@ export function ConfirmSubmitButton({
   const { pending } = useFormStatus();
   const triggerClass = tone === "danger" ? "button button-danger" : "button button-primary";
 
-  const openDialog = () => {
-    if (!pending) dialogRef.current?.showModal();
+  const openDialog = (button: HTMLButtonElement) => {
+    if (pending || disabled) return;
+    const form = button.form;
+    if (form && !form.reportValidity()) return;
+    dialogRef.current?.showModal();
   };
   const closeDialog = () => {
     if (!pending) dialogRef.current?.close();
@@ -38,9 +43,9 @@ export function ConfirmSubmitButton({
       <button
         type="button"
         className={`${triggerClass} ${className}`.trim()}
-        onClick={openDialog}
+        onClick={(event) => openDialog(event.currentTarget)}
         aria-haspopup="dialog"
-        disabled={pending}
+        disabled={pending || disabled}
       >
         {children}
       </button>
