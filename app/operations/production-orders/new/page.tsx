@@ -17,15 +17,31 @@ const errorMessages: Record<string, string> = {
   failed: "تعذر إنشاء أمر الإنتاج. لم يتم حفظ أي أمر أو Lot أو لفة جزئيًا.",
 };
 
+function cairoToday() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+  return `${values.get("year")}-${values.get("month")}-${values.get("day")}`;
+}
+
 export default async function ProductionOrderCreatePage({ searchParams }: ProductionOrderCreatePageProps) {
   await requireAdminProfile();
   const { error } = await searchParams;
   const supabase = await createSupabaseServerClient();
   const { data: products, error: productsError } = await supabase
     .from("products")
-    .select("id, code, name, width_mm, length_m, thickness_mil")
+    .select("id, code, name, width_mm, length_m, thickness_mil, weight_kg, origin_country")
     .eq("status", "active")
     .eq("product_type", "PPF")
+    .not("width_mm", "is", null)
+    .not("length_m", "is", null)
+    .not("thickness_mil", "is", null)
+    .not("weight_kg", "is", null)
+    .not("origin_country", "is", null)
     .order("name", { ascending: true });
 
   if (productsError) throw productsError;
@@ -42,8 +58,8 @@ export default async function ProductionOrderCreatePage({ searchParams }: Produc
       {products.length === 0 ? (
         <EmptyState
           eyebrow="متطلب قبل الإنتاج"
-          title="لا يوجد منتج PPF نشط يمكن إنتاجه"
-          description="فعّل أو أنشئ تعريف المنتج أولًا، ثم ارجع لإنشاء أمر الإنتاج."
+          title="لا يوجد منتج PPF جاهز للإنتاج"
+          description="أكمل تعريف منتج نشط ومواصفاته الأساسية أولًا، ثم ارجع لإنشاء أمر الإنتاج."
           action={<Link href="/operations/products" className="button button-primary">فتح المنتجات</Link>}
         />
       ) : (
@@ -60,7 +76,7 @@ export default async function ProductionOrderCreatePage({ searchParams }: Produc
               lengthM: product.length_m,
               thicknessMil: product.thickness_mil,
             }))}
-            defaultProductionDate={new Date().toISOString().slice(0, 10)}
+            defaultProductionDate={cairoToday()}
           />
         </FormPanel>
       )}
