@@ -14,6 +14,17 @@ type LotInput = {
   source_reference?: string;
 };
 
+function isValidDateInput(value: string) {
+  if (!datePattern.test(value)) return false;
+
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  return parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() === month - 1
+    && parsed.getUTCDate() === day;
+}
+
 function parseLots(value: FormDataEntryValue | null): LotInput[] | null {
   if (typeof value !== "string" || !value) return null;
 
@@ -59,7 +70,7 @@ export async function createProductionOrder(formData: FormData) {
 
   if (
     !uuidPattern.test(productId)
-    || !datePattern.test(productionDate)
+    || !isValidDateInput(productionDate)
     || sourceReference.length > 120
     || notes.length > 2000
     || !lots
