@@ -13,12 +13,17 @@ type NavItem = {
   icon: IconName;
 };
 
-const adminItems: NavItem[] = [
+const adminMobileItems: NavItem[] = [
   { href: "/operations", label: "الرئيسية", icon: "home" },
   { href: "/operations/users", label: "الحسابات", icon: "users" },
   { href: "/operations/dealers", label: "الوكلاء", icon: "dealers" },
   { href: "/operations/centers", label: "المراكز", icon: "centers" },
   { href: "/operations/products", label: "المنتجات", icon: "products" },
+];
+
+const adminDesktopItems: NavItem[] = [
+  ...adminMobileItems,
+  { href: "/operations/production-orders", label: "الإنتاج", icon: "production" },
 ];
 
 const basicItems: NavItem[] = [
@@ -31,7 +36,9 @@ function isActivePath(pathname: string, href: string) {
 
 export function OperationsNavLinks({ role, variant }: { role: OperationalRole; variant: NavVariant }) {
   const pathname = usePathname();
-  const items = role === "admin" ? adminItems : basicItems;
+  const items = role === "admin"
+    ? variant === "mobile" ? adminMobileItems : adminDesktopItems
+    : basicItems;
   const isTaskRoute = pathname.endsWith("/new") || pathname.endsWith("/edit");
 
   if (variant === "mobile" && (role !== "admin" || isTaskRoute)) {
