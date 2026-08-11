@@ -10,6 +10,10 @@ const password = "Production-Foundation-Test-2026!";
 const adminEmail = "production-foundation-admin@example.test";
 const dealerEmail = "production-foundation-dealer@example.test";
 
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
 async function readJson(response) {
   const text = await response.text();
   if (!text) return null;
@@ -43,27 +47,19 @@ async function adminCreateUser({ email, role, dealerId = null, displayName }) {
       user_metadata: { display_name: displayName },
     }),
   });
-
   const body = await readJson(response);
-  if (!response.ok || !body?.id) {
-    throw new Error(`Could not create ${role} user (${response.status}): ${JSON.stringify(body)}`);
-  }
+  assert(response.ok && body?.id, `Could not create ${role} user (${response.status}): ${JSON.stringify(body)}`);
   return body;
 }
 
 async function signIn(email) {
   const response = await fetch(`${apiUrl}/auth/v1/token?grant_type=password`, {
     method: "POST",
-    headers: {
-      apikey: anonKey,
-      "Content-Type": "application/json",
-    },
+    headers: { apikey: anonKey, "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   const body = await readJson(response);
-  if (!response.ok || !body?.access_token) {
-    throw new Error(`Could not sign in ${email} (${response.status}): ${JSON.stringify(body)}`);
-  }
+  assert(response.ok && body?.access_token, `Could not sign in ${email}: ${JSON.stringify(body)}`);
   return body.access_token;
 }
 
@@ -76,7 +72,6 @@ async function rest(path, { method = "GET", token = null, body = undefined } = {
     headers["Content-Type"] = "application/json";
     headers.Prefer = "return=representation";
   }
-
   const response = await fetch(`${apiUrl}/rest/v1/${path}`, {
     method,
     headers,
@@ -99,17 +94,14 @@ async function rpc(name, body, token) {
 }
 
 function expectSingleRow(result, label) {
-  if (!result.response.ok || !Array.isArray(result.body) || result.body.length !== 1) {
-    throw new Error(`${label} failed (${result.response.status}): ${JSON.stringify(result.body)}`);
-  }
+  assert(
+    result.response.ok && Array.isArray(result.body) && result.body.length === 1,
+    `${label} failed (${result.response.status}): ${JSON.stringify(result.body)}`,
+  );
   return result.body[0];
 }
 
-await adminCreateUser({
-  email: adminEmail,
-  role: "admin",
-  displayName: "مسؤول اختبار أوامر الإنتاج",
-});
+await adminCreateUser({ email: adminEmail, role: "admin", displayName: "مسؤول اختبار أوامر الإنتاج" });
 const adminToken = await signIn(adminEmail);
 
 const product = expectSingleRow(
@@ -154,89 +146,75 @@ const created = await rpc(
   },
   adminToken,
 );
-
-if (!created.response.ok || typeof created.body !== "string") {
-  throw new Error(`Production RPC failed (${created.response.status}): ${JSON.stringify(created.body)}`);
-}
+assert(created.response.ok && typeof created.body === "string", `Production RPC failed: ${JSON.stringify(created.body)}`);
 const orderId = created.body;
 
 const order = expectSingleRow(
   await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=*`, { token: adminToken }),
   "Production order read",
 );
-if (!/^PG-PO-20260811-[0-9]{8}$/.test(order.order_number) || order.total_rolls !== 5 || order.status !== "generated") {
-  throw new Error(`Production order header is inconsistent: ${JSON.stringify(order)}`);
-}
-if (
-  order.product_code_snapshot !== "PG-PRODUCTION-TEST"
-  || order.product_name_snapshot !== "Production Test PPF"
-  || order.product_version_snapshot !== "Test"
-  || Number(order.width_mm_snapshot) !== 1524
-  || Number(order.length_m_snapshot) !== 15
-  || Number(order.thickness_mil_snapshot) !== 7.5
-  || Number(order.weight_kg_snapshot) !== 12.5
-  || order.origin_country_snapshot !== "USA"
-) {
-  throw new Error(`Production product snapshot is inconsistent: ${JSON.stringify(order)}`);
-}
+assert(/^PG-PO-20260811-[0-9]{8}$/.test(order.order_number), `Invalid order number: ${order.order_number}`);
+assert(order.total_rolls === 5 && order.status === "generated", `Invalid production header: ${JSON.stringify(order)}`);
+assert(
+  order.product_code_snapshot === "PG-PRODUCTION-TEST"
+    && order.product_name_snapshot === "Production Test PPF"
+    && order.product_version_snapshot === "Test"
+    && Number(order.width_mm_snapshot) === 1524
+    && Number(order.length_m_snapshot) === 15
+    && Number(order.thickness_mil_snapshot) === 7.5
+    && Number(order.weight_kg_snapshot) === 12.5
+    && order.origin_country_snapshot === "USA",
+  `Invalid Product snapshot: ${JSON.stringify(order)}`,
+);
 
 const lotsResult = await rest(
   `production_lots?production_order_id=eq.${encodeURIComponent(orderId)}&select=*&order=lot_sequence.asc`,
   { token: adminToken },
 );
-if (!lotsResult.response.ok || !Array.isArray(lotsResult.body) || lotsResult.body.length !== 2) {
-  throw new Error(`Expected two production lots: ${JSON.stringify(lotsResult.body)}`);
-}
-if (lotsResult.body.reduce((sum, lot) => sum + lot.roll_count, 0) !== 5) {
-  throw new Error(`Lot quantities do not match order total: ${JSON.stringify(lotsResult.body)}`);
-}
-if (!lotsResult.body.every((lot, index) => lot.lot_sequence === index + 1 && /^PG-L-20260811-[0-9]{8}-[0-9]{2}$/.test(lot.lot_number))) {
-  throw new Error(`Generated lot identities are invalid: ${JSON.stringify(lotsResult.body)}`);
-}
+assert(lotsResult.response.ok && Array.isArray(lotsResult.body) && lotsResult.body.length === 2, "Expected two Lots.");
+assert(lotsResult.body.reduce((sum, lot) => sum + lot.roll_count, 0) === 5, "Lot total does not match order total.");
+assert(
+  lotsResult.body.every((lot, index) => lot.lot_sequence === index + 1 && /^PG-L-20260811-[0-9]{8}-[0-9]{2}$/.test(lot.lot_number)),
+  `Invalid Lot identities: ${JSON.stringify(lotsResult.body)}`,
+);
 
 const rollsResult = await rest(
   `rolls?production_order_id=eq.${encodeURIComponent(orderId)}&select=*&order=serial_number.asc`,
   { token: adminToken },
 );
-if (!rollsResult.response.ok || !Array.isArray(rollsResult.body) || rollsResult.body.length !== 5) {
-  throw new Error(`Expected five generated rolls: ${JSON.stringify(rollsResult.body)}`);
-}
-
-const serials = new Set(rollsResult.body.map((roll) => roll.serial_number));
-const erpSerials = new Set(rollsResult.body.map((roll) => roll.erp_serial));
-if (serials.size !== 5 || erpSerials.size !== 5) {
-  throw new Error("Generated roll identities are not unique.");
-}
+assert(rollsResult.response.ok && Array.isArray(rollsResult.body) && rollsResult.body.length === 5, "Expected five Rolls.");
+assert(new Set(rollsResult.body.map((roll) => roll.serial_number)).size === 5, "Internal Roll serials are not unique.");
+assert(new Set(rollsResult.body.map((roll) => roll.erp_serial)).size === 5, "ERP serials are not unique.");
 for (const roll of rollsResult.body) {
-  if (!/^PG-R-20260811-[0-9]{8}-[0-9]{2}-[0-9]{4,5}$/.test(roll.serial_number)) {
-    throw new Error(`Invalid internal roll serial: ${roll.serial_number}`);
-  }
-  if (!/^ERP-[A-F0-9]{16}$/.test(roll.erp_serial)) {
-    throw new Error(`Invalid ERP serial: ${roll.erp_serial}`);
-  }
+  assert(/^PG-R-20260811-[0-9]{8}-[0-9]{2}-[0-9]{4,5}$/.test(roll.serial_number), `Invalid Roll serial: ${roll.serial_number}`);
+  assert(/^ERP-[A-F0-9]{16}$/.test(roll.erp_serial), `Invalid ERP serial: ${roll.erp_serial}`);
 }
 
-const productEdited = await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,code,name,width_mm`, {
-  method: "PATCH",
-  token: adminToken,
-  body: {
-    name: "Production Test PPF Updated",
-    width_mm: 1600,
-  },
-});
-expectSingleRow(productEdited, "Edit product after production generation");
-
+// Non-physical Product content remains editable; historical production still uses its snapshot.
+expectSingleRow(
+  await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,name`, {
+    method: "PATCH",
+    token: adminToken,
+    body: { name: "Production Test PPF Updated" },
+  }),
+  "Non-physical Product edit after production",
+);
 const historicalOrder = expectSingleRow(
-  await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=product_code_snapshot,product_name_snapshot,width_mm_snapshot`, { token: adminToken }),
+  await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=product_name_snapshot,width_mm_snapshot`, { token: adminToken }),
   "Historical production snapshot read",
 );
-if (
-  historicalOrder.product_code_snapshot !== "PG-PRODUCTION-TEST"
-  || historicalOrder.product_name_snapshot !== "Production Test PPF"
-  || Number(historicalOrder.width_mm_snapshot) !== 1524
-) {
-  throw new Error(`Historical production snapshot drifted after Product edit: ${JSON.stringify(historicalOrder)}`);
-}
+assert(
+  historicalOrder.product_name_snapshot === "Production Test PPF" && Number(historicalOrder.width_mm_snapshot) === 1524,
+  `Historical production snapshot drifted: ${JSON.stringify(historicalOrder)}`,
+);
+
+// A produced SKU cannot silently become a different physical specification.
+const lockedSpecEdit = await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,width_mm`, {
+  method: "PATCH",
+  token: adminToken,
+  body: { width_mm: 1600 },
+});
+assert(!lockedSpecEdit.response.ok, "Produced SKU physical specification unexpectedly changed.");
 
 const directInsert = await rest("rolls?select=id", {
   method: "POST",
@@ -250,26 +228,18 @@ const directInsert = await rest("rolls?select=id", {
     erp_serial: "ERP-AAAAAAAAAAAAAAAA",
   },
 });
-if (directInsert.response.ok) {
-  throw new Error("Authenticated admin unexpectedly bypassed the atomic production RPC with a direct roll insert.");
-}
-
+assert(!directInsert.response.ok, "Admin bypassed the atomic RPC with a direct Roll insert.");
 const directOrderPatch = await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}`, {
   method: "PATCH",
   token: adminToken,
   body: { total_rolls: 99 },
 });
-if (directOrderPatch.response.ok) {
-  throw new Error("Authenticated admin unexpectedly updated immutable production data directly.");
-}
-
+assert(!directOrderPatch.response.ok, "Admin directly updated immutable production data.");
 const directLotDelete = await rest(`production_lots?id=eq.${encodeURIComponent(lotsResult.body[0].id)}`, {
   method: "DELETE",
   token: adminToken,
 });
-if (directLotDelete.response.ok) {
-  throw new Error("Authenticated admin unexpectedly deleted immutable production data directly.");
-}
+assert(!directLotDelete.response.ok, "Admin directly deleted immutable production data.");
 
 const incompleteProduct = expectSingleRow(
   await rest("products?select=id", {
@@ -284,21 +254,12 @@ const incompleteProduct = expectSingleRow(
   }),
   "Incomplete product fixture creation",
 );
-
-const incompleteProductCreate = await rpc(
+const incompleteCreate = await rpc(
   "create_production_order",
-  {
-    p_product_id: incompleteProduct.id,
-    p_production_date: "2026-08-11",
-    p_lots: [{ quantity: 1 }],
-    p_source_reference: null,
-    p_notes: null,
-  },
+  { p_product_id: incompleteProduct.id, p_production_date: "2026-08-11", p_lots: [{ quantity: 1 }] },
   adminToken,
 );
-if (incompleteProductCreate.response.ok) {
-  throw new Error("Incomplete Product unexpectedly accepted a production order.");
-}
+assert(!incompleteCreate.response.ok, "Incomplete Product unexpectedly entered production.");
 
 const dealer = expectSingleRow(
   await rest("dealers?select=id", {
@@ -308,146 +269,87 @@ const dealer = expectSingleRow(
   }),
   "Production smoke dealer creation",
 );
-await adminCreateUser({
-  email: dealerEmail,
-  role: "dealer",
-  dealerId: dealer.id,
-  displayName: "مستخدم وكيل اختبار الإنتاج",
-});
+await adminCreateUser({ email: dealerEmail, role: "dealer", dealerId: dealer.id, displayName: "مستخدم وكيل اختبار الإنتاج" });
 const dealerToken = await signIn(dealerEmail);
-
-const dealerRead = await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=id,order_number`, { token: dealerToken });
-if (!dealerRead.response.ok || !Array.isArray(dealerRead.body) || dealerRead.body.length !== 0) {
-  throw new Error(`Dealer unexpectedly read production data: ${JSON.stringify(dealerRead.body)}`);
-}
-
-const dealerCreate = await rpc(
-  "create_production_order",
-  {
-    p_product_id: product.id,
-    p_production_date: "2026-08-11",
-    p_lots: [{ quantity: 1 }],
-    p_source_reference: null,
-    p_notes: null,
-  },
-  dealerToken,
+const dealerRead = await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=id`, { token: dealerToken });
+assert(dealerRead.response.ok && Array.isArray(dealerRead.body) && dealerRead.body.length === 0, "Dealer read production data.");
+assert(
+  !(await rpc("create_production_order", { p_product_id: product.id, p_production_date: "2026-08-11", p_lots: [{ quantity: 1 }] }, dealerToken)).response.ok,
+  "Dealer created production data.",
 );
-if (dealerCreate.response.ok) {
-  throw new Error("Dealer unexpectedly created a production order.");
-}
-
-const dealerVoid = await rpc(
-  "void_production_order",
-  { p_order_id: orderId, p_reason: "Dealer must not void production" },
-  dealerToken,
+assert(
+  !(await rpc("void_production_order", { p_order_id: orderId, p_reason: "Dealer must not void production" }, dealerToken)).response.ok,
+  "Dealer voided a production order.",
 );
-if (dealerVoid.response.ok) {
-  throw new Error("Dealer unexpectedly voided a production order.");
-}
 
-const orderCountBeforeInvalid = await rest("production_orders?select=id", { token: adminToken });
-if (!orderCountBeforeInvalid.response.ok || !Array.isArray(orderCountBeforeInvalid.body)) {
-  throw new Error(`Could not read production order count: ${JSON.stringify(orderCountBeforeInvalid.body)}`);
-}
-
-const invalidCreate = await rpc(
-  "create_production_order",
-  {
+const countBeforeInvalid = await rest("production_orders?select=id", { token: adminToken });
+assert(countBeforeInvalid.response.ok && Array.isArray(countBeforeInvalid.body), "Could not count production orders.");
+assert(
+  !(await rpc("create_production_order", {
     p_product_id: product.id,
     p_production_date: "2026-08-11",
     p_lots: [{ quantity: 2 }, { quantity: 0 }],
-    p_source_reference: null,
-    p_notes: null,
-  },
-  adminToken,
+  }, adminToken)).response.ok,
+  "Invalid Lot quantity created an order.",
 );
-if (invalidCreate.response.ok) {
-  throw new Error("Invalid lot quantity unexpectedly created a production order.");
-}
-
-const stringQuantityCreate = await rpc(
-  "create_production_order",
-  {
+assert(
+  !(await rpc("create_production_order", {
     p_product_id: product.id,
     p_production_date: "2026-08-11",
     p_lots: [{ quantity: "2" }],
-    p_source_reference: null,
-    p_notes: null,
-  },
-  adminToken,
+  }, adminToken)).response.ok,
+  "String Lot quantity bypassed the RPC contract.",
 );
-if (stringQuantityCreate.response.ok) {
-  throw new Error("String lot quantity unexpectedly bypassed the production JSON contract.");
-}
-
-const orderCountAfterInvalid = await rest("production_orders?select=id", { token: adminToken });
-if (!orderCountAfterInvalid.response.ok || !Array.isArray(orderCountAfterInvalid.body)) {
-  throw new Error(`Could not re-read production order count: ${JSON.stringify(orderCountAfterInvalid.body)}`);
-}
-if (orderCountAfterInvalid.body.length !== orderCountBeforeInvalid.body.length) {
-  throw new Error("Failed production creation left a partial production-order record behind.");
-}
+const countAfterInvalid = await rest("production_orders?select=id", { token: adminToken });
+assert(
+  countAfterInvalid.response.ok && Array.isArray(countAfterInvalid.body) && countAfterInvalid.body.length === countBeforeInvalid.body.length,
+  "Failed production creation left a partial order.",
+);
 
 const voidReason = "اختبار إبطال أمر لم يمثل إنتاجًا فعليًا";
-const voided = await rpc(
-  "void_production_order",
-  { p_order_id: orderId, p_reason: voidReason },
-  adminToken,
-);
-if (!voided.response.ok || voided.body !== orderId) {
-  throw new Error(`Admin could not void production order (${voided.response.status}): ${JSON.stringify(voided.body)}`);
-}
-
-const voidedAgain = await rpc(
-  "void_production_order",
-  { p_order_id: orderId, p_reason: "Repeated safe void request" },
-  adminToken,
-);
-if (!voidedAgain.response.ok || voidedAgain.body !== orderId) {
-  throw new Error(`Repeated void was not idempotent: ${JSON.stringify(voidedAgain.body)}`);
-}
-
+const voided = await rpc("void_production_order", { p_order_id: orderId, p_reason: voidReason }, adminToken);
+assert(voided.response.ok && voided.body === orderId, `Admin could not void order: ${JSON.stringify(voided.body)}`);
+const voidedAgain = await rpc("void_production_order", { p_order_id: orderId, p_reason: "Repeated safe void request" }, adminToken);
+assert(voidedAgain.response.ok && voidedAgain.body === orderId, "Repeated void was not idempotent.");
 const voidedOrder = expectSingleRow(
   await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=status,void_reason,voided_by,voided_at`, { token: adminToken }),
-  "Voided production order read",
+  "Voided order read",
 );
-if (voidedOrder.status !== "voided" || voidedOrder.void_reason !== voidReason || !voidedOrder.voided_by || !voidedOrder.voided_at) {
-  throw new Error(`Voided production audit is inconsistent: ${JSON.stringify(voidedOrder)}`);
-}
-
+assert(
+  voidedOrder.status === "voided" && voidedOrder.void_reason === voidReason && voidedOrder.voided_by && voidedOrder.voided_at,
+  `Invalid void audit: ${JSON.stringify(voidedOrder)}`,
+);
 const retainedLots = await rest(`production_lots?production_order_id=eq.${encodeURIComponent(orderId)}&select=id`, { token: adminToken });
 const retainedRolls = await rest(`rolls?production_order_id=eq.${encodeURIComponent(orderId)}&select=id`, { token: adminToken });
-if (
-  !retainedLots.response.ok
-  || !Array.isArray(retainedLots.body)
-  || retainedLots.body.length !== 2
-  || !retainedRolls.response.ok
-  || !Array.isArray(retainedRolls.body)
-  || retainedRolls.body.length !== 5
-) {
-  throw new Error("Voiding a production order removed generated audit identities.");
-}
+assert(retainedLots.response.ok && retainedLots.body.length === 2, "Voiding removed Lots.");
+assert(retainedRolls.response.ok && retainedRolls.body.length === 5, "Voiding removed Roll identities.");
 
-const archived = await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,status`, {
-  method: "PATCH",
-  token: adminToken,
-  body: { status: "archived" },
-});
-expectSingleRow(archived, "Archive production smoke product");
-
-const archivedProductCreate = await rpc(
-  "create_production_order",
-  {
-    p_product_id: product.id,
-    p_production_date: "2026-08-11",
-    p_lots: [{ quantity: 1 }],
-    p_source_reference: null,
-    p_notes: null,
-  },
-  adminToken,
+// With no operational production left for this Product, a physical correction becomes possible again.
+expectSingleRow(
+  await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,width_mm`, {
+    method: "PATCH",
+    token: adminToken,
+    body: { width_mm: 1600 },
+  }),
+  "Physical Product correction after all production was voided",
 );
-if (archivedProductCreate.response.ok) {
-  throw new Error("Archived product unexpectedly accepted a new production order.");
-}
+const preservedAfterVoid = expectSingleRow(
+  await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=width_mm_snapshot`, { token: adminToken }),
+  "Voided snapshot preservation read",
+);
+assert(Number(preservedAfterVoid.width_mm_snapshot) === 1524, "Voided historical snapshot changed after Product correction.");
+
+expectSingleRow(
+  await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,status`, {
+    method: "PATCH",
+    token: adminToken,
+    body: { status: "archived" },
+  }),
+  "Archive production smoke product",
+);
+assert(
+  !(await rpc("create_production_order", { p_product_id: product.id, p_production_date: "2026-08-11", p_lots: [{ quantity: 1 }] }, adminToken)).response.ok,
+  "Archived Product unexpectedly accepted new production.",
+);
 
 console.log("Production order / lot / roll foundation closure smoke passed.");
