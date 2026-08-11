@@ -7,17 +7,20 @@ This cube establishes the first complete PPF production path after Product Found
 ## Included scope
 
 - Admin-only production-order registry.
-- Production-order creation for active PPF Products.
+- Production-order creation for active, production-ready PPF Products.
 - One to fifty Lots per order.
 - One to 10,000 total rolls per order.
 - Atomic creation of the Production Order, Lots, and physical Roll records.
+- Historical snapshot of the Product identity and production-critical specifications at generation time.
+- Database-enforced Order → Lot → Roll lineage consistency.
 - System-generated production order number.
 - System-generated Lot numbers.
 - System-generated internal Roll serials.
 - System-generated independent ERP serial per Roll.
 - Searchable Roll registry by internal serial or ERP serial.
 - Production-order review with Lot breakdown and Roll preview.
-- Printable production-order summary.
+- Printable production-order summary based on the historical snapshot.
+- Audited irreversible void path for an order created in error, without deleting or recycling generated identities.
 
 ## Deliberately excluded
 
@@ -43,7 +46,12 @@ One immutable header for a production operation. It references exactly one Produ
 - optional source reference;
 - optional notes;
 - total physical-roll count;
-- creating administrator and timestamp.
+- creating administrator and timestamp;
+- audit status: `generated` or `voided`;
+- void reason, administrator, and timestamp when voided;
+- Product/SKU snapshot captured at generation: code, name, version, width, length, thickness, weight, and origin.
+
+The snapshot is intentionally narrow. It protects historical production and future label reprints from later Product edits without introducing a generalized Product-versioning subsystem. Warranty policy is not snapshotted here; the Warranty cube owns the warranty-policy snapshot when a warranty is actually created.
 
 ### `production_lots`
 
@@ -53,6 +61,8 @@ The breakdown inside one Production Order. Every Lot references the same Product
 - order-relative Lot sequence;
 - optional external/source Lot reference;
 - number of Rolls in that Lot.
+
+A composite foreign-key contract guarantees that a Lot cannot point to an Order while claiming a different Product.
 
 ### `rolls`
 
@@ -65,7 +75,7 @@ One row equals one physical PPF roll. Each Roll records:
 - unique internal Roll serial;
 - separate unique ERP serial.
 
-No activation or warranty identifier is stored on the Roll in this cube.
+Composite lineage constraints guarantee that the Roll Product, Order, and Lot always describe the same production hierarchy. No activation or warranty identifier is stored on the Roll in this cube.
 
 ## Identifier format
 
@@ -85,17 +95,31 @@ All production creation goes through `public.create_production_order(...)`.
 The function:
 
 1. verifies that the caller is an active administrator;
-2. verifies that the Product is active and PPF;
-3. validates Lot count, per-Lot quantity, total quantity, and optional reference lengths;
-4. generates the order identity;
-5. inserts the Production Order;
-6. generates all Lots;
-7. generates every physical Roll and its identities;
-8. commits only if the entire operation succeeds.
+2. verifies that the Product is active, PPF, and contains the production-critical specification fields;
+3. validates the Lot JSON shape, Lot count, integer quantities, total quantity, and optional reference lengths;
+4. captures the Product identity/specification snapshot;
+5. generates the order identity;
+6. inserts the Production Order;
+7. generates all Lots;
+8. generates every physical Roll and its identities;
+9. commits only if the entire operation succeeds.
 
 If any validation or insert fails, the transaction rolls back and no partial Production Order, Lot, or Roll is retained.
 
-Authenticated application users have read access only when RLS confirms an active administrator. Direct Data API insert/update/delete access is not granted for the production tables, including to administrators. This keeps the atomic RPC as the single normal creation path.
+Authenticated application users have read access only when RLS confirms an active administrator. Direct Data API insert/update/delete access is not granted for the production tables, including to administrators. This keeps controlled RPCs as the only normal mutation paths.
+
+## Void contract
+
+A generated production order is never edited or deleted. If the operator created an order in error or the represented production did not actually occur, an active administrator can call `public.void_production_order(...)` with a mandatory reason.
+
+Voiding:
+
+- changes only the audit lifecycle from `generated` to `voided`;
+- records who voided it, when, and why;
+- keeps the Order, Lots, internal Roll serials, and ERP serials permanently reserved and visible;
+- is idempotent and cannot reactivate the order.
+
+Any later transfer, activation, warranty, or label-execution flow that treats a Roll as operational must require its parent Production Order to remain `generated`. Voided records remain available for audit and printing but are not operational stock.
 
 ## UX contract
 
@@ -109,7 +133,9 @@ The operator only provides information that humans actually know:
 
 The UI calculates the live Lot and Roll totals before confirmation. It does not ask operators to invent order numbers, Lot numbers, Roll serials, or ERP serials.
 
-Production Orders are intentionally not editable after generation because their identifiers represent physical Rolls. The detail page is a review surface, while the Roll registry is the scalable search surface for large orders.
+Production Orders are intentionally not editable after generation because their identifiers represent physical Rolls. A deliberate void control is provided for genuine creation mistakes. The detail page is a review/audit surface, while the Roll registry is the scalable search surface for large orders.
+
+The default production date is calculated in the platform operating timezone (`Africa/Cairo`) rather than server UTC, while remaining editable by the operator.
 
 The mobile bottom navigation remains limited to its established five primary items. Production is reachable from the operations home on mobile and directly from the desktop sidebar, avoiding a crowded six-tab mobile bar.
 
@@ -122,9 +148,13 @@ It verifies:
 - successful atomic creation;
 - exact Lot and Roll counts;
 - generated identifier formats and uniqueness;
-- direct Roll insertion is blocked;
-- dealer accounts cannot read or create production data;
+- historical Product snapshot values do not drift after Product edits;
+- incomplete Products cannot enter production;
+- direct insert/update/delete attempts cannot bypass controlled production mutation paths;
+- dealer accounts cannot read, create, or void production data;
 - invalid Lot input does not leave partial production records;
+- audited voiding keeps all generated Lots and Roll identities;
+- repeated void requests are safe and idempotent;
 - archived Products cannot receive new production orders.
 
 The committed Supabase TypeScript types are also regenerated and compared in CI.
