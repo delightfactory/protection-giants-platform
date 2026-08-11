@@ -164,8 +164,20 @@ const order = expectSingleRow(
   await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=*`, { token: adminToken }),
   "Production order read",
 );
-if (!/^PG-PO-20260811-[0-9]{8}$/.test(order.order_number) || order.total_rolls !== 5) {
+if (!/^PG-PO-20260811-[0-9]{8}$/.test(order.order_number) || order.total_rolls !== 5 || order.status !== "generated") {
   throw new Error(`Production order header is inconsistent: ${JSON.stringify(order)}`);
+}
+if (
+  order.product_code_snapshot !== "PG-PRODUCTION-TEST"
+  || order.product_name_snapshot !== "Production Test PPF"
+  || order.product_version_snapshot !== "Test"
+  || Number(order.width_mm_snapshot) !== 1524
+  || Number(order.length_m_snapshot) !== 15
+  || Number(order.thickness_mil_snapshot) !== 7.5
+  || Number(order.weight_kg_snapshot) !== 12.5
+  || order.origin_country_snapshot !== "USA"
+) {
+  throw new Error(`Production product snapshot is inconsistent: ${JSON.stringify(order)}`);
 }
 
 const lotsResult = await rest(
@@ -204,6 +216,28 @@ for (const roll of rollsResult.body) {
   }
 }
 
+const productEdited = await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,code,name,width_mm`, {
+  method: "PATCH",
+  token: adminToken,
+  body: {
+    name: "Production Test PPF Updated",
+    width_mm: 1600,
+  },
+});
+expectSingleRow(productEdited, "Edit product after production generation");
+
+const historicalOrder = expectSingleRow(
+  await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=product_code_snapshot,product_name_snapshot,width_mm_snapshot`, { token: adminToken }),
+  "Historical production snapshot read",
+);
+if (
+  historicalOrder.product_code_snapshot !== "PG-PRODUCTION-TEST"
+  || historicalOrder.product_name_snapshot !== "Production Test PPF"
+  || Number(historicalOrder.width_mm_snapshot) !== 1524
+) {
+  throw new Error(`Historical production snapshot drifted after Product edit: ${JSON.stringify(historicalOrder)}`);
+}
+
 const directInsert = await rest("rolls?select=id", {
   method: "POST",
   token: adminToken,
@@ -218,6 +252,52 @@ const directInsert = await rest("rolls?select=id", {
 });
 if (directInsert.response.ok) {
   throw new Error("Authenticated admin unexpectedly bypassed the atomic production RPC with a direct roll insert.");
+}
+
+const directOrderPatch = await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}`, {
+  method: "PATCH",
+  token: adminToken,
+  body: { total_rolls: 99 },
+});
+if (directOrderPatch.response.ok) {
+  throw new Error("Authenticated admin unexpectedly updated immutable production data directly.");
+}
+
+const directLotDelete = await rest(`production_lots?id=eq.${encodeURIComponent(lotsResult.body[0].id)}`, {
+  method: "DELETE",
+  token: adminToken,
+});
+if (directLotDelete.response.ok) {
+  throw new Error("Authenticated admin unexpectedly deleted immutable production data directly.");
+}
+
+const incompleteProduct = expectSingleRow(
+  await rest("products?select=id", {
+    method: "POST",
+    token: adminToken,
+    body: {
+      code: "PG-INCOMPLETE-PROD",
+      name: "Incomplete Production Product",
+      slug: "incomplete-production-product",
+      default_warranty_months: 12,
+    },
+  }),
+  "Incomplete product fixture creation",
+);
+
+const incompleteProductCreate = await rpc(
+  "create_production_order",
+  {
+    p_product_id: incompleteProduct.id,
+    p_production_date: "2026-08-11",
+    p_lots: [{ quantity: 1 }],
+    p_source_reference: null,
+    p_notes: null,
+  },
+  adminToken,
+);
+if (incompleteProductCreate.response.ok) {
+  throw new Error("Incomplete Product unexpectedly accepted a production order.");
 }
 
 const dealer = expectSingleRow(
@@ -256,6 +336,15 @@ if (dealerCreate.response.ok) {
   throw new Error("Dealer unexpectedly created a production order.");
 }
 
+const dealerVoid = await rpc(
+  "void_production_order",
+  { p_order_id: orderId, p_reason: "Dealer must not void production" },
+  dealerToken,
+);
+if (dealerVoid.response.ok) {
+  throw new Error("Dealer unexpectedly voided a production order.");
+}
+
 const orderCountBeforeInvalid = await rest("production_orders?select=id", { token: adminToken });
 if (!orderCountBeforeInvalid.response.ok || !Array.isArray(orderCountBeforeInvalid.body)) {
   throw new Error(`Could not read production order count: ${JSON.stringify(orderCountBeforeInvalid.body)}`);
@@ -276,12 +365,67 @@ if (invalidCreate.response.ok) {
   throw new Error("Invalid lot quantity unexpectedly created a production order.");
 }
 
+const stringQuantityCreate = await rpc(
+  "create_production_order",
+  {
+    p_product_id: product.id,
+    p_production_date: "2026-08-11",
+    p_lots: [{ quantity: "2" }],
+    p_source_reference: null,
+    p_notes: null,
+  },
+  adminToken,
+);
+if (stringQuantityCreate.response.ok) {
+  throw new Error("String lot quantity unexpectedly bypassed the production JSON contract.");
+}
+
 const orderCountAfterInvalid = await rest("production_orders?select=id", { token: adminToken });
 if (!orderCountAfterInvalid.response.ok || !Array.isArray(orderCountAfterInvalid.body)) {
   throw new Error(`Could not re-read production order count: ${JSON.stringify(orderCountAfterInvalid.body)}`);
 }
 if (orderCountAfterInvalid.body.length !== orderCountBeforeInvalid.body.length) {
   throw new Error("Failed production creation left a partial production-order record behind.");
+}
+
+const voidReason = "اختبار إبطال أمر لم يمثل إنتاجًا فعليًا";
+const voided = await rpc(
+  "void_production_order",
+  { p_order_id: orderId, p_reason: voidReason },
+  adminToken,
+);
+if (!voided.response.ok || voided.body !== orderId) {
+  throw new Error(`Admin could not void production order (${voided.response.status}): ${JSON.stringify(voided.body)}`);
+}
+
+const voidedAgain = await rpc(
+  "void_production_order",
+  { p_order_id: orderId, p_reason: "Repeated safe void request" },
+  adminToken,
+);
+if (!voidedAgain.response.ok || voidedAgain.body !== orderId) {
+  throw new Error(`Repeated void was not idempotent: ${JSON.stringify(voidedAgain.body)}`);
+}
+
+const voidedOrder = expectSingleRow(
+  await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=status,void_reason,voided_by,voided_at`, { token: adminToken }),
+  "Voided production order read",
+);
+if (voidedOrder.status !== "voided" || voidedOrder.void_reason !== voidReason || !voidedOrder.voided_by || !voidedOrder.voided_at) {
+  throw new Error(`Voided production audit is inconsistent: ${JSON.stringify(voidedOrder)}`);
+}
+
+const retainedLots = await rest(`production_lots?production_order_id=eq.${encodeURIComponent(orderId)}&select=id`, { token: adminToken });
+const retainedRolls = await rest(`rolls?production_order_id=eq.${encodeURIComponent(orderId)}&select=id`, { token: adminToken });
+if (
+  !retainedLots.response.ok
+  || !Array.isArray(retainedLots.body)
+  || retainedLots.body.length !== 2
+  || !retainedRolls.response.ok
+  || !Array.isArray(retainedRolls.body)
+  || retainedRolls.body.length !== 5
+) {
+  throw new Error("Voiding a production order removed generated audit identities.");
 }
 
 const archived = await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,status`, {
@@ -306,4 +450,4 @@ if (archivedProductCreate.response.ok) {
   throw new Error("Archived product unexpectedly accepted a new production order.");
 }
 
-console.log("Production order / lot / roll foundation smoke passed.");
+console.log("Production order / lot / roll foundation closure smoke passed.");
