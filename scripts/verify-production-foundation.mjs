@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 const apiUrl = process.env.API_URL;
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY;
 const anonKey = process.env.ANON_KEY;
@@ -17,11 +19,7 @@ function assert(condition, message) {
 async function readJson(response) {
   const text = await response.text();
   if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
+  try { return JSON.parse(text); } catch { return text; }
 }
 
 async function adminCreateUser({ email, role, dealerId = null, displayName }) {
@@ -101,6 +99,16 @@ function expectSingleRow(result, label) {
   return result.body[0];
 }
 
+function productionRequest(productId, overrides = {}) {
+  return {
+    p_request_id: randomUUID(),
+    p_product_id: productId,
+    p_production_date: "2026-08-11",
+    p_lots: [{ quantity: 1 }],
+    ...overrides,
+  };
+}
+
 await adminCreateUser({ email: adminEmail, role: "admin", displayName: "مسؤول اختبار أوامر الإنتاج" });
 const adminToken = await signIn(adminEmail);
 
@@ -132,29 +140,35 @@ const product = expectSingleRow(
   "Production smoke product creation",
 );
 
-const created = await rpc(
-  "create_production_order",
-  {
-    p_product_id: product.id,
-    p_production_date: "2026-08-11",
-    p_lots: [
-      { quantity: 2, source_reference: "FACTORY-A" },
-      { quantity: 3, source_reference: "FACTORY-B" },
-    ],
-    p_source_reference: "SOURCE-PO-1001",
-    p_notes: "Atomic production smoke test",
-  },
-  adminToken,
-);
+const requestId = randomUUID();
+const createBody = {
+  p_request_id: requestId,
+  p_product_id: product.id,
+  p_production_date: "2026-08-11",
+  p_lots: [
+    { quantity: 2, source_reference: "FACTORY-A" },
+    { quantity: 3, source_reference: "FACTORY-B" },
+  ],
+  p_source_reference: "SOURCE-PO-1001",
+  p_notes: "Atomic production smoke test",
+};
+
+const created = await rpc("create_production_order", createBody, adminToken);
 assert(created.response.ok && typeof created.body === "string", `Production RPC failed: ${JSON.stringify(created.body)}`);
 const orderId = created.body;
+
+const retried = await rpc("create_production_order", createBody, adminToken);
+assert(retried.response.ok && retried.body === orderId, `Idempotent retry returned a different order: ${JSON.stringify(retried.body)}`);
+
+const requestRows = await rest(`production_orders?request_id=eq.${encodeURIComponent(requestId)}&select=id`, { token: adminToken });
+assert(requestRows.response.ok && requestRows.body.length === 1 && requestRows.body[0].id === orderId, "Repeated request created duplicate production orders.");
 
 const order = expectSingleRow(
   await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=*`, { token: adminToken }),
   "Production order read",
 );
 assert(/^PG-PO-20260811-[0-9]{8}$/.test(order.order_number), `Invalid order number: ${order.order_number}`);
-assert(order.total_rolls === 5 && order.status === "generated", `Invalid production header: ${JSON.stringify(order)}`);
+assert(order.request_id === requestId && order.total_rolls === 5 && order.status === "generated", `Invalid production header: ${JSON.stringify(order)}`);
 assert(
   order.product_code_snapshot === "PG-PRODUCTION-TEST"
     && order.product_name_snapshot === "Production Test PPF"
@@ -171,7 +185,7 @@ const lotsResult = await rest(
   `production_lots?production_order_id=eq.${encodeURIComponent(orderId)}&select=*&order=lot_sequence.asc`,
   { token: adminToken },
 );
-assert(lotsResult.response.ok && Array.isArray(lotsResult.body) && lotsResult.body.length === 2, "Expected two Lots.");
+assert(lotsResult.response.ok && lotsResult.body.length === 2, "Expected two Lots.");
 assert(lotsResult.body.reduce((sum, lot) => sum + lot.roll_count, 0) === 5, "Lot total does not match order total.");
 assert(
   lotsResult.body.every((lot, index) => lot.lot_sequence === index + 1 && /^PG-L-20260811-[0-9]{8}-[0-9]{2}$/.test(lot.lot_number)),
@@ -182,7 +196,7 @@ const rollsResult = await rest(
   `rolls?production_order_id=eq.${encodeURIComponent(orderId)}&select=*&order=serial_number.asc`,
   { token: adminToken },
 );
-assert(rollsResult.response.ok && Array.isArray(rollsResult.body) && rollsResult.body.length === 5, "Expected five Rolls.");
+assert(rollsResult.response.ok && rollsResult.body.length === 5, "Expected five Rolls.");
 assert(new Set(rollsResult.body.map((roll) => roll.serial_number)).size === 5, "Internal Roll serials are not unique.");
 assert(new Set(rollsResult.body.map((roll) => roll.erp_serial)).size === 5, "ERP serials are not unique.");
 for (const roll of rollsResult.body) {
@@ -190,7 +204,6 @@ for (const roll of rollsResult.body) {
   assert(/^ERP-[A-F0-9]{16}$/.test(roll.erp_serial), `Invalid ERP serial: ${roll.erp_serial}`);
 }
 
-// Non-physical Product content remains editable; historical production still uses its snapshot.
 expectSingleRow(
   await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,name`, {
     method: "PATCH",
@@ -208,7 +221,6 @@ assert(
   `Historical production snapshot drifted: ${JSON.stringify(historicalOrder)}`,
 );
 
-// A produced SKU cannot silently become a different physical specification.
 const lockedSpecEdit = await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,width_mm`, {
   method: "PATCH",
   token: adminToken,
@@ -229,17 +241,14 @@ const directInsert = await rest("rolls?select=id", {
   },
 });
 assert(!directInsert.response.ok, "Admin bypassed the atomic RPC with a direct Roll insert.");
-const directOrderPatch = await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}`, {
-  method: "PATCH",
-  token: adminToken,
-  body: { total_rolls: 99 },
-});
-assert(!directOrderPatch.response.ok, "Admin directly updated immutable production data.");
-const directLotDelete = await rest(`production_lots?id=eq.${encodeURIComponent(lotsResult.body[0].id)}`, {
-  method: "DELETE",
-  token: adminToken,
-});
-assert(!directLotDelete.response.ok, "Admin directly deleted immutable production data.");
+assert(
+  !(await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}`, { method: "PATCH", token: adminToken, body: { total_rolls: 99 } })).response.ok,
+  "Admin directly updated immutable production data.",
+);
+assert(
+  !(await rest(`production_lots?id=eq.${encodeURIComponent(lotsResult.body[0].id)}`, { method: "DELETE", token: adminToken })).response.ok,
+  "Admin directly deleted immutable production data.",
+);
 
 const incompleteProduct = expectSingleRow(
   await rest("products?select=id", {
@@ -254,12 +263,10 @@ const incompleteProduct = expectSingleRow(
   }),
   "Incomplete product fixture creation",
 );
-const incompleteCreate = await rpc(
-  "create_production_order",
-  { p_product_id: incompleteProduct.id, p_production_date: "2026-08-11", p_lots: [{ quantity: 1 }] },
-  adminToken,
+assert(
+  !(await rpc("create_production_order", productionRequest(incompleteProduct.id), adminToken)).response.ok,
+  "Incomplete Product unexpectedly entered production.",
 );
-assert(!incompleteCreate.response.ok, "Incomplete Product unexpectedly entered production.");
 
 const dealer = expectSingleRow(
   await rest("dealers?select=id", {
@@ -272,9 +279,9 @@ const dealer = expectSingleRow(
 await adminCreateUser({ email: dealerEmail, role: "dealer", dealerId: dealer.id, displayName: "مستخدم وكيل اختبار الإنتاج" });
 const dealerToken = await signIn(dealerEmail);
 const dealerRead = await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=id`, { token: dealerToken });
-assert(dealerRead.response.ok && Array.isArray(dealerRead.body) && dealerRead.body.length === 0, "Dealer read production data.");
+assert(dealerRead.response.ok && dealerRead.body.length === 0, "Dealer read production data.");
 assert(
-  !(await rpc("create_production_order", { p_product_id: product.id, p_production_date: "2026-08-11", p_lots: [{ quantity: 1 }] }, dealerToken)).response.ok,
+  !(await rpc("create_production_order", productionRequest(product.id), dealerToken)).response.ok,
   "Dealer created production data.",
 );
 assert(
@@ -285,24 +292,16 @@ assert(
 const countBeforeInvalid = await rest("production_orders?select=id", { token: adminToken });
 assert(countBeforeInvalid.response.ok && Array.isArray(countBeforeInvalid.body), "Could not count production orders.");
 assert(
-  !(await rpc("create_production_order", {
-    p_product_id: product.id,
-    p_production_date: "2026-08-11",
-    p_lots: [{ quantity: 2 }, { quantity: 0 }],
-  }, adminToken)).response.ok,
+  !(await rpc("create_production_order", productionRequest(product.id, { p_lots: [{ quantity: 2 }, { quantity: 0 }] }), adminToken)).response.ok,
   "Invalid Lot quantity created an order.",
 );
 assert(
-  !(await rpc("create_production_order", {
-    p_product_id: product.id,
-    p_production_date: "2026-08-11",
-    p_lots: [{ quantity: "2" }],
-  }, adminToken)).response.ok,
+  !(await rpc("create_production_order", productionRequest(product.id, { p_lots: [{ quantity: "2" }] }), adminToken)).response.ok,
   "String Lot quantity bypassed the RPC contract.",
 );
 const countAfterInvalid = await rest("production_orders?select=id", { token: adminToken });
 assert(
-  countAfterInvalid.response.ok && Array.isArray(countAfterInvalid.body) && countAfterInvalid.body.length === countBeforeInvalid.body.length,
+  countAfterInvalid.response.ok && countAfterInvalid.body.length === countBeforeInvalid.body.length,
   "Failed production creation left a partial order.",
 );
 
@@ -324,7 +323,6 @@ const retainedRolls = await rest(`rolls?production_order_id=eq.${encodeURICompon
 assert(retainedLots.response.ok && retainedLots.body.length === 2, "Voiding removed Lots.");
 assert(retainedRolls.response.ok && retainedRolls.body.length === 5, "Voiding removed Roll identities.");
 
-// With no operational production left for this Product, a physical correction becomes possible again.
 expectSingleRow(
   await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,width_mm`, {
     method: "PATCH",
@@ -348,7 +346,7 @@ expectSingleRow(
   "Archive production smoke product",
 );
 assert(
-  !(await rpc("create_production_order", { p_product_id: product.id, p_production_date: "2026-08-11", p_lots: [{ quantity: 1 }] }, adminToken)).response.ok,
+  !(await rpc("create_production_order", productionRequest(product.id), adminToken)).response.ok,
   "Archived Product unexpectedly accepted new production.",
 );
 
