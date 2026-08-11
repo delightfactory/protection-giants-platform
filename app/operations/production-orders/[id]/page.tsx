@@ -104,6 +104,9 @@ export default async function ProductionOrderDetailPage({ params, searchParams }
       {feedback.status === "voided" ? (
         <FeedbackBanner tone="success">تم إبطال أمر الإنتاج مع الاحتفاظ بالسجل والـLots وهويات اللفات للتدقيق.</FeedbackBanner>
       ) : null}
+      {feedback.status === "recovered" ? (
+        <FeedbackBanner tone="success">تم العثور على أمر الإنتاج الذي نُفذ أثناء المحاولة السابقة. لم يتم إنشاء أمر أو سيريالات مكررة.</FeedbackBanner>
+      ) : null}
       {feedback.error ? (
         <FeedbackBanner tone="error">{errorMessages[feedback.error] ?? errorMessages["void-failed"]}</FeedbackBanner>
       ) : null}
