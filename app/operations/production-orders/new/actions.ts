@@ -59,6 +59,11 @@ function parseLots(value: FormDataEntryValue | null): LotInput[] | null {
   }
 }
 
+function retryPath(error: "invalid" | "failed", requestId: string) {
+  const requestQuery = uuidPattern.test(requestId) ? `&request=${requestId}` : "";
+  return `/operations/production-orders/new?error=${error}${requestQuery}`;
+}
+
 export async function createProductionOrder(formData: FormData) {
   await requireAdminProfile();
 
@@ -77,7 +82,7 @@ export async function createProductionOrder(formData: FormData) {
     || notes.length > 2000
     || !lots
   ) {
-    redirect("/operations/production-orders/new?error=invalid");
+    redirect(retryPath("invalid", requestId));
   }
 
   const supabase = await createSupabaseServerClient();
@@ -91,7 +96,7 @@ export async function createProductionOrder(formData: FormData) {
   });
 
   if (error || !data) {
-    redirect("/operations/production-orders/new?error=failed");
+    redirect(retryPath("failed", requestId));
   }
 
   revalidatePath("/operations/production-orders");
