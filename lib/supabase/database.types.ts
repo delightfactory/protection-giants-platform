@@ -160,6 +160,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "production_lots_order_product_consistency_fkey"
+            columns: ["production_order_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
             foreignKeyName: "production_lots_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -180,34 +187,70 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          length_m_snapshot: number
           notes: string | null
           order_number: string
+          origin_country_snapshot: string
+          product_code_snapshot: string
           product_id: string
+          product_name_snapshot: string
+          product_version_snapshot: string | null
           production_date: string
           source_reference: string | null
+          status: string
+          thickness_mil_snapshot: number
           total_rolls: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          weight_kg_snapshot: number
+          width_mm_snapshot: number
         }
         Insert: {
           created_at?: string
           created_by: string
           id?: string
+          length_m_snapshot: number
           notes?: string | null
           order_number: string
+          origin_country_snapshot: string
+          product_code_snapshot: string
           product_id: string
+          product_name_snapshot: string
+          product_version_snapshot?: string | null
           production_date: string
           source_reference?: string | null
+          status?: string
+          thickness_mil_snapshot: number
           total_rolls: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          weight_kg_snapshot: number
+          width_mm_snapshot: number
         }
         Update: {
           created_at?: string
           created_by?: string
           id?: string
+          length_m_snapshot?: number
           notes?: string | null
           order_number?: string
+          origin_country_snapshot?: string
+          product_code_snapshot?: string
           product_id?: string
+          product_name_snapshot?: string
+          product_version_snapshot?: string | null
           production_date?: string
           source_reference?: string | null
+          status?: string
+          thickness_mil_snapshot?: number
           total_rolls?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          weight_kg_snapshot?: number
+          width_mm_snapshot?: number
         }
         Relationships: [
           {
@@ -222,6 +265,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -385,6 +435,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "rolls_lot_order_product_consistency_fkey"
+            columns: ["production_lot_id", "production_order_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "production_lots"
+            referencedColumns: ["id", "production_order_id", "product_id"]
+          },
+          {
             foreignKeyName: "rolls_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -420,6 +477,10 @@ export type Database = {
           p_production_date: string
           p_source_reference?: string
         }
+        Returns: string
+      }
+      void_production_order: {
+        Args: { p_order_id: string; p_reason: string }
         Returns: string
       }
     }
@@ -478,8 +539,8 @@ export type TablesInsert<
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
+    Insert: infer I
+  }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
@@ -503,8 +564,8 @@ export type TablesUpdate<
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
+    Update: infer U
+  }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
