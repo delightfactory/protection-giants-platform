@@ -29,10 +29,17 @@ type ProductionOrderFormProps = {
 };
 
 export function ProductionOrderForm({ products, defaultProductionDate }: ProductionOrderFormProps) {
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [productionDate, setProductionDate] = useState(defaultProductionDate);
   const [lots, setLots] = useState<LotDraft[]>([
     { id: 1, quantity: "", sourceReference: "" },
   ]);
   const nextLotId = useRef(2);
+
+  const selectedProduct = useMemo(
+    () => products.find((product) => product.id === selectedProductId) ?? null,
+    [products, selectedProductId],
+  );
 
   const totalRolls = useMemo(
     () => lots.reduce((sum, lot) => {
@@ -44,6 +51,7 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
 
   const exceedsLimit = totalRolls > 10000;
   const cannotAddLot = lots.length >= 50 || totalRolls >= 10000;
+  const cannotSubmit = !selectedProduct || !productionDate || exceedsLimit || totalRolls < 1;
   const lotsPayload = useMemo(
     () => JSON.stringify(lots.map((lot) => ({
       quantity: Number(lot.quantity),
@@ -69,6 +77,10 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
     setLots((current) => current.filter((lot) => lot.id !== id));
   };
 
+  const confirmationDescription = selectedProduct
+    ? `المنتج: ${selectedProduct.code} — ${selectedProduct.name}. تاريخ الإنتاج: ${productionDate}. سيتم إنشاء ${lots.length} Lot وتوليد ${totalRolls.toLocaleString("en-US")} سجل لفة وهوية فريدة. بعد الإنشاء لن يكون هذا الأمر قابلاً للتعديل.`
+    : `سيتم إنشاء ${lots.length} Lot وتوليد ${totalRolls.toLocaleString("en-US")} سجل لفة وهوية فريدة. بعد الإنشاء لن يكون هذا الأمر قابلاً للتعديل.`;
+
   return (
     <form action={createProductionOrder} className="operations-form">
       <input type="hidden" name="lots_json" value={lotsPayload} />
@@ -79,7 +91,12 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
       >
         <FormGrid>
           <FormField label="المنتج">
-            <select name="product_id" required defaultValue="">
+            <select
+              name="product_id"
+              required
+              value={selectedProductId}
+              onChange={(event) => setSelectedProductId(event.target.value)}
+            >
               <option value="" disabled>اختر المنتج</option>
               {products.map((product) => {
                 const specs = [
@@ -98,7 +115,13 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
           </FormField>
 
           <FormField label="تاريخ الإنتاج" hint="التاريخ الفعلي الذي ترتبط به هذه الدفعة.">
-            <input name="production_date" type="date" defaultValue={defaultProductionDate} required />
+            <input
+              name="production_date"
+              type="date"
+              value={productionDate}
+              onChange={(event) => setProductionDate(event.target.value)}
+              required
+            />
           </FormField>
 
           <FormField label="مرجع المصدر" hint="رقم أمر مصنع أو ملف أو مرجع خارجي إن وجد." optional>
@@ -175,7 +198,8 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
       <section className="production-order-summary" aria-live="polite">
         <div>
           <span className="eyebrow">ملخص قبل التوليد</span>
-          <strong>{lots.length} Lot · {totalRolls.toLocaleString("en-US")} لفة</strong>
+          <strong>{selectedProduct ? `${selectedProduct.code} — ${selectedProduct.name}` : "اختر المنتج أولًا"}</strong>
+          <p>{productionDate || "—"} · {lots.length} Lot · {totalRolls.toLocaleString("en-US")} لفة</p>
           <p>سيُنشئ النظام سجلًا مستقلًا وهوية تشغيلية وERP Serial لكل لفة.</p>
         </div>
         {exceedsLimit ? (
@@ -187,9 +211,9 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
         <ConfirmSubmitButton
           tone="primary"
           title="توليد أمر الإنتاج واللفات؟"
-          description={`سيتم إنشاء ${lots.length} Lot وتوليد ${totalRolls.toLocaleString("en-US")} سجل لفة وهوية فريدة. بعد الإنشاء لن يكون هذا الأمر قابلاً للتعديل.`}
+          description={confirmationDescription}
           confirmLabel="تأكيد وإنشاء الأمر"
-          disabled={exceedsLimit || totalRolls < 1}
+          disabled={cannotSubmit}
         >
           إنشاء أمر الإنتاج
         </ConfirmSubmitButton>
