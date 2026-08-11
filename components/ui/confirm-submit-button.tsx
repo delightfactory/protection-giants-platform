@@ -34,8 +34,14 @@ export function ConfirmSubmitButton({
     if (form && !form.reportValidity()) return;
     dialogRef.current?.showModal();
   };
+
   const closeDialog = () => {
     if (!pending) dialogRef.current?.close();
+  };
+
+  const submitConfirmedForm = (button: HTMLButtonElement) => {
+    if (pending || disabled) return;
+    button.form?.requestSubmit();
   };
 
   return (
@@ -75,9 +81,10 @@ export function ConfirmSubmitButton({
               إلغاء
             </button>
             <button
-              type="submit"
+              type="button"
               className={tone === "danger" ? "button button-danger" : "button button-primary"}
-              disabled={pending}
+              onClick={(event) => submitConfirmedForm(event.currentTarget)}
+              disabled={pending || disabled}
             >
               {pending ? "جاري التنفيذ…" : confirmLabel}
             </button>
