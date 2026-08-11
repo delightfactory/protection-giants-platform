@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ProductionOrderForm } from "@/components/production-order-form";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
@@ -32,10 +33,25 @@ function cairoToday() {
 }
 
 export default async function ProductionOrderCreatePage({ searchParams }: ProductionOrderCreatePageProps) {
-  await requireAdminProfile();
+  const profile = await requireAdminProfile();
   const { error, request } = await searchParams;
-  const requestId = uuidPattern.test(request ?? "") ? request! : randomUUID();
+  const hasRetryRequest = uuidPattern.test(request ?? "");
+  const requestId = hasRetryRequest ? request! : randomUUID();
   const supabase = await createSupabaseServerClient();
+
+  if (error && hasRetryRequest) {
+    const { data: recoveredOrder, error: recoveryError } = await supabase
+      .from("production_orders")
+      .select("id, created_by")
+      .eq("request_id", requestId)
+      .maybeSingle();
+
+    if (recoveryError) throw recoveryError;
+    if (recoveredOrder?.created_by === profile.id) {
+      redirect(`/operations/production-orders/${recoveredOrder.id}?status=recovered`);
+    }
+  }
+
   const { data: products, error: productsError } = await supabase
     .from("products")
     .select("id, code, name, width_mm, length_m, thickness_mil, weight_kg, origin_country")
