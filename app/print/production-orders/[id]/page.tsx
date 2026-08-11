@@ -12,6 +12,19 @@ type PrintProductionOrderPageProps = {
   params: Promise<{ id: string }>;
 };
 
+function cairoDateTime(value: string | null) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
+}
+
 export default async function PrintProductionOrderPage({ params }: PrintProductionOrderPageProps) {
   await requireAdminProfile();
   const { id } = await params;
@@ -20,19 +33,14 @@ export default async function PrintProductionOrderPage({ params }: PrintProducti
   const supabase = await createSupabaseServerClient();
   const { data: order, error } = await supabase
     .from("production_orders")
-    .select("id, order_number, product_id, production_date, source_reference, notes, total_rolls, created_by, created_at")
+    .select("id, order_number, product_id, production_date, source_reference, notes, total_rolls, created_by, created_at, status, void_reason, voided_by, voided_at, product_code_snapshot, product_name_snapshot, product_version_snapshot, width_mm_snapshot, length_m_snapshot, thickness_mil_snapshot, weight_kg_snapshot, origin_country_snapshot")
     .eq("id", id)
     .maybeSingle();
 
   if (error) throw error;
   if (!order) notFound();
 
-  const [productResult, creatorResult, lotsResult] = await Promise.all([
-    supabase
-      .from("products")
-      .select("code, name, version_name, width_mm, length_m, thickness_mil, weight_kg, origin_country")
-      .eq("id", order.product_id)
-      .maybeSingle(),
+  const [creatorResult, lotsResult] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", order.created_by).maybeSingle(),
     supabase
       .from("production_lots")
@@ -41,14 +49,23 @@ export default async function PrintProductionOrderPage({ params }: PrintProducti
       .order("lot_sequence", { ascending: true }),
   ]);
 
-  if (productResult.error) throw productResult.error;
   if (creatorResult.error) throw creatorResult.error;
   if (lotsResult.error) throw lotsResult.error;
 
-  const product = productResult.data;
+  let voidedByName: string | null = null;
+  if (order.voided_by) {
+    const { data: voider, error: voiderError } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", order.voided_by)
+      .maybeSingle();
+    if (voiderError) throw voiderError;
+    voidedByName = voider?.display_name ?? null;
+  }
+
   const creator = creatorResult.data;
   const lots = lotsResult.data;
-  const createdAt = new Date(order.created_at).toISOString().slice(0, 16).replace("T", " ");
+  const isVoided = order.status === "voided";
 
   return (
     <main className={styles.screen}>
@@ -69,22 +86,32 @@ export default async function PrintProductionOrderPage({ params }: PrintProducti
           </div>
         </header>
 
+        {isVoided ? (
+          <section className={styles.voidBanner}>
+            <strong>أمر إنتاج مُبطل — غير صالح للاستخدام التشغيلي</strong>
+            <p>{order.void_reason}</p>
+            <small>
+              أبطله: {voidedByName ?? "—"} · <span dir="ltr">{cairoDateTime(order.voided_at)} Cairo</span>
+            </small>
+          </section>
+        ) : null}
+
         <section className={styles.title}>
           <h1>أمر إنتاج أفلام حماية الطلاء</h1>
-          <p>{product ? `${product.code} — ${product.name}` : "بيانات المنتج"}</p>
+          <p>{order.product_code_snapshot} — {order.product_name_snapshot}</p>
         </section>
 
         <dl className={styles.facts}>
-          <div className={styles.fact}><dt>SKU</dt><dd dir="ltr">{product?.code ?? "—"}</dd></div>
-          <div className={styles.fact}><dt>اسم المنتج</dt><dd>{product?.name ?? "—"}</dd></div>
-          <div className={styles.fact}><dt>الإصدار / الموديل</dt><dd>{product?.version_name ?? "—"}</dd></div>
+          <div className={styles.fact}><dt>SKU وقت الإنتاج</dt><dd dir="ltr">{order.product_code_snapshot}</dd></div>
+          <div className={styles.fact}><dt>اسم المنتج وقت الإنتاج</dt><dd>{order.product_name_snapshot}</dd></div>
+          <div className={styles.fact}><dt>الإصدار / الموديل</dt><dd>{order.product_version_snapshot ?? "—"}</dd></div>
           <div className={styles.fact}><dt>تاريخ الإنتاج</dt><dd dir="ltr">{order.production_date}</dd></div>
           <div className={styles.fact}><dt>إجمالي اللفات</dt><dd dir="ltr">{order.total_rolls.toLocaleString("en-US")}</dd></div>
           <div className={styles.fact}><dt>عدد الـLots</dt><dd dir="ltr">{lots.length.toLocaleString("en-US")}</dd></div>
-          <div className={styles.fact}><dt>المقاس الاسمي</dt><dd dir="ltr">{product?.width_mm && product?.length_m ? `${product.width_mm} mm × ${product.length_m} m` : "—"}</dd></div>
-          <div className={styles.fact}><dt>السمك</dt><dd dir="ltr">{product?.thickness_mil ? `${product.thickness_mil} mil` : "—"}</dd></div>
-          <div className={styles.fact}><dt>الوزن الاسمي</dt><dd dir="ltr">{product?.weight_kg ? `${product.weight_kg} kg` : "—"}</dd></div>
-          <div className={styles.fact}><dt>بلد المنشأ</dt><dd>{product?.origin_country ?? "—"}</dd></div>
+          <div className={styles.fact}><dt>المقاس الاسمي</dt><dd dir="ltr">{`${order.width_mm_snapshot} mm × ${order.length_m_snapshot} m`}</dd></div>
+          <div className={styles.fact}><dt>السمك</dt><dd dir="ltr">{`${order.thickness_mil_snapshot} mil`}</dd></div>
+          <div className={styles.fact}><dt>الوزن الاسمي</dt><dd dir="ltr">{`${order.weight_kg_snapshot} kg`}</dd></div>
+          <div className={styles.fact}><dt>بلد المنشأ</dt><dd>{order.origin_country_snapshot}</dd></div>
           <div className={styles.fact}><dt>مرجع المصدر</dt><dd dir="ltr">{order.source_reference ?? "—"}</dd></div>
           <div className={styles.fact}><dt>أنشأه</dt><dd>{creator?.display_name ?? "—"}</dd></div>
         </dl>
@@ -125,7 +152,7 @@ export default async function PrintProductionOrderPage({ params }: PrintProducti
         ) : null}
 
         <footer className={styles.footer}>
-          تم إنشاء هذا الأمر آليًا داخل منصة {brandConfig.name} بتاريخ <span dir="ltr">{createdAt} UTC</span>. هويات اللفات محفوظة في سجل اللفات المرتبط بالأمر.
+          تم إنشاء هذا الأمر آليًا داخل منصة {brandConfig.name} بتاريخ <span dir="ltr">{cairoDateTime(order.created_at)} Cairo</span>. مواصفات المنتج أعلاه هي النسخة التاريخية المثبتة وقت التوليد، وهويات اللفات محفوظة في سجل اللفات المرتبط بالأمر.
         </footer>
       </article>
     </main>
