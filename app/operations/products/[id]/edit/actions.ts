@@ -85,6 +85,9 @@ export async function updateProduct(formData: FormData) {
     .maybeSingle();
 
   if (error?.code === "23505") redirect(`${productEditPath(productId)}?error=duplicate`);
+  if (error?.code === "23514" && error.message.includes("Production identity/specification is locked")) {
+    redirect(`${productEditPath(productId)}?error=production-locked`);
+  }
   if (error) redirect(`${productEditPath(productId)}?error=failed`);
   if (!data) redirect("/operations/products");
 
