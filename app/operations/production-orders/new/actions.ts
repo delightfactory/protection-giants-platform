@@ -62,6 +62,7 @@ function parseLots(value: FormDataEntryValue | null): LotInput[] | null {
 export async function createProductionOrder(formData: FormData) {
   await requireAdminProfile();
 
+  const requestId = String(formData.get("request_id") ?? "").trim();
   const productId = String(formData.get("product_id") ?? "").trim();
   const productionDate = String(formData.get("production_date") ?? "").trim();
   const sourceReference = String(formData.get("source_reference") ?? "").trim();
@@ -69,7 +70,8 @@ export async function createProductionOrder(formData: FormData) {
   const lots = parseLots(formData.get("lots_json"));
 
   if (
-    !uuidPattern.test(productId)
+    !uuidPattern.test(requestId)
+    || !uuidPattern.test(productId)
     || !isValidDateInput(productionDate)
     || sourceReference.length > 120
     || notes.length > 2000
@@ -80,6 +82,7 @@ export async function createProductionOrder(formData: FormData) {
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("create_production_order", {
+    p_request_id: requestId,
     p_product_id: productId,
     p_production_date: productionDate,
     p_lots: lots as Json,
