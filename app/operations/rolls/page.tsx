@@ -19,7 +19,7 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
   const orderFilter = uuidPattern.test(params.order ?? "") ? params.order ?? "" : "";
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: products, error: productsError }, { data: orders, error: ordersError }] = await Promise.all([
+  const [{ data: products, error: productsError }, { data: recentOrders, error: ordersError }] = await Promise.all([
     supabase.from("products").select("id, code, name").order("name", { ascending: true }),
     supabase
       .from("production_orders")
@@ -45,14 +45,43 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
   if (error) throw error;
 
   const lotIds = [...new Set(rolls.map((roll) => roll.production_lot_id))];
-  const lots = lotIds.length
-    ? await supabase.from("production_lots").select("id, lot_number").in("id", lotIds)
-    : { data: [], error: null };
-  if (lots.error) throw lots.error;
+  const referencedOrderIds = [...new Set(rolls.map((roll) => roll.production_order_id))];
+  const selectedOrderIsRecent = Boolean(orderFilter && recentOrders.some((order) => order.id === orderFilter));
+
+  const [lotsResult, referencedOrdersResult, selectedOrderResult] = await Promise.all([
+    lotIds.length
+      ? supabase.from("production_lots").select("id, lot_number").in("id", lotIds)
+      : Promise.resolve({ data: [], error: null }),
+    referencedOrderIds.length
+      ? supabase
+          .from("production_orders")
+          .select("id, order_number, production_date, product_id")
+          .in("id", referencedOrderIds)
+      : Promise.resolve({ data: [], error: null }),
+    orderFilter && !selectedOrderIsRecent
+      ? supabase
+          .from("production_orders")
+          .select("id, order_number, production_date, product_id")
+          .eq("id", orderFilter)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  if (lotsResult.error) throw lotsResult.error;
+  if (referencedOrdersResult.error) throw referencedOrdersResult.error;
+  if (selectedOrderResult.error) throw selectedOrderResult.error;
 
   const productsById = new Map(products.map((product) => [product.id, product]));
-  const ordersById = new Map(orders.map((order) => [order.id, order]));
-  const lotsById = new Map((lots.data ?? []).map((lot) => [lot.id, lot]));
+  const allKnownOrders = [
+    ...recentOrders,
+    ...referencedOrdersResult.data,
+    ...(selectedOrderResult.data ? [selectedOrderResult.data] : []),
+  ];
+  const ordersById = new Map(allKnownOrders.map((order) => [order.id, order]));
+  const dropdownOrders = [...ordersById.values()]
+    .sort((a, b) => b.production_date.localeCompare(a.production_date))
+    .slice(0, selectedOrderResult.data ? 101 : 100);
+  const lotsById = new Map(lotsResult.data.map((lot) => [lot.id, lot]));
   const filtersActive = Boolean(search || orderFilter);
 
   return (
@@ -74,7 +103,7 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
             <FilterField label="أمر الإنتاج">
               <select name="order" defaultValue={orderFilter}>
                 <option value="">كل الأوامر</option>
-                {orders.map((order) => (
+                {dropdownOrders.map((order) => (
                   <option key={order.id} value={order.id}>{order.order_number}</option>
                 ))}
               </select>
