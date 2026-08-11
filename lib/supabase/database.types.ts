@@ -414,11 +414,11 @@ export type Database = {
     Functions: {
       create_production_order: {
         Args: {
+          p_lots: Json
+          p_notes?: string
           p_product_id: string
           p_production_date: string
-          p_lots: Json
           p_source_reference?: string
-          p_notes?: string
         }
         Returns: string
       }
@@ -536,7 +536,7 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
