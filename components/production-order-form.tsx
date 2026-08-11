@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
@@ -32,7 +32,7 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
   const [lots, setLots] = useState<LotDraft[]>([
     { id: 1, quantity: "", sourceReference: "" },
   ]);
-  const [nextLotId, setNextLotId] = useState(2);
+  const nextLotId = useRef(2);
 
   const totalRolls = useMemo(
     () => lots.reduce((sum, lot) => {
@@ -43,6 +43,7 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
   );
 
   const exceedsLimit = totalRolls > 10000;
+  const cannotAddLot = lots.length >= 50 || totalRolls >= 10000;
   const lotsPayload = useMemo(
     () => JSON.stringify(lots.map((lot) => ({
       quantity: Number(lot.quantity),
@@ -52,9 +53,11 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
   );
 
   const addLot = () => {
-    if (lots.length >= 50) return;
-    setLots((current) => [...current, { id: nextLotId, quantity: "", sourceReference: "" }]);
-    setNextLotId((current) => current + 1);
+    if (cannotAddLot) return;
+
+    const id = nextLotId.current;
+    nextLotId.current += 1;
+    setLots((current) => [...current, { id, quantity: "", sourceReference: "" }]);
   };
 
   const updateLot = (id: number, field: "quantity" | "sourceReference", value: string) => {
@@ -162,7 +165,7 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
             type="button"
             className="button button-ghost production-add-lot"
             onClick={addLot}
-            disabled={lots.length >= 50}
+            disabled={cannotAddLot}
           >
             + إضافة Lot آخر
           </button>
