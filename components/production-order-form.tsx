@@ -24,11 +24,12 @@ type LotDraft = {
 };
 
 type ProductionOrderFormProps = {
+  requestId: string;
   products: ProductOption[];
   defaultProductionDate: string;
 };
 
-export function ProductionOrderForm({ products, defaultProductionDate }: ProductionOrderFormProps) {
+export function ProductionOrderForm({ requestId, products, defaultProductionDate }: ProductionOrderFormProps) {
   const [selectedProductId, setSelectedProductId] = useState("");
   const [productionDate, setProductionDate] = useState(defaultProductionDate);
   const [lots, setLots] = useState<LotDraft[]>([
@@ -83,6 +84,7 @@ export function ProductionOrderForm({ products, defaultProductionDate }: Product
 
   return (
     <form action={createProductionOrder} className="operations-form">
+      <input type="hidden" name="request_id" value={requestId} />
       <input type="hidden" name="lots_json" value={lotsPayload} />
 
       <FormSection
