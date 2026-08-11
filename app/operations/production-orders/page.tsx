@@ -9,6 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PAGE_SIZE = 100;
+const MAX_PAGE = 100000;
 
 type ProductionOrdersPageProps = {
   searchParams: Promise<{ q?: string; product?: string; page?: string }>;
@@ -16,7 +17,7 @@ type ProductionOrdersPageProps = {
 
 function parsePage(value: string | undefined) {
   const parsed = Number.parseInt(value ?? "1", 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, MAX_PAGE) : 1;
 }
 
 function registryHref(search: string, productFilter: string, page: number) {
