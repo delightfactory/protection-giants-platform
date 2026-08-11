@@ -196,6 +196,7 @@ export type Database = {
           product_name_snapshot: string
           product_version_snapshot: string | null
           production_date: string
+          request_id: string
           source_reference: string | null
           status: string
           thickness_mil_snapshot: number
@@ -219,6 +220,7 @@ export type Database = {
           product_name_snapshot: string
           product_version_snapshot?: string | null
           production_date: string
+          request_id: string
           source_reference?: string | null
           status?: string
           thickness_mil_snapshot: number
@@ -242,6 +244,7 @@ export type Database = {
           product_name_snapshot?: string
           product_version_snapshot?: string | null
           production_date?: string
+          request_id?: string
           source_reference?: string | null
           status?: string
           thickness_mil_snapshot?: number
@@ -475,6 +478,7 @@ export type Database = {
           p_notes?: string
           p_product_id: string
           p_production_date: string
+          p_request_id: string
           p_source_reference?: string
         }
         Returns: string
@@ -539,8 +543,8 @@ export type TablesInsert<
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
+      Insert: infer I
+    }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
@@ -564,8 +568,8 @@ export type TablesUpdate<
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
+      Update: infer U
+    }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
@@ -602,13 +606,15 @@ export type CompositeTypes<
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+> = DefaultSchemaTableNameOrOptions extends never
+  ? never
+  : PublicCompositeTypeNameOrOptions extends {
+        schema: keyof DatabaseWithoutInternals
+      }
+    ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+    : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+      ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+      : never
 
 export const Constants = {
   public: {
