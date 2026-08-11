@@ -28,7 +28,7 @@ export default async function ProductionOrdersPage({ searchParams }: ProductionO
 
   let ordersQuery = supabase
     .from("production_orders")
-    .select("id, order_number, product_id, production_date, source_reference, total_rolls, created_at")
+    .select("id, order_number, product_id, product_code_snapshot, product_name_snapshot, production_date, source_reference, total_rolls, status, created_at")
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -38,7 +38,6 @@ export default async function ProductionOrdersPage({ searchParams }: ProductionO
   const { data: orders, error } = await ordersQuery;
   if (error) throw error;
 
-  const productsById = new Map(products.map((product) => [product.id, product]));
   const filtersActive = Boolean(search || productFilter);
 
   return (
@@ -90,19 +89,19 @@ export default async function ProductionOrdersPage({ searchParams }: ProductionO
       ) : (
         <RecordList label="قائمة أوامر الإنتاج">
           {orders.map((order) => {
-            const product = productsById.get(order.product_id);
+            const isVoided = order.status === "voided";
             return (
               <RecordItem
                 key={order.id}
                 kicker={<span dir="ltr">{order.order_number}</span>}
-                title={product?.name ?? "منتج غير متاح"}
-                subtitle={product ? <span dir="ltr">{product.code}</span> : undefined}
+                title={order.product_name_snapshot}
+                subtitle={<span dir="ltr">{order.product_code_snapshot}</span>}
                 facts={[
                   { label: "تاريخ الإنتاج", value: order.production_date, dir: "ltr" },
                   { label: "عدد اللفات", value: order.total_rolls.toLocaleString("en-US"), dir: "ltr" },
                   { label: "مرجع المصدر", value: order.source_reference ?? "—", dir: order.source_reference ? "ltr" : "rtl" },
                 ]}
-                status={<StatusBadge tone="success">تم التوليد</StatusBadge>}
+                status={<StatusBadge tone={isVoided ? "danger" : "success"}>{isVoided ? "أمر مُبطل" : "تم التوليد"}</StatusBadge>}
                 actions={
                   <>
                     <Link href={`/operations/production-orders/${order.id}`} className="button button-primary">فتح</Link>
