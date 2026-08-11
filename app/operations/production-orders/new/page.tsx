@@ -9,13 +9,15 @@ import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type ProductionOrderCreatePageProps = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; request?: string }>;
 };
 
 const errorMessages: Record<string, string> = {
   invalid: "راجع بيانات الأمر والـLots والكميات ثم حاول مرة أخرى.",
-  failed: "تعذر إنشاء أمر الإنتاج. لم يتم حفظ أي أمر أو Lot أو لفة جزئيًا.",
+  failed: "تعذر تأكيد نتيجة إنشاء أمر الإنتاج. يمكنك إعادة المحاولة بأمان؛ النظام لن يكرر نفس الطلب إذا كان قد تم إنشاؤه بالفعل.",
 };
 
 function cairoToday() {
@@ -31,7 +33,8 @@ function cairoToday() {
 
 export default async function ProductionOrderCreatePage({ searchParams }: ProductionOrderCreatePageProps) {
   await requireAdminProfile();
-  const { error } = await searchParams;
+  const { error, request } = await searchParams;
+  const requestId = uuidPattern.test(request ?? "") ? request! : randomUUID();
   const supabase = await createSupabaseServerClient();
   const { data: products, error: productsError } = await supabase
     .from("products")
@@ -69,7 +72,7 @@ export default async function ProductionOrderCreatePage({ searchParams }: Produc
             <FeedbackBanner tone="error">{errorMessages[error] ?? errorMessages.failed}</FeedbackBanner>
           ) : null}
           <ProductionOrderForm
-            requestId={randomUUID()}
+            requestId={requestId}
             products={products.map((product) => ({
               id: product.id,
               code: product.code,
