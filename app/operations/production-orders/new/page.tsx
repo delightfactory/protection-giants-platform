@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { ProductionOrderForm } from "@/components/production-order-form";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -68,6 +69,7 @@ export default async function ProductionOrderCreatePage({ searchParams }: Produc
             <FeedbackBanner tone="error">{errorMessages[error] ?? errorMessages.failed}</FeedbackBanner>
           ) : null}
           <ProductionOrderForm
+            requestId={randomUUID()}
             products={products.map((product) => ({
               id: product.id,
               code: product.code,
