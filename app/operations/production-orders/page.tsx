@@ -47,7 +47,8 @@ export default async function ProductionOrdersPage({ searchParams }: ProductionO
   let ordersQuery = supabase
     .from("production_orders")
     .select("id, order_number, product_id, product_code_snapshot, product_name_snapshot, production_date, source_reference, total_rolls, status, created_at")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("order_number", { ascending: false });
 
   if (search) ordersQuery = ordersQuery.ilike("order_number", `%${search}%`);
   if (productFilter) ordersQuery = ordersQuery.eq("product_id", productFilter);
