@@ -15,10 +15,12 @@ export type Database = {
           auth_user_id: string | null
           cancelled_at: string | null
           created_at: string
+          failure_code: string | null
           id: string
           installation_center_id: string
           invited_by_profile_id: string
           invited_email: string
+          review_required_at: string | null
           status: string
           superseded_at: string | null
         }
@@ -27,10 +29,12 @@ export type Database = {
           auth_user_id?: string | null
           cancelled_at?: string | null
           created_at?: string
+          failure_code?: string | null
           id?: string
           installation_center_id: string
           invited_by_profile_id: string
           invited_email: string
+          review_required_at?: string | null
           status?: string
           superseded_at?: string | null
         }
@@ -39,10 +43,12 @@ export type Database = {
           auth_user_id?: string | null
           cancelled_at?: string | null
           created_at?: string
+          failure_code?: string | null
           id?: string
           installation_center_id?: string
           invited_by_profile_id?: string
           invited_email?: string
+          review_required_at?: string | null
           status?: string
           superseded_at?: string | null
         }
@@ -254,551 +260,4 @@ export type Database = {
           original_name: string
           product_id: string
           size_bytes: number
-          sort_order?: number
-          storage_path: string
-          visibility?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          kind?: string
-          label?: string | null
-          mime_type?: string
-          original_name?: string
-          product_id?: string
-          size_bytes?: number
-          sort_order?: number
-          storage_path?: string
-          visibility?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_assets_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      production_lots: {
-        Row: {
-          created_at: string
-          id: string
-          lot_number: string
-          lot_sequence: number
-          product_id: string
-          production_order_id: string
-          roll_count: number
-          source_lot_reference: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          lot_number: string
-          lot_sequence: number
-          product_id: string
-          production_order_id: string
-          roll_count: number
-          source_lot_reference?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          lot_number?: string
-          lot_sequence?: number
-          product_id?: string
-          production_order_id?: string
-          roll_count?: number
-          source_lot_reference?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "production_lots_order_product_consistency_fkey"
-            columns: ["production_order_id", "product_id"]
-            isOneToOne: false
-            referencedRelation: "production_orders"
-            referencedColumns: ["id", "product_id"]
-          },
-          {
-            foreignKeyName: "production_lots_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "production_lots_production_order_id_fkey"
-            columns: ["production_order_id"]
-            isOneToOne: false
-            referencedRelation: "production_orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      production_orders: {
-        Row: {
-          created_at: string
-          created_by: string
-          id: string
-          length_m_snapshot: number
-          notes: string | null
-          order_number: string
-          origin_country_snapshot: string
-          product_code_snapshot: string
-          product_id: string
-          product_name_snapshot: string
-          product_version_snapshot: string | null
-          production_date: string
-          request_id: string
-          source_reference: string | null
-          status: string
-          thickness_mil_snapshot: number
-          total_rolls: number
-          void_reason: string | null
-          voided_at: string | null
-          voided_by: string | null
-          weight_kg_snapshot: number
-          width_mm_snapshot: number
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          id?: string
-          length_m_snapshot: number
-          notes?: string | null
-          order_number: string
-          origin_country_snapshot: string
-          product_code_snapshot: string
-          product_id: string
-          product_name_snapshot: string
-          product_version_snapshot?: string | null
-          production_date: string
-          request_id: string
-          source_reference?: string | null
-          status?: string
-          thickness_mil_snapshot: number
-          total_rolls: number
-          void_reason?: string | null
-          voided_at?: string | null
-          voided_by?: string | null
-          weight_kg_snapshot: number
-          width_mm_snapshot: number
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          id?: string
-          length_m_snapshot?: number
-          notes?: string | null
-          order_number?: string
-          origin_country_snapshot?: string
-          product_code_snapshot?: string
-          product_id?: string
-          product_name_snapshot?: string
-          product_version_snapshot?: string | null
-          production_date?: string
-          request_id?: string
-          source_reference?: string | null
-          status?: string
-          thickness_mil_snapshot?: number
-          total_rolls?: number
-          void_reason?: string | null
-          voided_at?: string | null
-          voided_by?: string | null
-          weight_kg_snapshot?: number
-          width_mm_snapshot?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "production_orders_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "production_orders_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "production_orders_voided_by_fkey"
-            columns: ["voided_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      products: {
-        Row: {
-          care_instructions: string | null
-          category: string | null
-          code: string
-          created_at: string
-          currency_code: string | null
-          default_warranty_months: number
-          features: string[]
-          id: string
-          length_m: number | null
-          marketing_description: string | null
-          name: string
-          origin_country: string | null
-          product_type: string
-          publication_status: string
-          reference_price: number | null
-          slug: string
-          status: string
-          technical_description: string | null
-          thickness_mil: number | null
-          version_name: string | null
-          warranty_coverage: string | null
-          weight_kg: number | null
-          width_mm: number | null
-        }
-        Insert: {
-          care_instructions?: string | null
-          category?: string | null
-          code: string
-          created_at?: string
-          currency_code?: string | null
-          default_warranty_months: number
-          features?: string[]
-          id?: string
-          length_m?: number | null
-          marketing_description?: string | null
-          name: string
-          origin_country?: string | null
-          product_type?: string
-          publication_status?: string
-          reference_price?: number | null
-          slug: string
-          status?: string
-          technical_description?: string | null
-          thickness_mil?: number | null
-          version_name?: string | null
-          warranty_coverage?: string | null
-          weight_kg?: number | null
-          width_mm?: number | null
-        }
-        Update: {
-          care_instructions?: string | null
-          category?: string | null
-          code?: string
-          created_at?: string
-          currency_code?: string | null
-          default_warranty_months?: number
-          features?: string[]
-          id?: string
-          length_m?: number | null
-          marketing_description?: string | null
-          name?: string
-          origin_country?: string | null
-          product_type?: string
-          publication_status?: string
-          reference_price?: number | null
-          slug?: string
-          status?: string
-          technical_description?: string | null
-          thickness_mil?: number | null
-          version_name?: string | null
-          warranty_coverage?: string | null
-          weight_kg?: number | null
-          width_mm?: number | null
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          country_agent_id: string | null
-          created_at: string
-          dealer_id: string | null
-          display_name: string
-          id: string
-          installation_center_id: string | null
-          phone: string | null
-          role: string
-          status: string
-        }
-        Insert: {
-          country_agent_id?: string | null
-          created_at?: string
-          dealer_id?: string | null
-          display_name: string
-          id: string
-          installation_center_id?: string | null
-          phone?: string | null
-          role: string
-          status?: string
-        }
-        Update: {
-          country_agent_id?: string | null
-          created_at?: string
-          dealer_id?: string | null
-          display_name?: string
-          id?: string
-          installation_center_id?: string | null
-          phone?: string | null
-          role?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_country_agent_id_fkey"
-            columns: ["country_agent_id"]
-            isOneToOne: false
-            referencedRelation: "country_agents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "profiles_dealer_id_fkey"
-            columns: ["dealer_id"]
-            isOneToOne: false
-            referencedRelation: "dealers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "profiles_installation_center_id_fkey"
-            columns: ["installation_center_id"]
-            isOneToOne: false
-            referencedRelation: "installation_centers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      rolls: {
-        Row: {
-          created_at: string
-          erp_serial: string
-          id: string
-          product_id: string
-          production_lot_id: string
-          production_order_id: string
-          roll_index: number
-          serial_number: string
-        }
-        Insert: {
-          created_at?: string
-          erp_serial: string
-          id?: string
-          product_id: string
-          production_lot_id: string
-          production_order_id: string
-          roll_index: number
-          serial_number: string
-        }
-        Update: {
-          created_at?: string
-          erp_serial?: string
-          id?: string
-          product_id?: string
-          production_lot_id?: string
-          production_order_id?: string
-          roll_index?: number
-          serial_number?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rolls_lot_order_product_consistency_fkey"
-            columns: ["production_lot_id", "production_order_id", "product_id"]
-            isOneToOne: false
-            referencedRelation: "production_lots"
-            referencedColumns: ["id", "production_order_id", "product_id"]
-          },
-          {
-            foreignKeyName: "rolls_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rolls_production_lot_id_fkey"
-            columns: ["production_lot_id"]
-            isOneToOne: false
-            referencedRelation: "production_lots"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rolls_production_order_id_fkey"
-            columns: ["production_order_id"]
-            isOneToOne: false
-            referencedRelation: "production_orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      create_production_order: {
-        Args: {
-          p_lots: Json
-          p_notes?: string
-          p_product_id: string
-          p_production_date: string
-          p_request_id: string
-          p_source_reference?: string
-        }
-        Returns: string
-      }
-      ensure_operational_party: {
-        Args: { p_entity_id?: string; p_party_type: string }
-        Returns: string
-      }
-      generate_operational_transfer_code: {
-        Args: { p_party_type: string }
-        Returns: string
-      }
-      resolve_transfer_recipient: {
-        Args: { p_transfer_code: string }
-        Returns: {
-          city: string
-          country_code: string
-          display_name: string
-          entity_code: string
-          entity_type: string
-          party_id: string
-        }[]
-      }
-      void_production_order: {
-        Args: { p_order_id: string; p_reason: string }
-        Returns: string
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
-
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
-
-export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const
+          sor²È="24‰t(€€€€€€€€€ô°(€€€€€€€t(€€€€€ô(€€€€€É½±±Ìèì(€€€€€€€I½Üèì(€€€€€€€€€É•…Ñ•‘}…ĞèÍÑÉ¥¹œ(€€€€€€€€€•ÉÁ}Í•É¥…°èÍÑÉ¥¹œ(€€€€€€€€€¥èÍÑÉ¥¹œ(€€€€€€€€€ÁÉ½‘ÕÑ}¥èÍÑÉ¥¹œ(€€€€€€€€€ÁÉ½‘ÕÑ¥½¹}±½Ñ}¥èÍÑÉ¥¹œ(€€€€€€€€€ÁÉ½‘ÕÑ¥½¹}½É‘•É}¥èÍÑÉ¥¹œ(€€€€€€€€€É½±±}¥¹‘•àè¹Õµ‰•È(€€€€€€€€€Í•É¥…±}¹Õµ‰•ÈèÍÑÉ¥¹œ(€€€€€€€ô(€€€€€€€%¹Í•ÉĞèì(€€€€€€€€€É•…Ñ•‘}…ĞüèÍÑÉ¥¹œ(€€€€€€€€€•ÉÁ}Í•É¥…°èÍÑÉ¥¹œ(€€€€€€€€€¥üèÍÑÉ¥¹œ(€€€€€€€€€ÁÉ½‘ÕÑ}¥èÍÑÉ¥¹œ(€€€€€€€€€ÁÉ½‘ÕÑ¥½¹}±½Ñ}¥èÍÑÉ¥¹œ(€€€€€€€€€ÁÉ½‘ÕÑ¥½¹}½É‘•É}¥èÍÑÉ¥¹œ(€€€€€€€€€É½±±}¥¹‘•àè¹Õµ‰•È(€€€€€€€€€Í•É¥…±}¹Õµ‰•ÈèÍÑÉ¥¹œ(€€€€€€€ô(€€€€€€€UÁ‘…Ñ”èì(€€€€€€€€€É•…Ñ•‘}…ĞüèÍÑÉ¥¹œ(€€€€€€€€€•ÉÁ}Í•É¥…°üèÍÑÉ¥¹œ(€€€€€€€€€¥üèÍÑÉ¥¹œ(€€€€€€€€€ÁÉ½‘ÕÑ}¥üèÍÑÉ¥¹œ(€€€€€€€€€ÁÉ½‘ÕÑ¥½¹}±½Ñ}¥üèÍÑÉ¥¹œ(€€€€€€€€€ÁÉ½‘ÕÑ¥½¹}½É‘•É}¥üèÍÑÉ¥¹œ(€€€€€€€€€É½±±}¥¹‘•àüè¹Õµ‰•È(€€€€€€€€€Í•É¥…±}¹Õµ‰•ÈüèÍÑÉ¥¹œ(€€€€€€€ô(€€€€€€€I•±…Ñ¥½¹Í¡¥ÁÌèl(€€€€€€€€€ì(€€€€€€€€€€€™½É•¥¹-•å9…µ”è€‰É½±±Í}±½Ñ}½É‘•É}ÁÉ½‘ÕÑ}½¹Í¥ÍÑ•¹å}™­•äˆ(€€€€€€€€€€€½±Õµ¹Ìèl‰ÁÉ½‘ÕÑ¥½¹}±½Ñ}¥ˆ°€‰ÁÉ½‘ÕÑ¥½¹}½É‘•É}¥ˆ°€‰ÁÉ½‘ÕÑ}¥‰t(€€€€€€€€€€€¥Í=¹•Q½=¹”è™…±Í”(€€€€€€€€€€€É•™•É•¹•‘I•±…Ñ¥½¸è€‰ÁÉ½‘ÕÑ¥½¹}±½ÑÌˆ(€€€€€€€€€€€É•™•É•¹•‘½±Õµ¹Ìèl‰¥ˆ°€‰ÁÉ½‘ÕÑ¥½¹}½É‘•É}¥ˆ°€‰ÁÉ½‘ÕÑ}¥‰t(€€€€€€€€€ô°(€€€€€€€€€ì(€€€€€€€€€€€™½É•¥¹-•å9…µ”è€‰É½±±Í}ÁÉ½‘ÕÑ}¥‘}™­•äˆ(€€€€€€€€€€€½±Õµ¹Ìèl‰ÁÉ½‘ÕÑ}¥‰t(€€€€€€€€€€€¥Í=¹•Q½=¹”è™…±Í”(€€€€€€€€€€€É•™•É•¹•‘I•±…Ñ¥½¸è€‰ÁÉ½‘ÕÑÌˆ(€€€€€€€€€€€É•™•É•¹•‘½±Õµ¹Ìèl‰¥‰t(€€€€€€€€€ô°(€€€€€€€€€ì(€€€€€€€€€€€™½É•¥¹-•å9…µ”è€‰É½±±Í}ÁÉ½‘ÕÑ¥½¹}±½Ñ}¥‘}™­•äˆ(€€€€€€€€€€€½±Õµ¹Ìèl‰ÁÉ½‘ÕÑ¥½¹}±½Ñ}¥‰t(€€€€€€€€€€€¥Í=¹•Q½=¹”è™…±Í”(€€€€€€€€€€€É•™•É•¹•‘I•±…Ñ¥½¸è€‰ÁÉ½‘ÕÑ¥½¹}±½ÑÌˆ(€€€€€€€€€€€É•™•É•¹•‘½±Õµ¹Ìèl‰¥‰t(€€€€€€€€€ô°(€€€€€€€€€ì(€€€€€€€€€€€™½É•¥¹-•å9…µ”è€‰É½±±Í}ÁÉ½‘ÕÑ¥½¹}½É‘•É}¥‘}™­•äˆ(€€€€€€€€€€€½±Õµ¹Ìèl‰ÁÉ½‘ÕÑ¥½¹}½É‘•É}¥‰t(€€€€€€€€€€€¥Í=¹•Q½=¹”è™…±Í”(€€€€€€€€€€€É•™•É•¹•‘I•±…Ñ¥½¸è€‰ÁÉ½‘ÕÑ¥½¹}½É‘•ÉÌˆ(€€€€€€€€€€€É•™•É•¹•‘½±Õµ¹Ìèl‰¥‰t(€€€€€€€€€ô°(€€€€€€€t(€€€€€ô(€€€ô(€€€Y¥•İÌèì(€€€€€m|¥¸¹•Ù•Étè¹•Ù•È(€€€ô(€€€Õ¹Ñ¥½¹Ìèì(€€€€€É•…Ñ•}ÁÉ½‘ÕÑ¥½¹}½É‘•Èèì(€€€€€€€ÉÌèì(€€€€€€€€€Á}±½ÑÌè)Í½¸(€€€€€€€€€Á}¹½Ñ•ÌüèÍÑÉ¥¹œ(€€€€€€€€€Á}ÁÉ½‘ÕÑ}¥èÍÑÉ¥¹œ(€€€€€€€€€Á}ÁÉ½‘ÕÑ¥½¹}‘…Ñ”èÍÑÉ¥¹œ(€€€€€€€€€Á}É•ÅÕ•ÍÑ}¥èÍÑÉ¥¹œ(€€€€€€€€€Á}Í½ÕÉ•}É•™•É•¹”üèÍÑÉ¥¹œ(€€€€€€€ô(€€€€€€€I•ÑÕÉ¹ÌèÍÑÉ¥¹œ(€€€€€ô(€€€€€•¹ÍÕÉ•}½Á•É…Ñ¥½¹…±}Á…ÉÑäèì(€€€€€€€ÉÌèìÁ}•¹Ñ¥Ñå}¥üèÍÑÉ¥¹œìÁ}Á…ÉÑå}ÑåÁ”èÍÑÉ¥¹œô(€€€€€€€I•ÑÕÉ¹ÌèÍÑÉ¥¹œ(€€€€€ô(€€€€€•¹•É…Ñ•}½Á•É…Ñ¥½¹…±}ÑÉ…¹Í™•É}½‘”èì(€€€€€€€ÉÌèìÁ}Á…ÉÑå}ÑåÁ”èÍÑÉ¥¹œô(€€€€€€€I•ÑÕÉ¹ÌèÍÑÉ¥¹œ(€€€€€ô(€€€€€É•Í½±Ù•}ÑÉ…¹Í™•É}É•¥Á¥•¹Ğèì(€€€€€€€ÉÌèìÁ}ÑÉ…¹Í™•É}½‘”èÍÑÉ¥¹œô(€€€€€€€I•ÑÕÉ¹Ìèì(€€€€€€€€€¥ÑäèÍÑÉ¥¹œ(€€€€€€€€€½Õ¹ÑÉå}½‘”èÍÑÉ¥¹œ(€€€€€€€€€‘¥ÍÁ±…å}¹…µ”èÍÑÉ¥¹œ(€€€€€€€€€•¹Ñ¥Ñå}½‘”èÍÑÉ¥¹œ(€€€€€€€€€•¹Ñ¥Ñå}ÑåÁ”èÍÑÉ¥¹œ(€€€€€€€€€Á…ÉÑå}¥èÍÑÉ¥¹œ(€€€€€€€õmt(€€€€€ô(€€€€€Ù½¥‘}ÁÉ½‘ÕÑ¥½¹}½É‘•Èèì(€€€€€€€ÉÌèìÁ}½É‘•É}¥èÍÑÉ¥¹œìÁ}É•…Í½¸èÍÑÉ¥¹œô(€€€€€€€I•ÑÕÉ¹ÌèÍÑÉ¥¹œ(€€€€€ô(€€€ô(€€€¹ÕµÌèì(€€€€€m|¥¸¹•Ù•Étè¹•Ù•È(€€€ô(€€€½µÁ½Í¥Ñ•QåÁ•Ìèì(€€€€€m|¥¸¹•Ù•Étè¹•Ù•È(€€€ô(€ô)ô()ÑåÁ”…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì€ô=µ¥Ğñ…Ñ…‰…Í”°€‰}}%¹Ñ•É¹…±MÕÁ…‰…Í”ˆø()ÑåÁ”•™…Õ±ÑM¡•µ„€ô…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±ÍmáÑÉ…Ğñ­•å½˜…Ñ…‰…Í”°€‰ÁÕ‰±¥Œˆùt()•áÁ½ÉĞÑåÁ”Q…‰±•Ìğ(€•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ì(€€€ğ­•å½˜€¡•™…Õ±ÑM¡•µ…l‰Q…‰±•Ì‰t€˜•™…Õ±ÑM¡•µ…l‰Y¥•İÌ‰t¤(€€€ğìÍ¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ìô°(€Q…‰±•9…µ”•áÑ•¹‘Ì•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ìì(€€€Í¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì(€ô(€€€€ü­•å½˜€¡…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ím•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰Q…‰±•Ì‰t€˜(€€€€€€€…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ím•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰Y¥•İÌ‰t¤(€€€€è¹•Ù•È€ô¹•Ù•È°(ø€ô•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ìì(€Í¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì)ô(€€ü€¡…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ím•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰Q…‰±•Ì‰t€˜(€€€€€…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ím•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰Y¥•İÌ‰t¥mQ…‰±•9…µ•t•áÑ•¹‘Ìì(€€€€€I½Üè¥¹™•ÈH(€€€ô(€€€€üH(€€€€è¹•Ù•È(€€è•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ì­•å½˜€¡•™…Õ±ÑM¡•µ…l‰Q…‰±•Ì‰t€˜(€€€€€€€•™…Õ±ÑM¡•µ…l‰Y¥•İÌ‰t¤(€€€€ü€¡•™…Õ±ÑM¡•µ…l‰Q…‰±•Ì‰t€˜(€€€€€€€•™…Õ±ÑM¡•µ…l‰Y¥•İÌ‰t¥m•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ít•áÑ•¹‘Ìì(€€€€€€€I½Üè¥¹™•ÈH(€€€€€ô(€€€€€€üH(€€€€€€è¹•Ù•È(€€€€è¹•Ù•È()•áÁ½ÉĞÑåÁ”Q…‰±•Í%¹Í•ÉĞğ(€•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ì(€€€ğ­•å½˜•™…Õ±ÑM¡•µ…l‰Q…‰±•Ì‰t(€€€ğìÍ¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ìô°(€Q…‰±•9…µ”•áÑ•¹‘Ì•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ìì(€€€Í¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì(€ô(€€€€ü­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ím•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰Q…‰±•Ì‰t(€€€€è¹•Ù•È€ô¹•Ù•È°(ø€ô•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ìì(€Í¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì)ô(€€ü…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ím•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰Q…‰±•Ì‰umQ…‰±•9…µ•t•áÑ•¹‘Ìì(€€€€€%¹Í•ÉĞè¥¹™•È$(€€€ô(€€€€ü$(€€€€è¹•Ù•È(€€è•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ì­•å½˜•™…Õ±ÑM¡•µ…l‰Q…‰±•Ì‰t(€€€€ü•™…Õ±ÑM¡•µ…l‰Q…‰±•Ì‰um•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ít•áÑ•¹‘Ìì(€€€€€€€%¹Í•ÉĞè¥¹™•È$(€€€€€ô(€€€€€€ü$(€€€€€€è¹•Ù•È(€€€€è¹•Ù•È()•áÁ½ÉĞÑåÁ”Q…‰±•ÍUÁ‘…Ñ”ğ(€•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ì(€€€ğ­•å½˜•™…Õ±ÑM¡•µ…l‰Q…‰±•Ì‰t(€€€ğìÍ¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ìô°(€Q…‰±•9…µ”•áÑ•¹‘Ì•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ìì(€€€Í¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì(€ô(€€€€ü­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ím•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰Q…‰±•Ì‰t(€€€€è¹•Ù•È€ô¹•Ù•È°(ø€ô•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ìì(€Í¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì)ô(€€ü…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ím•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰Q…‰±•Ì‰umQ…‰±•9…µ•t•áÑ•¹‘Ìì(€€€€€UÁ‘…Ñ”è¥¹™•ÈT(€€€ô(€€€€üT(€€€€è¹•Ù•È(€€è•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ì­•å½˜•™…Õ±ÑM¡•µ…l‰Q…‰±•Ì‰t(€€€€ü•™…Õ±ÑM¡•µ…l‰Q…‰±•Ì‰um•™…Õ±ÑM¡•µ…Q…‰±•9…µ•=É=ÁÑ¥½¹Ít•áÑ•¹‘Ìì(€€€€€€€UÁ‘…Ñ”è¥¹™•ÈT(€€€€€ô(€€€€€€üT(€€€€€€è¹•Ù•È(€€€€è¹•Ù•È()•áÁ½ÉĞÑåÁ”¹ÕµÌğ(€•™…Õ±ÑM¡•µ…¹Õµ9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ì(€€€ğ­•å½˜•™…Õ±ÑM¡•µ…l‰¹ÕµÌ‰t(€€€ğìÍ¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ìô°(€¹Õµ9…µ”•áÑ•¹‘Ì•™…Õ±ÑM¡•µ…¹Õµ9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ìì(€€€Í¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì(€ô(€€€€ü­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ím•™…Õ±ÑM¡•µ…¹Õµ9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰¹ÕµÌ‰t(€€€€è¹•Ù•È€ô¹•Ù•È°(ø€ô•™…Õ±ÑM¡•µ…¹Õµ9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ìì(€Í¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì)ô(€€ü…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ím•™…Õ±ÑM¡•µ…¹Õµ9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰¹ÕµÌ‰um¹Õµ9…µ•t(€€è•™…Õ±ÑM¡•µ…¹Õµ9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ì­•å½˜•™…Õ±ÑM¡•µ…l‰¹ÕµÌ‰t(€€€€ü•™…Õ±ÑM¡•µ…l‰¹ÕµÌ‰um•™…Õ±ÑM¡•µ…¹Õµ9…µ•=É=ÁÑ¥½¹Ít(€€€€è¹•Ù•È()•áÁ½ÉĞÑåÁ”½µÁ½Í¥Ñ•QåÁ•Ìğ(€AÕ‰±¥½µÁ½Í¥Ñ•QåÁ•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ì(€€€ğ­•å½˜•™…Õ±ÑM¡•µ…l‰½µÁ½Í¥Ñ•QåÁ•Ì‰t(€€€ğìÍ¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ìô°(€½µÁ½Í¥Ñ•QåÁ•9…µ”•áÑ•¹‘ÌAÕ‰±¥½µÁ½Í¥Ñ•QåÁ•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ìì(€€€Í¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì(€ô(€€€€ü­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±ÍmAÕ‰±¥½µÁ½Í¥Ñ•QåÁ•9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰½µÁ½Í¥Ñ•QåÁ•Ì‰t(€€€€è¹•Ù•È€ô¹•Ù•È°(ø€ôAÕ‰±¥½µÁ½Í¥Ñ•QåÁ•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ìì(€Í¡•µ„è­•å½˜…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±Ì)ô(€€ü…Ñ…‰…Í•]¥Ñ¡½ÕÑ%¹Ñ•É¹…±ÍmAÕ‰±¥½µÁ½Í¥Ñ•QåÁ•9…µ•=É=ÁÑ¥½¹Íl‰Í¡•µ„‰uul‰½µÁ½Í¥Ñ•QåÁ•Ì‰um½µÁ½Í¥Ñ•QåÁ•9…µ•t(€€èAÕ‰±¥½µÁ½Í¥Ñ•QåÁ•9…µ•=É=ÁÑ¥½¹Ì•áÑ•¹‘Ì­•å½˜•™…Õ±ÑM¡•µ…l‰½µÁ½Í¥Ñ•QåÁ•Ì‰t(€€€€ü•™…Õ±ÑM¡•µ…l‰½µÁ½Í¥Ñ•QåÁ•Ì‰umAÕ‰±¥½µÁ½Í¥Ñ•QåÁ•9…µ•=É=ÁÑ¥½¹Ít(€€€€è¹•Ù•È()•áÁ½ÉĞ½¹ÍĞ½¹ÍÑ…¹ÑÌ€ôì(€ÁÕ‰±¥Œèì(€€€¹ÕµÌèíô°(€ô°)ô…Ì½¹ÍĞ(
