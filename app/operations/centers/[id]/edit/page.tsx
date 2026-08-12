@@ -17,6 +17,7 @@ import {
   sendCenterInvitation,
   updateCenter,
 } from "./actions";
+import { recoverCenterOnboardingInvitation } from "./recovery-actions";
 
 type CenterEditPageProps = {
   params: Promise<{ id: string }>;
@@ -40,12 +41,26 @@ const errorMessages: Record<string, string> = {
   "invite-audit": "تعذر تثبيت سجل الدعوة بصورة آمنة. لم يتم ترك حساب تشغيلي غير مكتمل.",
   "invite-missing": "الدعوة لم تعد معلقة أو تم التعامل معها بالفعل.",
   "invite-cleanup": "تم إيقاف الدعوة، لكن تعذر تنظيف حساب Auth غير المُطالب به. يحتاج هذا البريد مراجعة إدارية قبل إعادة الدعوة.",
+  "invite-review-invalid": "بيانات طلب مراجعة الدعوة غير صحيحة.",
+  "invite-review-missing": "هذه الدعوة لم تعد في حالة تحتاج مراجعة أو تم التعامل معها بالفعل.",
+  "invite-review-locked": "تغيرت حالة الدعوة أثناء المراجعة؛ لم يتم فتحها أو حذف أي حساب بصورة غير مؤكدة.",
+  "invite-review-profile": "يوجد Profile لهذا المستخدم؛ لن يتم إصلاحه تلقائيًا. راجع الحساب من إدارة الحسابات التشغيلية.",
+  "invite-review-auth": "تعذر التحقق من حساب Auth أو تنظيف حالته؛ الدعوة ما زالت مقفولة للمراجعة.",
+  "invite-review-identity": "هوية Auth لا تطابق البريد المسجل في الدعوة؛ تم إيقاف الإصلاح التلقائي.",
+  "invite-review-cleanup": "أُغلقت الدعوة غير اللازمة، لكن تعذر حذف حساب Auth غير المكتمل. يحتاج إلى مراجعة إدارية.",
 };
 
 const successMessages: Record<string, string> = {
   "invite-sent": "تم إنشاء الدعوة وإرسالها إلى البريد المحدد.",
   "invite-cancelled": "تم إلغاء الدعوة ومنع استخدامها لإكمال onboarding.",
   "invite-reissued": "تم إبطال الدعوة السابقة وإصدار دعوة جديدة لنفس البريد.",
+  "invite-review-reopened": "تم التحقق من عدم وجود Profile وتنظيف Auth؛ عادت الدعوة إلى Pending ويمكن للمستلم المحاولة بأمان.",
+  "invite-review-superseded": "لم تعد الدعوة الاستثنائية مطلوبة وتم إغلاقها بأمان. يمكن إصدار دعوة جديدة إذا كان المركز ما زال بلا حساب.",
+};
+
+const reviewFailureLabels: Record<string, string> = {
+  "profile-mismatch": "نتيجة Profile لم تطابق الربط المتوقع بعد provisioning.",
+  "profile-read-uncertain": "تعذر إثبات حالة Profile بعد provisioning، فتم إيقاف Auth احترازيًا.",
 };
 
 function formatInviteDate(value: string) {
@@ -141,7 +156,7 @@ export default async function CenterEditPage({ params, searchParams }: CenterEdi
       .maybeSingle(),
     supabaseAdmin
       .from("center_onboarding_invitations")
-      .select("id, invited_email, auth_user_id, status, created_at, accepted_at")
+      .select("id, invited_email, auth_user_id, status, created_at, accepted_at, review_required_at, failure_code")
       .eq("installation_center_id", center.id)
       .in("status", ["pending", "accepted"])
       .order("created_at", { ascending: false })
@@ -154,8 +169,13 @@ export default async function CenterEditPage({ params, searchParams }: CenterEdi
 
   const centerHasAccount = Boolean(centerProfileResult.data);
   const invitation = invitationResult.data;
+  const reviewInvitation = invitation?.status === "accepted" && invitation.review_required_at
+    ? invitation
+    : null;
   const pendingInvitation = invitation?.status === "pending" ? invitation : null;
-  const finalizingInvitation = invitation?.status === "accepted" && !centerHasAccount ? invitation : null;
+  const finalizingInvitation = invitation?.status === "accepted" && !reviewInvitation && !centerHasAccount
+    ? invitation
+    : null;
   const centerActive = center.status === "active";
   const errorMessage = error ? errorMessages[error] : undefined;
   const successMessage = success ? successMessages[success] : undefined;
@@ -209,7 +229,39 @@ export default async function CenterEditPage({ params, searchParams }: CenterEdi
             title="دعوة الحساب الأول للمركز"
             description="الدعوة تخص أول مستخدم يمثل هذا المركز. الدور والمركز محددان مسبقًا ولا يختارهما المستلم."
           >
-            {centerHasAccount ? (
+            {reviewInvitation ? (
+              <div className="operations-form">
+                <div className="user-role-note">
+                  <div className="operations-form-actions is-inline">
+                    <StatusBadge tone="warning">تحتاج مراجعة</StatusBadge>
+                  </div>
+                  <p>البريد: <span dir="ltr">{reviewInvitation.invited_email}</span></p>
+                  <p>وقت الإيقاف الاحترازي: <span dir="ltr">{formatInviteDate(reviewInvitation.review_required_at)}</span></p>
+                  <p>{reviewFailureLabels[reviewInvitation.failure_code ?? ""] ?? "حدث فشل غير متوقع أثناء التحقق النهائي من onboarding."}</p>
+                  <p>المستلم ممنوع من إعادة المحاولة حتى تُحسم هذه الحالة من الإدارة.</p>
+                </div>
+
+                {profile.role === "admin" ? (
+                  <div className="operations-form-actions">
+                    <form action={recoverCenterOnboardingInvitation}>
+                      <input type="hidden" name="center_id" value={center.id} />
+                      <input type="hidden" name="invitation_id" value={reviewInvitation.id} />
+                      <ConfirmSubmitButton
+                        tone="primary"
+                        title="فحص واستعادة حالة onboarding؟"
+                        description="سيعيد النظام التحقق من Auth وProfile. لن يُعاد فتح الدعوة إذا وُجد أي Profile لهذا المستخدم. وإذا كان للمركز حساب آخر، ستُغلق الدعوة غير المكتملة بدل إنشاء حساب إضافي."
+                        confirmLabel="بدء الفحص الآمن"
+                      >
+                        فحص الحالة واستعادتها
+                      </ConfirmSubmitButton>
+                    </form>
+                    <Link href="/operations/users" className="button button-ghost">فتح إدارة الحسابات</Link>
+                  </div>
+                ) : (
+                  <div className="user-role-note">هذه حالة أمنية استثنائية تحتاج تدخل إدارة Protection Giants؛ لا يحاول Agent أو Dealer إعادة إصدار الدعوة.</div>
+                )}
+              </div>
+            ) : centerHasAccount ? (
               <div className="user-role-note">
                 <div className="operations-form-actions is-inline">
                   <StatusBadge tone="success">تم الربط</StatusBadge>
