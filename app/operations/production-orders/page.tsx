@@ -8,6 +8,7 @@ import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const orderNumberPattern = /^PG-PO-[0-9]{8}-[0-9]{8}$/;
 const PAGE_SIZE = 100;
 const MAX_PAGE = 100000;
 
@@ -50,7 +51,11 @@ export default async function ProductionOrdersPage({ searchParams }: ProductionO
     .order("created_at", { ascending: false })
     .order("order_number", { ascending: false });
 
-  if (search) ordersQuery = ordersQuery.ilike("order_number", `%${search}%`);
+  if (search) {
+    ordersQuery = orderNumberPattern.test(search)
+      ? ordersQuery.eq("order_number", search)
+      : ordersQuery.ilike("order_number", `${search}%`);
+  }
   if (productFilter) ordersQuery = ordersQuery.eq("product_id", productFilter);
 
   const { data: orderRows, error } = await ordersQuery.range(offset, offset + PAGE_SIZE);
