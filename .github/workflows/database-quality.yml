@@ -19,6 +19,7 @@ name: Database Quality
       - "scripts/verify-product-operational-access.mjs"
       - "scripts/verify-product-storage.mjs"
       - "scripts/verify-production-foundation.mjs"
+      - "scripts/verify-production-boundaries.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -147,6 +148,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-production-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-production-boundaries.mjs
             test_status=$?
           fi
           set -e
