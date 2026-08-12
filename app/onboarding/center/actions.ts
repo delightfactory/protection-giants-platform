@@ -145,10 +145,29 @@ export async function completeCenterOnboarding(formData: FormData) {
     if (!claimedFromPending) return;
     await supabaseAdmin
       .from("center_onboarding_invitations")
-      .update({ status: "pending", accepted_at: null })
+      .update({
+        status: "pending",
+        accepted_at: null,
+        review_required_at: null,
+        failure_code: null,
+      })
       .eq("id", invitation.id)
       .eq("auth_user_id", userId)
       .eq("status", "accepted");
+  };
+
+  const markReviewRequired = async (failureCode: "profile-mismatch" | "profile-read-uncertain") => {
+    const { error: reviewError } = await supabaseAdmin
+      .from("center_onboarding_invitations")
+      .update({
+        review_required_at: new Date().toISOString(),
+        failure_code: failureCode,
+      })
+      .eq("id", invitation.id)
+      .eq("auth_user_id", userId)
+      .eq("status", "accepted");
+
+    if (reviewError) throw reviewError;
   };
 
   // Recheck the mutable operational conditions after the invitation claim and
@@ -221,9 +240,9 @@ export async function completeCenterOnboarding(formData: FormData) {
   if (createdProfileError || !exactProfile) {
     // A mismatch after pg_provisioning is a security boundary, not a normal
     // validation error. If a Profile exists, fail closed by suspending both
-    // Auth and the Profile and keep the invitation claimed for admin review.
-    // If no Profile was created, restore app metadata and reopen the invitation
-    // so the same trusted recipient can retry safely.
+    // Auth and the Profile and mark the invitation for explicit Admin review.
+    // If no Profile was created and the read path is healthy, restore app
+    // metadata and reopen the invitation so the same trusted recipient can retry.
     if (createdProfile) {
       await supabaseAdmin.auth.admin.updateUserById(userId, {
         app_metadata: previousAppMetadata,
@@ -233,6 +252,7 @@ export async function completeCenterOnboarding(formData: FormData) {
         .from("profiles")
         .update({ status: "suspended" })
         .eq("id", userId);
+      await markReviewRequired("profile-mismatch");
     } else if (!createdProfileError) {
       await supabaseAdmin.auth.admin.updateUserById(userId, {
         app_metadata: previousAppMetadata,
@@ -240,11 +260,12 @@ export async function completeCenterOnboarding(formData: FormData) {
       await rollbackClaim();
     } else {
       // We cannot prove whether Profile creation happened while the read path
-      // is failing. Ban Auth and leave the claimed invitation locked for a
-      // deliberate admin review rather than risking a second provisioning path.
+      // is failing. Ban Auth and keep the invitation claimed + explicitly
+      // review-marked rather than risking a second provisioning path.
       await supabaseAdmin.auth.admin.updateUserById(userId, {
         ban_duration: "876000h",
       });
+      await markReviewRequired("profile-read-uncertain");
     }
 
     redirect(onboardingPath("error=profile"));
