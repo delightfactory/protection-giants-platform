@@ -1,129 +1,88 @@
-# Deferred Cube: Installation Center Onboarding
+# Installation Center Onboarding
 
 ## Status
 
-Deferred architectural decision. This cube is intentionally **not implemented yet**.
+**Promoted to the current Distribution Network foundation — 2026-08-12.**
 
-It should be developed after the core operational cubes are stable, especially Product, Production, Transfer/Custody, Roll Opening/Claim, Activation, and Warranty foundations as applicable to the agreed roadmap.
+This document originally recorded Center Onboarding as a deferred cube. That timing has been superseded by the approved recipient-acceptance flow for Roll transfers.
 
-The purpose of this document is to preserve the intended onboarding experience **without forcing foundational cubes to be reopened or redesigned later**.
+The current source of truth for implementation scope, Auth integration, permissions, invitation lifecycle, and downstream Transfer contracts is:
 
-## Core decision
+- `docs/distribution-network-flow-spec.md`
+
+## Why the timing changed
+
+A Transfer will not move confirmed custody until the recipient accepts it.
+
+A newly created Installation Center can therefore be a real operational entity and pending transfer recipient before it has any user account, but it needs a secure onboarding path before it can accept the Transfer itself.
+
+Center Onboarding is consequently a prerequisite for a complete Transfer flow rather than an optional later convenience.
+
+## Core invariant preserved
 
 An Installation Center is an operational **entity** independent from its user accounts.
 
-A Roll is transferred to / held by the Installation Center entity, not by an individual user account.
-
-User accounts only represent people authorized to act for that Installation Center.
+A Roll is transferred to / held by the Center entity through its operational party identity, never by an individual Auth user.
 
 Therefore:
 
-- a center may exist before it has any platform user;
-- a center may receive custody of Rolls before onboarding a user;
-- a center may later have one or more users without changing historical Roll custody;
-- replacing, suspending, or adding center users must not rewrite Roll ownership/custody history.
+- a Center may exist before it has any platform user;
+- a Center receives its stable Transfer ID when the entity is created;
+- a Center may be named as a pending transfer recipient before onboarding is complete;
+- one or more users may later represent the Center without changing Roll custody history;
+- replacing, suspending, or adding users never rewrites historical transfers;
+- permanent Roll Serial, ERP Serial, Product SKU, Lot number, Activation identifier, Warranty identifier, and Center Transfer ID remain separate concepts.
 
-This separation is the main compatibility requirement that allows Center Onboarding to remain a later, independent cube.
+## Approved onboarding boundary
 
-## Intended future experiences
+Invitation-based onboarding applies to **Installation Centers only**.
 
-The deferred cube should support one or both of these controlled onboarding paths.
+- Protection Giants/Admin creates and codes Country Agents.
+- Country Agents create and code Dealers.
+- Country Agents or Dealers create Center entities within their authorized network.
+- A Center's first operational user may then be invited to onboard to the already-existing Center.
 
-### 1. Dealer invitation
+Public operational signup remains disabled.
 
-A dealer may create or select an Installation Center inside its own authorized network, then invite a person to become a user for that Center.
+## Approved first-user flow
 
-Expected flow:
+1. Authorized Agent or Dealer creates/selects a Center entity.
+2. Platform already knows the exact `installation_center_id` and Transfer ID.
+3. Authorized parent sends an email invitation from a trusted server-side path.
+4. Recipient opens the invitation and reaches the dedicated Center onboarding experience.
+5. Recipient establishes the Auth account/password and supplies minimal personal profile data.
+6. Trusted server fixes `role = center` and the predetermined `installation_center_id` through protected provisioning metadata.
+7. Existing operational-profile provisioning creates the profile.
+8. Center can enter Operations and accept pending Transfers.
 
-1. Dealer creates/selects the Center entity.
-2. Dealer enters the invited person's email.
-3. Platform creates a controlled invitation through a trusted server-side path.
-4. Recipient opens the invitation.
-5. Recipient completes account setup.
-6. The resulting operational profile is bound to the already-existing Center entity.
-
-The invitation must not give the recipient authority to choose an arbitrary role, dealer, or center binding.
-
-### 2. Transfer-assisted self-onboarding
-
-A new center that is not yet registered may receive a Roll from a dealer and use that real transfer as the context for onboarding.
-
-The desired experience may be:
-
-1. Dealer records the transfer to a new/existing Center entity.
-2. Platform creates a short-lived, single-use onboarding/receipt token associated with that transfer or Center.
-3. Center representative scans the provided QR/link.
-4. Platform shows the relevant transfer context without exposing sensitive internal data.
-5. Representative completes Center/account onboarding.
-6. Platform binds the user to the Center.
-7. Transfer receipt/claim is confirmed according to the future Transfer/Custody rules.
-
-A permanent Roll Serial, ERP Serial, Product SKU, Lot number, or public QR must **not by itself** act as the security credential that grants ownership or creates an operational account.
-
-Possession of a copied/photographed identifier is not sufficient proof of authorized custody.
+The invited person never chooses their role or operational-entity binding.
 
 ## Security boundary
 
-The current trusted provisioning model remains the governing security baseline.
+The existing trusted `pg_provisioning` model remains the authorization baseline.
 
-Center Onboarding must not require enabling unrestricted public operational signup.
+Center Onboarding must not:
 
-Future onboarding should use a trusted server-side provisioning/invitation path so that authorization-sensitive values remain controlled by the platform, including:
+- enable unrestricted public signup;
+- trust user-editable metadata for role/entity authorization;
+- allow a permanent Roll/ERP/QR identifier to create an operational account;
+- auto-bind an existing operational account to another Center;
+- create warranty approval merely because onboarding succeeded.
 
-- operational role;
-- dealer binding;
-- installation-center binding;
-- transfer/receipt context;
-- invitation or claim validity.
+Invitation/acceptance state is audited separately; raw Supabase invitation tokens are not stored by the application.
 
-Any future self-service flow must be scoped by an expiring, single-use capability/token or an equivalent controlled mechanism rather than user-editable signup metadata.
+## Scope limit
 
-## Compatibility requirements for earlier cubes
+The current onboarding foundation is deliberately limited to the Center's initial controlled account setup needed for operational participation and Transfer acceptance.
 
-Earlier/core cubes should preserve only these simple boundaries so that this deferred cube can be added later without foundational redesign:
+It does not introduce:
 
-1. **Entity-first custody** — Transfer/Custody records target Dealer / Installation Center entities, never individual user IDs as the owner/custodian identity.
-2. **Independent user binding** — profiles continue to bind users to an existing Dealer or Installation Center entity.
-3. **No account prerequisite for custody** — a Center entity must be able to exist and participate in custody history even when it has zero users.
-4. **Immutable history** — onboarding a user later must not alter historical transfers or production identity.
-5. **Voided production isolation** — Rolls belonging to a voided Production Order remain ineligible for downstream operational transfer/claim/activation according to the production contract.
-6. **Separate identifiers** — Roll Serial, ERP Serial, Lot number, Product SKU, onboarding token, activation identifier, and warranty identifier remain distinct concepts.
+- public self-registration;
+- KYC/document workflows;
+- CRM or marketing onboarding;
+- OTP/SMS authentication;
+- automatic Roll ownership from scanning a label;
+- automatic Warranty approval;
+- a generic organization-membership or RBAC engine.
 
-If these boundaries are respected, Center Onboarding should be implementable later as an additive cube rather than a rewrite of Product, Production, Users, Centers, or Transfer history.
-
-## Expected future scope
-
-The cube may include:
-
-- dealer-scoped Center onboarding entry point;
-- invitation creation and lifecycle;
-- expiring/single-use invitation or transfer-assisted onboarding token;
-- acceptance screen;
-- account setup;
-- trusted profile provisioning and Center binding;
-- clear handling of expired, cancelled, already-used, or invalid invitations;
-- handling of an email that already belongs to an existing operational user;
-- audit trail for who initiated and who accepted onboarding;
-- mobile-first QR/link experience.
-
-Exact schema and API choices are deliberately deferred until implementation so they can be designed against the completed core flow rather than guessed early.
-
-## Explicit non-goals
-
-This decision does **not** authorize implementing now:
-
-- unrestricted public signup;
-- automatic ownership from scanning a permanent Roll identifier;
-- automatic warranty activation during account creation;
-- a generic permissions/RBAC engine;
-- complex organization hierarchies;
-- automatic dealer/center approval workflows beyond what the business flow later proves necessary;
-- reopening completed Product or Production cubes without a proven compatibility defect.
-
-## Implementation gate
-
-Before starting this cube later, re-review the then-current Transfer/Custody, Center, Auth/Profile, Roll Claim, and Activation contracts.
-
-Implementation should proceed only if the onboarding path can remain additive and preserve the entity-first custody model above.
-
-If a future requirement would make a person/user account the actual owner of operational Roll history, that is a material model change and must be reviewed separately rather than being hidden inside onboarding work.
+Additional users for an already-onboarded Center continue to belong to the existing controlled user-management capability unless a later demonstrated requirement justifies a separate member-invitation flow.
