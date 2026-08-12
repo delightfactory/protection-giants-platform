@@ -194,11 +194,25 @@ if (privatePriceRead.response.ok) {
   throw new Error(`Anonymous users unexpectedly received internal reference price data: ${JSON.stringify(privatePriceRead.body)}`);
 }
 
-const dealer = expectSingleRow(
-  await rest("dealers?select=id", {
+const agent = expectSingleRow(
+  await rest("country_agents?select=id,country_code", {
     method: "POST",
     token: adminToken,
-    body: { code: "PF-DEALER", name: "وكيل اختبار المنتجات", country_code: "EG" },
+    body: { code: "PF-AGENT", name: "وكيل دولة اختبار المنتجات", country_code: "EG" },
+  }),
+  "Product smoke Country Agent creation",
+);
+
+const dealer = expectSingleRow(
+  await rest("dealers?select=id,country_agent_id", {
+    method: "POST",
+    token: adminToken,
+    body: {
+      code: "PF-DEALER",
+      name: "موزع اختبار المنتجات",
+      country_code: agent.country_code,
+      country_agent_id: agent.id,
+    },
   }),
   "Product smoke dealer creation",
 );
@@ -216,7 +230,7 @@ await adminCreateUser({
   email: dealerEmail,
   role: "dealer",
   dealerId: dealer.id,
-  displayName: "مستخدم وكيل اختبار المنتجات",
+  displayName: "مستخدم موزع اختبار المنتجات",
 });
 await adminCreateUser({
   email: centerEmail,
@@ -307,4 +321,4 @@ const reactivated = await rest(`products?id=eq.${encodeURIComponent(product.id)}
 });
 expectSingleRow(reactivated, "Admin product reactivation");
 
-console.log("Product Foundation regression smoke test passed.");
+console.log("Product Foundation regression smoke test passed with Agent hierarchy fixtures.");
