@@ -193,7 +193,22 @@ const adminDirectRead = await rest("center_onboarding_invitations?select=id", {
   key: anonKey,
 });
 if (adminDirectRead.response.ok) {
-  throw new Error("Operational Admin unexpectedly received direct Data API access to onboarding invitation audit rows.");
+  throw new Error("Operational Admin unexpectedly received direct Data API read access to onboarding invitation audit rows.");
+}
+
+const adminDirectWrite = await rest("center_onboarding_invitations?select=id", {
+  token: adminToken,
+  key: anonKey,
+  method: "POST",
+  prefer: true,
+  body: {
+    installation_center_id: centerTwo.id,
+    invited_email: "blocked-direct-write@example.test",
+    invited_by_profile_id: admin.id,
+  },
+});
+if (adminDirectWrite.response.ok) {
+  throw new Error("Operational Admin unexpectedly received direct Data API write access to onboarding invitation audit rows.");
 }
 
 const inviteResult = await request("/auth/v1/invite", {
@@ -243,7 +258,18 @@ const inviteeAuditRead = await rest("center_onboarding_invitations?select=id,inv
   key: anonKey,
 });
 if (inviteeAuditRead.response.ok) {
-  throw new Error("Invited Auth user unexpectedly received direct Data API access to onboarding invitation audit rows.");
+  throw new Error("Invited Auth user unexpectedly received direct Data API read access to onboarding invitation audit rows.");
+}
+
+const inviteeAuditWrite = await rest(`center_onboarding_invitations?id=eq.${invitation.id}&select=id`, {
+  token: inviteeToken,
+  key: anonKey,
+  method: "PATCH",
+  prefer: true,
+  body: { status: "accepted", accepted_at: new Date().toISOString() },
+});
+if (inviteeAuditWrite.response.ok) {
+  throw new Error("Invited Auth user unexpectedly received direct Data API write access to onboarding invitation audit rows.");
 }
 
 none(await rest(`installation_centers?id=eq.${center.id}&select=id`, {
