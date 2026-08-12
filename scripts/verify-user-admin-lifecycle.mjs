@@ -32,7 +32,7 @@ async function request(path, { method = "GET", key = anonKey, token = key, body,
   return { response, body: await readJson(response) };
 }
 
-async function adminCreateUser({ email, password, role, displayName, dealerId, centerId }) {
+async function adminCreateUser({ email, password, role, displayName, countryAgentId, dealerId, centerId }) {
   const result = await request("/auth/v1/admin/users", {
     method: "POST",
     key: serviceRoleKey,
@@ -45,6 +45,7 @@ async function adminCreateUser({ email, password, role, displayName, dealerId, c
         pg_provisioning: {
           version: "operational-v1",
           role,
+          ...(countryAgentId ? { country_agent_id: countryAgentId } : {}),
           ...(dealerId ? { dealer_id: dealerId } : {}),
           ...(centerId ? { installation_center_id: centerId } : {}),
         },
@@ -95,7 +96,7 @@ async function createEntity(path, body, accessToken) {
 
 async function readProfile(userId) {
   const result = await request(
-    `/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=id,display_name,role,status,phone,dealer_id,installation_center_id`,
+    `/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=id,display_name,role,status,phone,country_agent_id,dealer_id,installation_center_id`,
     { key: serviceRoleKey, token: serviceRoleKey },
   );
 
@@ -117,10 +118,18 @@ await adminCreateUser({
 const adminSession = await signIn(adminEmail, adminPassword, true);
 const adminToken = adminSession.body.access_token;
 
+const agent = await createEntity("/rest/v1/country_agents", {
+  code: "CI-USER-LIFECYCLE-AGENT",
+  name: "وكيل دولة اختبار دورة المستخدم",
+  country_code: "EG",
+  status: "active",
+}, adminToken);
+
 const dealer = await createEntity("/rest/v1/dealers", {
   code: "CI-USER-LIFECYCLE-DEALER",
-  name: "وكيل اختبار دورة المستخدم",
+  name: "موزع اختبار دورة المستخدم",
   country_code: "EG",
+  country_agent_id: agent.id,
   status: "active",
 }, adminToken);
 
@@ -152,6 +161,7 @@ let profile = await readProfile(userId);
 if (
   profile.role !== "center" ||
   profile.installation_center_id !== center.id ||
+  profile.country_agent_id !== null ||
   profile.dealer_id !== null ||
   profile.status !== "active"
 ) {
@@ -167,6 +177,7 @@ const profileUpdate = await request(`/rest/v1/profiles?id=eq.${encodeURIComponen
     display_name: "مستخدم دورة الحسابات بعد التعديل",
     phone: "+201000000100",
     role: "dealer",
+    country_agent_id: null,
     dealer_id: dealer.id,
     installation_center_id: null,
   },
@@ -177,7 +188,12 @@ if (!profileUpdate.response.ok) {
 }
 
 profile = await readProfile(userId);
-if (profile.role !== "dealer" || profile.dealer_id !== dealer.id || profile.installation_center_id !== null) {
+if (
+  profile.role !== "dealer" ||
+  profile.country_agent_id !== null ||
+  profile.dealer_id !== dealer.id ||
+  profile.installation_center_id !== null
+) {
   throw new Error(`Role/entity update did not persist correctly: ${JSON.stringify(profile)}`);
 }
 
@@ -188,6 +204,7 @@ const invalidBinding = await request(`/rest/v1/profiles?id=eq.${encodeURICompone
   headers: { Prefer: "return=representation" },
   body: {
     role: "center",
+    country_agent_id: null,
     dealer_id: dealer.id,
     installation_center_id: null,
   },
@@ -278,4 +295,4 @@ if (profile.status !== "active") {
   throw new Error(`Profile reactivation did not persist: ${JSON.stringify(profile)}`);
 }
 
-console.log("Operational user lifecycle smoke test passed.");
+console.log("Operational user lifecycle smoke test passed with Agent hierarchy.");
