@@ -16,6 +16,7 @@ name: Database Quality
       - "scripts/verify-operational-entity-access-status.mjs"
       - "scripts/verify-agent-network-foundation.mjs"
       - "scripts/verify-center-onboarding.mjs"
+      - "scripts/verify-center-onboarding-state-races.mjs"
       - "scripts/verify-product-foundation.mjs"
       - "scripts/verify-product-foundation-constraints.mjs"
       - "scripts/verify-product-operational-access.mjs"
@@ -159,6 +160,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-center-onboarding.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-onboarding-state-races.mjs
             test_status=$?
           fi
 
