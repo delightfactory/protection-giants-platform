@@ -17,6 +17,8 @@ create table public.center_onboarding_invitations (
   accepted_at timestamptz,
   cancelled_at timestamptz,
   superseded_at timestamptz,
+  review_required_at timestamptz,
+  failure_code text,
 
   constraint center_onboarding_invited_email_normalized
     check (
@@ -54,13 +56,26 @@ create table public.center_onboarding_invitations (
         and cancelled_at is null
         and superseded_at is not null
       )
+    ),
+  constraint center_onboarding_review_marker_valid
+    check (
+      (
+        review_required_at is null
+        and failure_code is null
+      )
+      or
+      (
+        status = 'accepted'
+        and review_required_at is not null
+        and failure_code in ('profile-mismatch', 'profile-read-uncertain')
+      )
     )
 );
 
 -- Pending means the invitation is awaiting the recipient. Accepted means the
--- recipient has claimed it and server-side Profile provisioning is finalizing.
--- Both states are therefore "open" and must remain unique across Center,
--- invited email and bound Auth user. Cancelled/superseded rows are history.
+-- recipient has claimed it and server-side Profile provisioning is finalizing
+-- (or has been locked for explicit review). Both states are therefore "open"
+-- and must remain unique across Center, invited email and bound Auth user.
 create unique index center_onboarding_one_open_per_center
   on public.center_onboarding_invitations (installation_center_id)
   where status in ('pending', 'accepted');
