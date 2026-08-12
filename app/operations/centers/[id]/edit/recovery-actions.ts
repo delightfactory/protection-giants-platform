@@ -102,6 +102,45 @@ export async function recoverCenterOnboardingInvitation(formData: FormData) {
     redirect(centerEditPath(centerId, "error=invite-review-identity"));
   }
 
+  const { data: anotherCenterProfile, error: anotherCenterProfileError } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("role", "center")
+    .eq("installation_center_id", centerId)
+    .limit(1)
+    .maybeSingle();
+
+  if (anotherCenterProfileError) throw anotherCenterProfileError;
+
+  if (anotherCenterProfile) {
+    const { data: closed, error: closeError } = await supabaseAdmin
+      .from("center_onboarding_invitations")
+      .update({
+        status: "superseded",
+        accepted_at: null,
+        superseded_at: new Date().toISOString(),
+        review_required_at: null,
+        failure_code: null,
+      })
+      .eq("id", invitation.id)
+      .eq("auth_user_id", userId)
+      .eq("status", "accepted")
+      .not("review_required_at", "is", null)
+      .select("id")
+      .maybeSingle();
+
+    if (closeError) throw closeError;
+    if (!closed) redirect(centerEditPath(centerId, "error=invite-review-locked"));
+
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (deleteError) {
+      redirect(centerEditPath(centerId, "error=invite-review-cleanup"));
+    }
+
+    revalidatePath(centerEditPath(centerId));
+    redirect(centerEditPath(centerId, "success=invite-review-superseded"));
+  }
+
   const currentAppMetadata = authUser.app_metadata ?? {};
   const { pg_provisioning: _discardedProvisioning, ...safeAppMetadata } = currentAppMetadata;
 
