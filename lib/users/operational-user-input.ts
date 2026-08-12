@@ -1,4 +1,4 @@
-export const operationalUserRoles = ["admin", "dealer", "center"] as const;
+export const operationalUserRoles = ["admin", "agent", "dealer", "center"] as const;
 
 export type OperationalUserRole = (typeof operationalUserRoles)[number];
 
@@ -9,24 +9,35 @@ type OperationalProfileBase = {
 
 export type AdminOperationalProfileInput = OperationalProfileBase & {
   role: "admin";
+  country_agent_id: null;
+  dealer_id: null;
+  installation_center_id: null;
+};
+
+export type AgentOperationalProfileInput = OperationalProfileBase & {
+  role: "agent";
+  country_agent_id: string;
   dealer_id: null;
   installation_center_id: null;
 };
 
 export type DealerOperationalProfileInput = OperationalProfileBase & {
   role: "dealer";
+  country_agent_id: null;
   dealer_id: string;
   installation_center_id: null;
 };
 
 export type CenterOperationalProfileInput = OperationalProfileBase & {
   role: "center";
+  country_agent_id: null;
   dealer_id: null;
   installation_center_id: string;
 };
 
 export type OperationalProfileInput =
   | AdminOperationalProfileInput
+  | AgentOperationalProfileInput
   | DealerOperationalProfileInput
   | CenterOperationalProfileInput;
 
@@ -58,6 +69,7 @@ export function parseOperationalProfileInput(
   const displayName = value(formData, "display_name");
   const rawPhone = value(formData, "phone");
   const role = value(formData, "role") as OperationalUserRole;
+  const countryAgentId = value(formData, "country_agent_id");
   const dealerId = value(formData, "dealer_id");
   const centerId = value(formData, "installation_center_id");
 
@@ -74,6 +86,17 @@ export function parseOperationalProfileInput(
     return {
       ...base,
       role,
+      country_agent_id: null,
+      dealer_id: null,
+      installation_center_id: null,
+    };
+  }
+
+  if (role === "agent" && isOperationalUserId(countryAgentId)) {
+    return {
+      ...base,
+      role,
+      country_agent_id: countryAgentId,
       dealer_id: null,
       installation_center_id: null,
     };
@@ -83,6 +106,7 @@ export function parseOperationalProfileInput(
     return {
       ...base,
       role,
+      country_agent_id: null,
       dealer_id: dealerId,
       installation_center_id: null,
     };
@@ -92,6 +116,7 @@ export function parseOperationalProfileInput(
     return {
       ...base,
       role,
+      country_agent_id: null,
       dealer_id: null,
       installation_center_id: centerId,
     };
