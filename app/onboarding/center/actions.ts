@@ -64,7 +64,7 @@ export async function completeCenterOnboarding(formData: FormData) {
 
   const { data: invitation, error: invitationError } = await supabaseAdmin
     .from("center_onboarding_invitations")
-    .select("id, installation_center_id, invited_email, auth_user_id, status, accepted_at")
+    .select("id, installation_center_id, invited_email, auth_user_id, status, accepted_at, review_required_at, failure_code")
     .eq("auth_user_id", userId)
     .in("status", ["pending", "accepted"])
     .order("created_at", { ascending: false })
@@ -74,6 +74,9 @@ export async function completeCenterOnboarding(formData: FormData) {
   if (invitationError) throw invitationError;
   if (!invitation || invitation.auth_user_id !== userId) {
     redirect(onboardingPath("error=invite-state"));
+  }
+  if (invitation.review_required_at || invitation.failure_code) {
+    redirect(onboardingPath("error=invite-review"));
   }
 
   const { data: authResult, error: authReadError } = await supabaseAdmin.auth.admin.getUserById(userId);
@@ -130,6 +133,8 @@ export async function completeCenterOnboarding(formData: FormData) {
       .eq("id", invitation.id)
       .eq("auth_user_id", userId)
       .eq("status", "pending")
+      .is("review_required_at", null)
+      .is("failure_code", null)
       .select("id")
       .maybeSingle();
 
@@ -153,7 +158,9 @@ export async function completeCenterOnboarding(formData: FormData) {
       })
       .eq("id", invitation.id)
       .eq("auth_user_id", userId)
-      .eq("status", "accepted");
+      .eq("status", "accepted")
+      .is("review_required_at", null)
+      .is("failure_code", null);
   };
 
   const markReviewRequired = async (failureCode: "profile-mismatch" | "profile-read-uncertain") => {
@@ -165,7 +172,8 @@ export async function completeCenterOnboarding(formData: FormData) {
       })
       .eq("id", invitation.id)
       .eq("auth_user_id", userId)
-      .eq("status", "accepted");
+      .eq("status", "accepted")
+      .is("review_required_at", null);
 
     if (reviewError) throw reviewError;
   };
