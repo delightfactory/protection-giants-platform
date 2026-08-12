@@ -109,7 +109,11 @@ jobs:
           SQL
 
       - name: Verify Auth, Data API grants, RLS, Agent network, Product and Production contracts
+        id: contract_tests
+        continue-on-error: true
+        shell: bash
         run: |
+          exec > >(tee /tmp/database-contracts.log) 2>&1
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
 
@@ -213,6 +217,21 @@ jobs:
 
             exit "$test_status"
           fi
+
+      - name: Upload database contract diagnostics
+        if: steps.contract_tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-contract-diagnostics
+          path: /tmp/database-contracts.log
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Stop after database contract failure
+        if: steps.contract_tests.outcome == 'failure'
+        run: |
+          echo "Database contract verification failed. Diagnostic log was uploaded as database-contract-diagnostics."
+          exit 1
 
       - name: Verify generated database types
         run: |
