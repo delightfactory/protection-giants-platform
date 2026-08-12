@@ -9,7 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      dealers: {
+      country_agents: {
         Row: {
           code: string
           country_code: string
@@ -36,10 +36,49 @@ export type Database = {
         }
         Relationships: []
       }
+      dealers: {
+        Row: {
+          code: string
+          country_agent_id: string
+          country_code: string
+          created_at: string
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          code: string
+          country_agent_id: string
+          country_code: string
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          code?: string
+          country_agent_id?: string
+          country_code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealers_country_agent_country_fkey"
+            columns: ["country_agent_id", "country_code"]
+            isOneToOne: false
+            referencedRelation: "country_agents"
+            referencedColumns: ["id", "country_code"]
+          },
+        ]
+      }
       installation_centers: {
         Row: {
           city: string
           code: string
+          country_agent_id: string | null
           country_code: string
           created_at: string
           dealer_id: string | null
@@ -50,6 +89,7 @@ export type Database = {
         Insert: {
           city: string
           code: string
+          country_agent_id?: string | null
           country_code: string
           created_at?: string
           dealer_id?: string | null
@@ -60,6 +100,7 @@ export type Database = {
         Update: {
           city?: string
           code?: string
+          country_agent_id?: string | null
           country_code?: string
           created_at?: string
           dealer_id?: string | null
@@ -69,10 +110,69 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "installation_centers_dealer_id_fkey"
-            columns: ["dealer_id"]
+            foreignKeyName: "installation_centers_agent_country_fkey"
+            columns: ["country_agent_id", "country_code"]
+            isOneToOne: false
+            referencedRelation: "country_agents"
+            referencedColumns: ["id", "country_code"]
+          },
+          {
+            foreignKeyName: "installation_centers_dealer_country_fkey"
+            columns: ["dealer_id", "country_code"]
             isOneToOne: false
             referencedRelation: "dealers"
+            referencedColumns: ["id", "country_code"]
+          },
+        ]
+      }
+      operational_parties: {
+        Row: {
+          country_agent_id: string | null
+          created_at: string
+          dealer_id: string | null
+          id: string
+          installation_center_id: string | null
+          party_type: string
+          transfer_code: string
+        }
+        Insert: {
+          country_agent_id?: string | null
+          created_at?: string
+          dealer_id?: string | null
+          id?: string
+          installation_center_id?: string | null
+          party_type: string
+          transfer_code: string
+        }
+        Update: {
+          country_agent_id?: string | null
+          created_at?: string
+          dealer_id?: string | null
+          id?: string
+          installation_center_id?: string | null
+          party_type?: string
+          transfer_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_parties_country_agent_id_fkey"
+            columns: ["country_agent_id"]
+            isOneToOne: true
+            referencedRelation: "country_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_parties_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: true
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_parties_installation_center_id_fkey"
+            columns: ["installation_center_id"]
+            isOneToOne: true
+            referencedRelation: "installation_centers"
             referencedColumns: ["id"]
           },
         ]
@@ -359,6 +459,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          country_agent_id: string | null
           created_at: string
           dealer_id: string | null
           display_name: string
@@ -369,6 +470,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          country_agent_id?: string | null
           created_at?: string
           dealer_id?: string | null
           display_name: string
@@ -379,6 +481,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          country_agent_id?: string | null
           created_at?: string
           dealer_id?: string | null
           display_name?: string
@@ -389,6 +492,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_country_agent_id_fkey"
+            columns: ["country_agent_id"]
+            isOneToOne: false
+            referencedRelation: "country_agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_dealer_id_fkey"
             columns: ["dealer_id"]
@@ -482,6 +592,25 @@ export type Database = {
           p_source_reference?: string
         }
         Returns: string
+      }
+      ensure_operational_party: {
+        Args: { p_entity_id?: string; p_party_type: string }
+        Returns: string
+      }
+      generate_operational_transfer_code: {
+        Args: { p_party_type: string }
+        Returns: string
+      }
+      resolve_transfer_recipient: {
+        Args: { p_transfer_code: string }
+        Returns: {
+          city: string
+          country_code: string
+          display_name: string
+          entity_code: string
+          entity_type: string
+          party_id: string
+        }[]
       }
       void_production_order: {
         Args: { p_order_id: string; p_reason: string }
@@ -604,7 +733,7 @@ export type CompositeTypes<
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
