@@ -57,17 +57,21 @@ create table public.center_onboarding_invitations (
     )
 );
 
-create unique index center_onboarding_one_pending_per_center
+-- Pending means the invitation is awaiting the recipient. Accepted means the
+-- recipient has claimed it and server-side Profile provisioning is finalizing.
+-- Both states are therefore "open" and must remain unique across Center,
+-- invited email and bound Auth user. Cancelled/superseded rows are history.
+create unique index center_onboarding_one_open_per_center
   on public.center_onboarding_invitations (installation_center_id)
-  where status = 'pending';
+  where status in ('pending', 'accepted');
 
-create unique index center_onboarding_one_pending_per_email
+create unique index center_onboarding_one_open_per_email
   on public.center_onboarding_invitations (invited_email)
-  where status = 'pending';
+  where status in ('pending', 'accepted');
 
-create unique index center_onboarding_one_pending_per_auth_user
+create unique index center_onboarding_one_open_per_auth_user
   on public.center_onboarding_invitations (auth_user_id)
-  where status = 'pending' and auth_user_id is not null;
+  where status in ('pending', 'accepted') and auth_user_id is not null;
 
 create index center_onboarding_center_history_idx
   on public.center_onboarding_invitations (installation_center_id, created_at desc);
