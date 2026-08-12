@@ -1,121 +1,66 @@
 # Administrative Operational Accounts
 
-## Completed functional scope
+## Global Admin capability
 
-The operational user-management cube is complete for the current three-role platform model.
+Global operational User Administration supports the current four roles:
 
-Administrators can now:
-- list all operational accounts and see their Auth email, display name, phone, role, status, and entity binding;
-- search by name, email, phone, role label, or represented entity;
-- filter by role and lifecycle status;
-- create a new operational account with email/password credentials and trusted provisioning metadata;
-- rely on the existing Auth trigger to create the matching `public.profiles` row atomically;
-- edit display name and optional phone;
-- change role and dealer/installation-center binding while preserving the database binding invariant;
-- change the Auth email directly through the server-only Auth Admin client;
-- reset a user's password without reading or storing the previous password;
-- suspend and reactivate an account across both Supabase Auth and the operational profile;
-- keep the currently logged-in administrator protected from self-suspension and self-demotion.
+- Admin
+- Country Agent
+- Dealer
+- Installation Center
 
-Hard deletion is intentionally not part of the operational lifecycle. A user that must lose access is suspended. Deletion remains reserved for compensating cleanup when a brand-new Auth account fails to receive its required operational profile during creation.
+Admin can list/search/filter operational accounts; create trusted accounts; edit display name, phone, role/entity binding; change Auth email; reset password; suspend/reactivate; and preserve self-demotion/self-suspension protections.
 
-## Authentication boundary
+Hard deletion is not an operator lifecycle. Suspension is the normal access-removal path. Deletion is reserved for compensating cleanup of brand-new unclaimed/failed Auth accounts.
 
-Email remains the primary sign-in identity. Phone is optional operational profile data and is not enabled as an authentication method in the current platform version.
+## Binding contract
 
-Privileged Auth administration uses a dedicated server-side Supabase client created from:
-- `NEXT_PUBLIC_SUPABASE_URL`;
-- `SUPABASE_SECRET_KEY` for hosted projects (preferred current Supabase key type);
-- `SUPABASE_SERVICE_ROLE_KEY` only as a local/legacy fallback.
+Database-enforced Profile binding is:
 
-The secret/service-role value is never exposed through a `NEXT_PUBLIC_` variable and is never used by browser code.
+- Admin → no entity IDs.
+- Agent → exactly one `country_agent_id`.
+- Dealer → exactly one `dealer_id`.
+- Center → exactly one `installation_center_id`.
 
-Every privileged Server Action calls `requireAdminProfile()` before creating the Auth Admin client or mutating an operational account. The elevated key therefore runs only behind a verified active parent-company administrator session.
+New bindings must target active entities. An unchanged binding may remain visible/editable even when its entity is suspended so an Admin can repair non-binding profile data.
 
-## Account creation contract
+## Auth boundary
 
-Creation uses Supabase Auth Admin `createUser()` with:
-- confirmed email;
-- an administrator-supplied temporary password;
-- protected `app_metadata.pg_provisioning` containing the role and required entity binding;
-- non-authoritative display name and optional phone in `user_metadata` for the provisioning handoff.
+Email/password remain in Supabase Auth. Privileged operations use the server-only Admin client; the secret/service-role key is never exposed to browser code.
 
-The database provisioning trigger remains responsible for creating exactly one `public.profiles` row.
+Account creation uses protected `app_metadata.pg_provisioning`. After Auth creation, the application verifies the exact Profile produced by the provisioning trigger and removes the new Auth account if trusted Profile creation failed.
 
-After Auth creation, the application verifies that the operational profile exists. If profile provisioning is unexpectedly missing, the just-created Auth user is deleted immediately as compensating cleanup so no orphan operational credential remains.
+## Agent-scoped Dealer accounts
 
-New dealer and center accounts may only be bound to active entities.
+The network foundation adds a narrow account-management path for an Agent's own Dealers without exposing global User Administration.
 
-## Profile editing contract
+After the Dealer is proven inside the Agent's RLS scope, the Agent may:
 
-`public.profiles` remains the sole operational authorization source after provisioning.
+- create Dealer users fixed to that Dealer;
+- suspend/reactivate those users;
+- reset their password.
 
-The administration UI can change:
-- `display_name`;
-- `phone`;
-- `role`;
-- `dealer_id`;
-- `installation_center_id`;
-- `status` through the lifecycle action.
+Every privileged Profile lookup includes exact Dealer role/binding predicates. Agent cannot use this path to create Admin/Agent/Center accounts or another network's Dealer account.
 
-The existing database constraint continues to enforce the exact role/entity combinations:
-- admin → no dealer and no center;
-- dealer → exactly one dealer and no center;
-- center → exactly one installation center and no dealer.
+## Center onboarding relationship
 
-When an existing account is already bound to an entity that has since been suspended, non-binding profile edits remain possible. Rebinding to a different dealer or center requires the new entity to be active.
+Center invitation onboarding is not a replacement for global User Administration. It is a controlled first-user self-completion path for an already-existing Center.
 
-The currently logged-in administrator cannot change his own role away from `admin`.
+The invitee cannot choose role/entity. Once a Center Profile exists, additional support/lifecycle remains controlled by established administration capabilities; the platform does not introduce public member signup.
 
-## Email and password administration
+## Lifecycle consistency
 
-Email and password live in Supabase Auth rather than `public.profiles`.
+User suspension coordinates two layers:
 
-Email changes use Auth Admin `updateUserById()` and are confirmed immediately by the trusted administration flow.
+1. Auth ban state;
+2. `profiles.status`.
 
-Password resets also use `updateUserById()`. The UI only accepts the new password and never reads, displays, logs, or stores the old password. The application requires at least 12 characters before submitting, while Supabase Auth remains the final authority if the hosted project later enforces a stronger password policy.
-
-## Suspension and reactivation
-
-Lifecycle state is intentionally enforced in two layers:
-1. Auth ban state blocks new sign-ins.
-2. `public.profiles.status` blocks operational access even while an already-issued JWT remains within its short validity window.
-
-Suspension applies an Auth ban and then sets the profile to `suspended`.
-
-Reactivation removes the Auth ban and then sets the profile back to `active`.
-
-If the profile update fails after the Auth change, the action attempts to restore the previous Auth ban state before returning an error. This keeps partial cross-system failures from silently leaving the account in an ambiguous state.
-
-The currently logged-in administrator cannot suspend his own account.
+If Profile persistence fails after an Auth lifecycle change, the action attempts to restore the previous Auth state. The operational gate also re-checks Profile and represented entity status.
 
 ## Mobile behavior
 
-The users module remains mobile-first:
-- search and filters collapse cleanly to one column;
-- account cards stay single-column on phones;
-- create/edit fields retain large touch targets and mobile keyboard hints;
-- account-management forms are grouped by responsibility rather than placed in one oversized form;
-- lifecycle actions remain explicit and separated from ordinary profile editing.
-
-The phone bottom navigation remains limited to the existing high-frequency destinations. Accounts remain reachable from the admin overview and desktop navigation without forcing a fifth cramped bottom-navigation item.
+User management remains card/form based on mobile. Country Agent management is reachable from the Admin operations home even though the bottom navigation remains intentionally compact.
 
 ## Verification
 
-The existing checks still verify:
-- trusted operational Auth creation auto-provisions exactly one profile;
-- invalid provisioning rolls back without leaving an Auth orphan;
-- public signup cannot create an operational profile;
-- administrators can read all profiles while dealer users remain own-profile only.
-
-`verify-user-admin-lifecycle.mjs` additionally exercises a fresh local Supabase stack and verifies:
-- operational user creation and profile provisioning;
-- valid role/entity reassignment;
-- database rejection of an invalid role/entity combination without corrupting the existing profile;
-- Auth email and password changes;
-- old credentials no longer authenticating after the change;
-- Auth ban blocking sign-in;
-- profile suspension state;
-- Auth unban and profile reactivation restoring access.
-
-Application PR Quality continues to run TypeScript validation and a production Next.js build.
+Database and application CI cover trusted provisioning, invalid binding rejection, role/entity lifecycle, Auth credential changes, Agent role provisioning, scoped Dealer account prerequisites, network RLS, and existing Product/Production regressions.
