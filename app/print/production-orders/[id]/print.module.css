@@ -196,6 +196,14 @@
     box-shadow: none;
   }
 
+  .section h2 {
+    break-after: avoid;
+  }
+
+  .table thead {
+    display: table-header-group;
+  }
+
   .table tr,
   .fact,
   .voidBanner {
