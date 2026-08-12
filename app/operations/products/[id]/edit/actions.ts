@@ -85,6 +85,9 @@ export async function updateProduct(formData: FormData) {
     .maybeSingle();
 
   if (error?.code === "23505") redirect(`${productEditPath(productId)}?error=duplicate`);
+  if (error?.code === "23514" && error.message.includes("Production identity/specification is locked")) {
+    redirect(`${productEditPath(productId)}?error=${encodeURIComponent("هذا الـSKU دخل إنتاجًا فعليًا، لذلك تم تثبيت الكود والمواصفات الفيزيائية لحماية تتبع اللفات. إذا كانت المواصفة الجديدة مختلفة فأنشئ SKU جديدًا بدل تعديل المنتج الحالي.")}`);
+  }
   if (error) redirect(`${productEditPath(productId)}?error=failed`);
   if (!data) redirect("/operations/products");
 

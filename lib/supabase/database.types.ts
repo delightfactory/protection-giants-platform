@@ -127,6 +127,158 @@ export type Database = {
           },
         ]
       }
+      production_lots: {
+        Row: {
+          created_at: string
+          id: string
+          lot_number: string
+          lot_sequence: number
+          product_id: string
+          production_order_id: string
+          roll_count: number
+          source_lot_reference: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lot_number: string
+          lot_sequence: number
+          product_id: string
+          production_order_id: string
+          roll_count: number
+          source_lot_reference?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lot_number?: string
+          lot_sequence?: number
+          product_id?: string
+          production_order_id?: string
+          roll_count?: number
+          source_lot_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_lots_order_product_consistency_fkey"
+            columns: ["production_order_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id", "product_id"]
+          },
+          {
+            foreignKeyName: "production_lots_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_lots_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_orders: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          length_m_snapshot: number
+          notes: string | null
+          order_number: string
+          origin_country_snapshot: string
+          product_code_snapshot: string
+          product_id: string
+          product_name_snapshot: string
+          product_version_snapshot: string | null
+          production_date: string
+          request_id: string
+          source_reference: string | null
+          status: string
+          thickness_mil_snapshot: number
+          total_rolls: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          weight_kg_snapshot: number
+          width_mm_snapshot: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          length_m_snapshot: number
+          notes?: string | null
+          order_number: string
+          origin_country_snapshot: string
+          product_code_snapshot: string
+          product_id: string
+          product_name_snapshot: string
+          product_version_snapshot?: string | null
+          production_date: string
+          request_id: string
+          source_reference?: string | null
+          status?: string
+          thickness_mil_snapshot: number
+          total_rolls: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          weight_kg_snapshot: number
+          width_mm_snapshot: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          length_m_snapshot?: number
+          notes?: string | null
+          order_number?: string
+          origin_country_snapshot?: string
+          product_code_snapshot?: string
+          product_id?: string
+          product_name_snapshot?: string
+          product_version_snapshot?: string | null
+          production_date?: string
+          request_id?: string
+          source_reference?: string | null
+          status?: string
+          thickness_mil_snapshot?: number
+          total_rolls?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          weight_kg_snapshot?: number
+          width_mm_snapshot?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_orders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_orders_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           care_instructions: string | null
@@ -253,12 +405,88 @@ export type Database = {
           },
         ]
       }
+      rolls: {
+        Row: {
+          created_at: string
+          erp_serial: string
+          id: string
+          product_id: string
+          production_lot_id: string
+          production_order_id: string
+          roll_index: number
+          serial_number: string
+        }
+        Insert: {
+          created_at?: string
+          erp_serial: string
+          id?: string
+          product_id: string
+          production_lot_id: string
+          production_order_id: string
+          roll_index: number
+          serial_number: string
+        }
+        Update: {
+          created_at?: string
+          erp_serial?: string
+          id?: string
+          product_id?: string
+          production_lot_id?: string
+          production_order_id?: string
+          roll_index?: number
+          serial_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rolls_lot_order_product_consistency_fkey"
+            columns: ["production_lot_id", "production_order_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "production_lots"
+            referencedColumns: ["id", "production_order_id", "product_id"]
+          },
+          {
+            foreignKeyName: "rolls_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rolls_production_lot_id_fkey"
+            columns: ["production_lot_id"]
+            isOneToOne: false
+            referencedRelation: "production_lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rolls_production_order_id_fkey"
+            columns: ["production_order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_production_order: {
+        Args: {
+          p_lots: Json
+          p_notes?: string
+          p_product_id: string
+          p_production_date: string
+          p_request_id: string
+          p_source_reference?: string
+        }
+        Returns: string
+      }
+      void_production_order: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

@@ -1,0 +1,212 @@
+.screen {
+  min-height: 100vh;
+  background: #ececec;
+  color: #111;
+  padding: 24px;
+}
+
+.toolbar {
+  max-width: 920px;
+  margin: 0 auto 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.sheet {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  background: #fff;
+  color: #111;
+  padding: 34px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .12);
+  direction: rtl;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  padding-bottom: 22px;
+  border-bottom: 2px solid #111;
+}
+
+.brand {
+  display: grid;
+  gap: 3px;
+}
+
+.brand strong {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.brand span,
+.muted {
+  color: #555;
+  font-size: 12px;
+}
+
+.orderIdentity {
+  text-align: left;
+  direction: ltr;
+}
+
+.orderIdentity strong {
+  display: block;
+  font-size: 18px;
+}
+
+.voidBanner {
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  border: 2px solid #111;
+  background: #f2f2f2;
+  break-inside: avoid;
+}
+
+.voidBanner strong {
+  display: block;
+  font-size: 15px;
+}
+
+.voidBanner p {
+  margin: 6px 0;
+  white-space: pre-wrap;
+  font-size: 11px;
+}
+
+.voidBanner small {
+  color: #555;
+  font-size: 9px;
+}
+
+.title {
+  margin: 26px 0 18px;
+}
+
+.title h1 {
+  margin: 0 0 5px;
+  font-size: 25px;
+}
+
+.title p {
+  margin: 0;
+  color: #555;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0 0 24px;
+  background: #bbb;
+  border: 1px solid #bbb;
+}
+
+.fact {
+  min-width: 0;
+  padding: 11px 12px;
+  background: #fff;
+}
+
+.fact dt {
+  margin-bottom: 4px;
+  color: #666;
+  font-size: 10px;
+}
+
+.fact dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.section {
+  margin-top: 26px;
+}
+
+.section h2 {
+  margin: 0 0 10px;
+  font-size: 17px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.table th,
+.table td {
+  padding: 9px 8px;
+  border: 1px solid #bbb;
+  text-align: right;
+  vertical-align: top;
+}
+
+.table th {
+  background: #f2f2f2;
+  font-size: 11px;
+}
+
+.notes {
+  padding: 12px;
+  border: 1px solid #bbb;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+.footer {
+  margin-top: 34px;
+  padding-top: 14px;
+  border-top: 1px solid #bbb;
+  color: #666;
+  font-size: 10px;
+}
+
+@media (max-width: 700px) {
+  .screen { padding: 10px; }
+  .sheet { padding: 20px 16px; }
+  .header { flex-direction: column; }
+  .orderIdentity { text-align: right; }
+  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .table { font-size: 10px; }
+  .table th, .table td { padding: 7px 5px; }
+}
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+
+  .screen {
+    min-height: auto;
+    padding: 0;
+    background: #fff;
+  }
+
+  .toolbar { display: none; }
+
+  .sheet {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .section h2 {
+    break-after: avoid;
+  }
+
+  .table thead {
+    display: table-header-group;
+  }
+
+  .table tr,
+  .fact,
+  .voidBanner {
+    break-inside: avoid;
+  }
+}

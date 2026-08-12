@@ -18,6 +18,8 @@ name: Database Quality
       - "scripts/verify-product-foundation-constraints.mjs"
       - "scripts/verify-product-operational-access.mjs"
       - "scripts/verify-product-storage.mjs"
+      - "scripts/verify-production-foundation.mjs"
+      - "scripts/verify-production-boundaries.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -85,7 +87,7 @@ jobs:
           drop function public.__ci_default_function_privilege_probe();
           SQL
 
-      - name: Verify Auth, Data API grants, RLS, entity lifecycle and Product contracts
+      - name: Verify Auth, Data API grants, RLS, entity lifecycle, Product and Production contracts
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
@@ -141,6 +143,16 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-product-storage.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-production-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-production-boundaries.mjs
             test_status=$?
           fi
           set -e

@@ -8,6 +8,7 @@ const adminModules = [
   { href: "/operations/dealers", title: "الوكلاء والموزعون", description: "إدارة الكيانات الموزعة وحالتها التشغيلية.", icon: "dealers" as const },
   { href: "/operations/centers", title: "مراكز التركيب", description: "إدارة المراكز المعتمدة وتبعيتها التشغيلية.", icon: "centers" as const },
   { href: "/operations/products", title: "المنتجات", description: "هوية المنتج ومدة الضمان وحالة الإتاحة.", icon: "products" as const },
+  { href: "/operations/production-orders", title: "الإنتاج واللفات", description: "إنشاء أوامر الإنتاج والـLots وتوليد هويات اللفات ومراجعتها.", icon: "production" as const },
 ];
 
 export default async function OperationsPage() {
@@ -19,11 +20,11 @@ export default async function OperationsPage() {
       <PageHeader
         eyebrow="بوابة التشغيل"
         title={<>مرحبًا، <span className="ui-heading-accent">{profile.display_name}</span></>}
-        description={isAdmin ? "الوحدات الإدارية المتاحة حاليًا في المنصة." : "مساحتك التشغيلية داخل منصة عمالقة الحماية."}
+        description={isAdmin ? "الوحدات الإدارية والتشغيلية المتاحة حاليًا في المنصة." : "مساحتك التشغيلية داخل منصة عمالقة الحماية."}
       />
 
       {isAdmin ? (
-        <section className="ui-module-grid" aria-label="الوحدات الإدارية المتاحة">
+        <section className="ui-module-grid" aria-label="الوحدات الإدارية والتشغيلية المتاحة">
           {adminModules.map((module) => <ModuleCard key={module.href} {...module} />)}
         </section>
       ) : (
