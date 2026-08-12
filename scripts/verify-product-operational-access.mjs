@@ -5,7 +5,8 @@ if (!apiUrl || !anonKey) {
   throw new Error("Local Supabase API_URL and ANON_KEY are required.");
 }
 
-const password = "Product-Foundation-Test-2026!";
+const productPassword = "Product-Foundation-Test-2026!";
+const agentPassword = "Agent-Network-Foundation-2026!";
 
 async function readJson(response) {
   const text = await response.text();
@@ -17,7 +18,7 @@ async function readJson(response) {
   }
 }
 
-async function signIn(email) {
+async function signIn(email, password = productPassword) {
   const response = await fetch(`${apiUrl}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: {
@@ -65,12 +66,17 @@ function expectNoRows(result, label) {
 }
 
 const adminToken = await signIn("product-foundation-admin@example.test");
+const agentToken = await signIn("network-agent-a@example.test", agentPassword);
 const dealerToken = await signIn("product-foundation-dealer@example.test");
 const centerToken = await signIn("product-foundation-center@example.test");
 
 const product = expectOne(
   await rest("products?code=eq.PG-AI-PRO&select=id,code", adminToken),
   "Product fixture lookup",
+);
+const agent = expectOne(
+  await rest("country_agents?code=eq.NET-A-EG&select=id,status", adminToken),
+  "Agent fixture lookup",
 );
 const dealer = expectOne(
   await rest("dealers?code=eq.PF-DEALER&select=id,status", adminToken),
@@ -82,12 +88,39 @@ const center = expectOne(
 );
 
 expectOne(
+  await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,code`, agentToken),
+  "Active Agent Product read",
+);
+expectOne(
   await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,code`, dealerToken),
   "Active dealer Product read",
 );
 expectOne(
   await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,code`, centerToken),
   "Active center Product read",
+);
+
+expectOne(
+  await rest(`country_agents?id=eq.${encodeURIComponent(agent.id)}&select=id,status`, adminToken, {
+    method: "PATCH",
+    body: { status: "suspended" },
+  }),
+  "Agent suspension for Product access gate",
+);
+expectNoRows(
+  await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,code`, agentToken),
+  "Suspended Agent Product read",
+);
+expectOne(
+  await rest(`country_agents?id=eq.${encodeURIComponent(agent.id)}&select=id,status`, adminToken, {
+    method: "PATCH",
+    body: { status: "active" },
+  }),
+  "Agent reactivation for Product access gate",
+);
+expectOne(
+  await rest(`products?id=eq.${encodeURIComponent(product.id)}&select=id,code`, agentToken),
+  "Reactivated Agent Product read",
 );
 
 expectOne(
@@ -142,4 +175,4 @@ expectOne(
   "Reactivated center Product read",
 );
 
-console.log("Product operational binding access smoke test passed.");
+console.log("Product operational binding access smoke test passed for Agent/Dealer/Center.");
