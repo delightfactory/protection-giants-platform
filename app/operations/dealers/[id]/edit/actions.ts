@@ -18,14 +18,20 @@ function dealerEditPath(dealerId: string, query?: string) {
   return `/operations/dealers/${dealerId}/edit${query ? `?${query}` : ""}`;
 }
 
+function requireDealerId(value: string) {
+  if (!uuidPattern.test(value)) {
+    redirect("/operations/dealers");
+  }
+
+  return value;
+}
+
 async function requireScopedDealer(dealerId: string, { requireActive = false } = {}) {
+  requireDealerId(dealerId);
+
   const profile = await requireOperationalProfile();
   if (profile.role !== "admin" && profile.role !== "agent") {
     redirect("/access-denied");
-  }
-
-  if (!uuidPattern.test(dealerId)) {
-    redirect("/operations/dealers");
   }
 
   const supabase = await createSupabaseServerClient();
@@ -80,9 +86,7 @@ export async function updateDealer(formData: FormData) {
     redirect("/access-denied");
   }
 
-  const dealerId = String(formData.get("dealer_id") ?? "").trim();
-  if (!uuidPattern.test(dealerId)) redirect("/operations/dealers");
-
+  const dealerId = requireDealerId(String(formData.get("dealer_id") ?? "").trim());
   const input = parseDealerCoreInput(formData);
   const submittedAgentId = String(formData.get("country_agent_id") ?? "").trim();
   const requestedAgentId = profile.role === "agent" ? profile.country_agent_id : submittedAgentId;
@@ -140,7 +144,7 @@ export async function updateDealer(formData: FormData) {
 }
 
 export async function createDealerAccount(formData: FormData) {
-  const dealerId = String(formData.get("dealer_id") ?? "").trim();
+  const dealerId = requireDealerId(String(formData.get("dealer_id") ?? "").trim());
   await requireScopedDealer(dealerId, { requireActive: true });
 
   const displayName = String(formData.get("display_name") ?? "").trim();
@@ -214,7 +218,7 @@ export async function createDealerAccount(formData: FormData) {
 }
 
 export async function setDealerAccountStatus(formData: FormData) {
-  const dealerId = String(formData.get("dealer_id") ?? "").trim();
+  const dealerId = requireDealerId(String(formData.get("dealer_id") ?? "").trim());
   const userId = String(formData.get("user_id") ?? "").trim();
   const targetStatus = String(formData.get("target_status") ?? "").trim();
 
@@ -256,7 +260,7 @@ export async function setDealerAccountStatus(formData: FormData) {
 }
 
 export async function resetDealerAccountPassword(formData: FormData) {
-  const dealerId = String(formData.get("dealer_id") ?? "").trim();
+  const dealerId = requireDealerId(String(formData.get("dealer_id") ?? "").trim());
   const userId = String(formData.get("user_id") ?? "").trim();
   const password = parseOperationalUserPassword(formData, "new_password");
 
