@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "@/components/ui/icon";
 import styles from "./operations-nav-links.module.css";
 
-type OperationalRole = "admin" | "dealer" | "center";
+type OperationalRole = "admin" | "agent" | "dealer" | "center";
 type NavVariant = "desktop" | "mobile";
 type NavItem = {
   href: string;
@@ -22,7 +22,12 @@ const adminMobileItems: NavItem[] = [
 ];
 
 const adminDesktopItems: NavItem[] = [
-  ...adminMobileItems,
+  { href: "/operations", label: "الرئيسية", icon: "home" },
+  { href: "/operations/users", label: "الحسابات", icon: "users" },
+  { href: "/operations/agents", label: "وكلاء الدول", icon: "users" },
+  { href: "/operations/dealers", label: "الوكلاء", icon: "dealers" },
+  { href: "/operations/centers", label: "المراكز", icon: "centers" },
+  { href: "/operations/products", label: "المنتجات", icon: "products" },
   { href: "/operations/production-orders", label: "الإنتاج", icon: "production" },
 ];
 
