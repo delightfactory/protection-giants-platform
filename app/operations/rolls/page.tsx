@@ -8,6 +8,8 @@ import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const internalSerialPattern = /^PG-R-[0-9]{8}-[0-9]{8}-[0-9]{2}-[0-9]{4,5}$/;
+const erpSerialPattern = /^ERP-[A-F0-9]{16}$/;
 const PAGE_SIZE = 100;
 const MAX_PAGE = 100000;
 
@@ -55,7 +57,13 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
     .order("serial_number", { ascending: true });
 
   if (search) {
-    rollsQuery = rollsQuery.or(`serial_number.ilike.%${search}%,erp_serial.ilike.%${search}%`);
+    if (internalSerialPattern.test(search)) {
+      rollsQuery = rollsQuery.eq("serial_number", search);
+    } else if (erpSerialPattern.test(search)) {
+      rollsQuery = rollsQuery.eq("erp_serial", search);
+    } else {
+      rollsQuery = rollsQuery.or(`serial_number.like.${search}%,erp_serial.like.${search}%`);
+    }
   }
   if (orderFilter) rollsQuery = rollsQuery.eq("production_order_id", orderFilter);
 
