@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { FormField } from "@/components/ui/form-field";
 import { FormGrid } from "@/components/ui/form-layout";
 
@@ -11,6 +14,7 @@ type CenterCoreFieldValues = {
   code: string;
   name: string;
   parentRef: string;
+  countryCode?: string;
   city: string;
 };
 
@@ -21,7 +25,9 @@ type CenterCoreFieldsProps = {
 };
 
 export function CenterCoreFields({ parentOptions, values, lockParent = false }: CenterCoreFieldsProps) {
-  const selectedParent = parentOptions.find((option) => option.value === values?.parentRef);
+  const [parentRef, setParentRef] = useState(values?.parentRef ?? "");
+  const selectedParent = parentOptions.find((option) => option.value === parentRef);
+  const isCompanyDirect = parentRef === "company";
 
   return (
     <FormGrid>
@@ -50,26 +56,49 @@ export function CenterCoreFields({ parentOptions, values, lockParent = false }: 
 
       <FormField
         label="التبعية التشغيلية"
-        hint="الدولة تُستمد تلقائيًا من الطرف الأب ولا تُدخل يدويًا."
+        hint="مع Agent أو Dealer تُستمد الدولة تلقائيًا من الطرف الأب."
       >
         {lockParent ? (
           <>
-            <input type="hidden" name="parent_ref" value={values?.parentRef ?? ""} />
-            <select value={values?.parentRef ?? ""} disabled aria-disabled="true">
-              <option value={values?.parentRef ?? ""}>{selectedParent?.label ?? "التبعية غير متاحة"}</option>
+            <input type="hidden" name="parent_ref" value={parentRef} />
+            <select value={parentRef} disabled aria-disabled="true">
+              <option value={parentRef}>{selectedParent?.label ?? "التبعية غير متاحة"}</option>
             </select>
           </>
         ) : (
-          <select name="parent_ref" defaultValue={values?.parentRef ?? ""} required>
+          <select
+            name="parent_ref"
+            value={parentRef}
+            onChange={(event) => setParentRef(event.target.value)}
+            required
+          >
             <option value="" disabled>اختر التبعية</option>
             {parentOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label} — {option.countryCode}
+                {option.label}{option.countryCode ? ` — ${option.countryCode}` : ""}
               </option>
             ))}
           </select>
         )}
       </FormField>
+
+      {isCompanyDirect ? (
+        <FormField label="كود الدولة" hint="مطلوب فقط لأن المركز مباشر للشركة ولا يوجد طرف أب نستمد منه الدولة.">
+          <input
+            name="company_country_code"
+            type="text"
+            minLength={2}
+            maxLength={2}
+            pattern="[A-Za-z]{2}"
+            defaultValue={values?.countryCode ?? ""}
+            placeholder="EG"
+            autoCapitalize="characters"
+            spellCheck={false}
+            dir="ltr"
+            required
+          />
+        </FormField>
+      ) : null}
 
       <FormField label="المدينة" full>
         <input name="city" type="text" minLength={2} maxLength={120} defaultValue={values?.city} required />
