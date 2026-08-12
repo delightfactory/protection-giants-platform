@@ -268,11 +268,30 @@ assert(
   "Incomplete Product unexpectedly entered production.",
 );
 
+const countryAgent = expectSingleRow(
+  await rest("country_agents?select=id,country_code", {
+    method: "POST",
+    token: adminToken,
+    body: {
+      code: "PROD-AGENT",
+      name: "وكيل دولة اختبار الإنتاج",
+      country_code: "EG",
+      status: "active",
+    },
+  }),
+  "Production smoke Country Agent creation",
+);
+
 const dealer = expectSingleRow(
   await rest("dealers?select=id", {
     method: "POST",
     token: adminToken,
-    body: { code: "PROD-DEALER", name: "وكيل اختبار الإنتاج", country_code: "EG" },
+    body: {
+      code: "PROD-DEALER",
+      name: "وكيل اختبار الإنتاج",
+      country_code: "EG",
+      country_agent_id: countryAgent.id,
+    },
   }),
   "Production smoke dealer creation",
 );
@@ -350,4 +369,4 @@ assert(
   "Archived Product unexpectedly accepted new production.",
 );
 
-console.log("Production order / lot / roll foundation closure smoke passed.");
+console.log("Production order / lot / roll foundation closure smoke passed with Agent-bound Dealer fixture.");
