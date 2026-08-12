@@ -29,10 +29,12 @@ A PPF roll can issue at most one customer warranty. Remaining material does not 
 
 The external marketing QR opens the public website/product content. It does not collect visitor data and does not activate a roll or warranty.
 
-### PD-006 — Approved center account required for operational activation
-**Status:** Approved
+### PD-006 — Active custodian Center account is required for operational activation
+**Status:** Approved; clarified 2026-08-12
 
-Roll opening and customer warranty activation are performed from an authenticated approved installation-center account. A free-text center name is not sufficient.
+Roll opening and customer Warranty Activation are performed from an authenticated active installation-center account representing the Center that holds confirmed current custody of the Roll. A free-text Center name is not sufficient.
+
+Protection Giants network approval is **not** a prerequisite for Roll opening or Warranty Activation. An operationally active Center that legitimately holds the Roll may install it and activate its Warranty when all future Roll/Activation eligibility rules are satisfied.
 
 ### PD-007 — Roll opening and warranty activation are separate events
 **Status:** Approved
@@ -66,10 +68,12 @@ The customer warranty QR is intended to be printed in three copies for:
 
 Exact print layout and complete label count are finalized during print-template work.
 
-### PD-012 — Approved centers shown publicly are controlled records
-**Status:** Approved
+### PD-012 — Public Center directory distinguishes registered and approved Centers
+**Status:** Approved; clarified 2026-08-12
 
-Only centers registered/approved in the platform can be presented as approved centers on the public website. A center is not made public merely because it installed a product.
+The public Center directory/map may show operationally active registered Centers that have a valid published geographic location. Approved Centers receive a distinct Protection Giants approval badge/pin state; ordinary registered Centers remain visibly distinguishable as registered but not approved.
+
+Suspended Centers are not published. Public presentation uses a narrow controlled public projection and must not expose private Auth or internal network data.
 
 ### PD-013 — Production order remains simple
 **Status:** Approved
@@ -148,7 +152,30 @@ A Center entity may exist and receive a Transfer ID before it has any user accou
 
 Agents are registered by the Parent Company and Dealers are registered by Agents; the invitation-based onboarding flow is specifically for Centers in the current scope.
 
-### PD-026 — Operational Center registration and Warranty approval are separate
+### PD-026 — Operational Center registration, network approval, and activation permission are separate
+**Status:** Approved; clarified 2026-08-12
+
+An operationally registered/active Center may participate in the network and custody flow without automatically becoming a Protection Giants approved Center.
+
+Network approval is a trust/quality designation used for the public Center experience and does not grant custody or act as a Warranty Activation gate. An unapproved but active Center that holds confirmed custody of an eligible Roll may perform the future Roll Opening / Warranty Activation flow.
+
+### PD-027 — Center geographic location is self-captured from the premises with Admin correction
 **Status:** Approved — 2026-08-12
 
-An operationally registered/active Center may participate in the network and custody flow without automatically becoming an approved Warranty Activation center or public approved-center listing. Warranty approval is a later explicit business permission and must not be inferred from Center creation or onboarding.
+An onboarded Center can update its Protection Giants map location through device/browser geolocation and is instructed to do so while physically present at the Center. Center users do not manually type coordinates or freely reposition the pin. The platform records coordinates, reported accuracy, capture time and source, with an initial application acceptance target of 50 metres accuracy or better.
+
+Protection Giants Admin may correct or update a Center location administratively. All saved location changes are auditable. Location capture is an operational verification measure and is not treated as impossible to spoof.
+
+### PD-028 — Center network approval is granted only by Admin or the responsible Country Agent
+**Status:** Approved — 2026-08-12
+
+Admin may approve/revoke any Center. A Country Agent may approve/revoke Centers only inside its own network scope. Dealers cannot grant the Protection Giants approval badge and Centers cannot approve themselves.
+
+A Center must be operationally active and have a valid current geographic location before it can be approved. Approval/revocation is audited independently from operational lifecycle.
+
+### PD-029 — Center location change invalidates the previous network approval
+**Status:** Approved — 2026-08-12
+
+If an approved Center's saved physical location changes, the current Protection Giants network approval resets to unapproved and the event is audited. Admin or the responsible Agent may re-approve the Center after reviewing the new location.
+
+This prevents an approval granted to one physical premises from silently following a Center to a different map location.
