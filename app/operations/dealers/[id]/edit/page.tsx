@@ -181,29 +181,27 @@ export default async function DealerEditPage({ params, searchParams }: DealerEdi
                         </StatusBadge>
                       }
                       actions={
-                        <form action={setDealerAccountStatus}>
-                          <input type="hidden" name="dealer_id" value={dealer.id} />
-                          <input type="hidden" name="user_id" value={account.id} />
-                          <input type="hidden" name="target_status" value={isActive ? "suspended" : "active"} />
-                          {isActive ? (
-                            <ConfirmSubmitButton
-                              title="إيقاف حساب الموزع؟"
-                              description="سيتم منع تسجيل الدخول وإيقاف الملف التشغيلي لهذا الحساب فقط، دون تغيير حالة الموزع نفسه."
-                              confirmLabel="تأكيد الإيقاف"
-                            >
-                              إيقاف الحساب
-                            </ConfirmSubmitButton>
-                          ) : (
-                            <button type="submit" className="button button-primary">إعادة التفعيل</button>
-                          )}
-                        </form>
-                      }
-                    >
-                      <form action={resetDealerAccountPassword} className="operations-form">
-                        <input type="hidden" name="dealer_id" value={dealer.id} />
-                        <input type="hidden" name="user_id" value={account.id} />
-                        <FormGrid columns={1}>
-                          <FormField label="كلمة مرور جديدة" hint="12 حرفًا على الأقل. لا يتم عرض كلمة المرور الحالية.">
+                        <>
+                          <form action={setDealerAccountStatus}>
+                            <input type="hidden" name="dealer_id" value={dealer.id} />
+                            <input type="hidden" name="user_id" value={account.id} />
+                            <input type="hidden" name="target_status" value={isActive ? "suspended" : "active"} />
+                            {isActive ? (
+                              <ConfirmSubmitButton
+                                title="إيقاف حساب الموزع؟"
+                                description="سيتم منع تسجيل الدخول وإيقاف الملف التشغيلي لهذا الحساب فقط، دون تغيير حالة الموزع نفسه."
+                                confirmLabel="تأكيد الإيقاف"
+                              >
+                                إيقاف الحساب
+                              </ConfirmSubmitButton>
+                            ) : (
+                              <button type="submit" className="button button-primary">إعادة التفعيل</button>
+                            )}
+                          </form>
+
+                          <form action={resetDealerAccountPassword} className="operations-form">
+                            <input type="hidden" name="dealer_id" value={dealer.id} />
+                            <input type="hidden" name="user_id" value={account.id} />
                             <input
                               name="new_password"
                               type="password"
@@ -212,14 +210,14 @@ export default async function DealerEditPage({ params, searchParams }: DealerEdi
                               required
                               autoComplete="new-password"
                               dir="ltr"
+                              aria-label={`كلمة مرور جديدة لحساب ${account.display_name}`}
+                              placeholder="كلمة مرور جديدة"
                             />
-                          </FormField>
-                        </FormGrid>
-                        <div className="operations-form-actions is-inline">
-                          <button type="submit" className="button button-ghost">تعيين كلمة المرور</button>
-                        </div>
-                      </form>
-                    </RecordItem>
+                            <button type="submit" className="button button-ghost">تعيين كلمة المرور</button>
+                          </form>
+                        </>
+                      }
+                    />
                   );
                 })}
               </RecordList>
