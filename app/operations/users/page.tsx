@@ -13,6 +13,7 @@ import { setOperationalUserStatus } from "./actions";
 
 const roleLabels: Record<string, string> = {
   admin: "إدارة الشركة",
+  agent: "وكيل الدولة",
   dealer: "وكيل / موزع",
   center: "مركز تركيب",
 };
@@ -47,6 +48,7 @@ type UsersPageProps = {
 
 type ProfileEntityBinding = {
   role: string;
+  country_agent_id: string | null;
   dealer_id: string | null;
   installation_center_id: string | null;
 };
@@ -55,31 +57,35 @@ export default async function OperationsUsersPage({ searchParams }: UsersPagePro
   const adminProfile = await requireAdminProfile();
   const params = await searchParams;
   const query = params.q?.trim().toLowerCase() ?? "";
-  const roleFilter = ["admin", "dealer", "center"].includes(params.role ?? "") ? params.role : "";
+  const roleFilter = ["admin", "agent", "dealer", "center"].includes(params.role ?? "") ? params.role : "";
   const statusFilter = ["active", "suspended"].includes(params.status ?? "") ? params.status : "";
 
   const supabase = await createSupabaseServerClient();
-  const [profilesResult, dealersResult, centersResult, authUsers] = await Promise.all([
+  const [profilesResult, agentsResult, dealersResult, centersResult, authUsers] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, display_name, role, status, phone, dealer_id, installation_center_id, created_at")
+      .select("id, display_name, role, status, phone, country_agent_id, dealer_id, installation_center_id, created_at")
       .order("created_at", { ascending: false }),
+    supabase.from("country_agents").select("id, code, name"),
     supabase.from("dealers").select("id, code, name"),
     supabase.from("installation_centers").select("id, code, name"),
     listAllOperationalAuthUsers(),
   ]);
 
   if (profilesResult.error) throw profilesResult.error;
+  if (agentsResult.error) throw agentsResult.error;
   if (dealersResult.error) throw dealersResult.error;
   if (centersResult.error) throw centersResult.error;
 
   const authById = new Map(authUsers.map((user) => [user.id, user]));
+  const agentNames = new Map(agentsResult.data.map((agent) => [agent.id, `${agent.name} (${agent.code})`]));
   const dealerNames = new Map(dealersResult.data.map((dealer) => [dealer.id, `${dealer.name} (${dealer.code})`]));
   const centerNames = new Map(centersResult.data.map((center) => [center.id, `${center.name} (${center.code})`]));
 
   function entityLabel(profile: ProfileEntityBinding) {
     if (profile.role === "admin") return "إدارة الشركة";
-    if (profile.role === "dealer" && profile.dealer_id) return dealerNames.get(profile.dealer_id) ?? "وكيل غير متاح";
+    if (profile.role === "agent" && profile.country_agent_id) return agentNames.get(profile.country_agent_id) ?? "وكيل دولة غير متاح";
+    if (profile.role === "dealer" && profile.dealer_id) return dealerNames.get(profile.dealer_id) ?? "وكيل / موزع غير متاح";
     if (profile.role === "center" && profile.installation_center_id) return centerNames.get(profile.installation_center_id) ?? "مركز غير متاح";
     return "ارتباط غير متاح";
   }
@@ -134,6 +140,7 @@ export default async function OperationsUsersPage({ searchParams }: UsersPagePro
               <select name="role" defaultValue={roleFilter}>
                 <option value="">كل الأدوار</option>
                 <option value="admin">إدارة الشركة</option>
+                <option value="agent">وكيل الدولة</option>
                 <option value="dealer">وكيل / موزع</option>
                 <option value="center">مركز تركيب</option>
               </select>
