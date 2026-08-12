@@ -234,6 +234,8 @@ jobs:
           exit 1
 
       - name: Verify generated database types
+        id: generated_types
+        continue-on-error: true
         run: |
           supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
           cp lib/supabase/database.types.ts /tmp/committed.database.types.ts
@@ -252,6 +254,21 @@ jobs:
             echo "Committed database types are out of sync with the public application schema."
             exit 1
           fi
+
+      - name: Upload generated database types
+        if: steps.generated_types.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-database-types
+          path: /tmp/generated.database.types.ts
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Stop after database type mismatch
+        if: steps.generated_types.outcome == 'failure'
+        run: |
+          echo "Generated database types differ from the committed file. The generated file was uploaded as generated-database-types."
+          exit 1
 
       - name: Stop local stack
         if: always()
