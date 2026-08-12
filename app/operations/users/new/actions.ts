@@ -6,7 +6,17 @@ import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { parseOperationalUserCreateInput } from "@/lib/users/operational-user-input";
 
-function provisioningMetadata(input: NonNullable<ReturnType<typeof parseOperationalUserCreateInput>>) {
+type OperationalUserCreateInput = NonNullable<ReturnType<typeof parseOperationalUserCreateInput>>;
+
+function provisioningMetadata(input: OperationalUserCreateInput) {
+  if (input.role === "agent") {
+    return {
+      version: "operational-v1",
+      role: input.role,
+      country_agent_id: input.country_agent_id,
+    };
+  }
+
   if (input.role === "dealer") {
     return {
       version: "operational-v1",
@@ -26,12 +36,21 @@ function provisioningMetadata(input: NonNullable<ReturnType<typeof parseOperatio
   return { version: "operational-v1", role: input.role };
 }
 
-async function entityIsActive(
-  input: NonNullable<ReturnType<typeof parseOperationalUserCreateInput>>,
-) {
+async function entityIsActive(input: OperationalUserCreateInput) {
   if (input.role === "admin") return true;
 
   const supabaseAdmin = createSupabaseAdminClient();
+
+  if (input.role === "agent") {
+    const { data, error } = await supabaseAdmin
+      .from("country_agents")
+      .select("id, status")
+      .eq("id", input.country_agent_id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data?.status === "active";
+  }
 
   if (input.role === "dealer") {
     const { data, error } = await supabaseAdmin
@@ -52,6 +71,32 @@ async function entityIsActive(
 
   if (error) throw error;
   return data?.status === "active";
+}
+
+function profileMatchesInput(
+  profile: {
+    role: string;
+    country_agent_id: string | null;
+    dealer_id: string | null;
+    installation_center_id: string | null;
+  },
+  input: OperationalUserCreateInput,
+) {
+  if (profile.role !== input.role) return false;
+
+  if (input.role === "admin") {
+    return profile.country_agent_id === null && profile.dealer_id === null && profile.installation_center_id === null;
+  }
+
+  if (input.role === "agent") {
+    return profile.country_agent_id === input.country_agent_id && profile.dealer_id === null && profile.installation_center_id === null;
+  }
+
+  if (input.role === "dealer") {
+    return profile.country_agent_id === null && profile.dealer_id === input.dealer_id && profile.installation_center_id === null;
+  }
+
+  return profile.country_agent_id === null && profile.dealer_id === null && profile.installation_center_id === input.installation_center_id;
 }
 
 export async function createOperationalUser(formData: FormData) {
@@ -103,11 +148,11 @@ export async function createOperationalUser(formData: FormData) {
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
-    .select("id, role, dealer_id, installation_center_id")
+    .select("id, role, country_agent_id, dealer_id, installation_center_id")
     .eq("id", userId)
     .maybeSingle();
 
-  if (profileError || !profile) {
+  if (profileError || !profile || !profileMatchesInput(profile, input)) {
     await supabaseAdmin.auth.admin.deleteUser(userId);
     redirect("/operations/users/new?error=profile");
   }
