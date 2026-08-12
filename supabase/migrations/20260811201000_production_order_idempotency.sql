@@ -262,7 +262,10 @@ begin
         v_date_text,
         v_order_sequence_text,
         lpad(v_lot_ordinal::text, 2, '0'),
-        lpad(roll_number::text, 4, '0')
+        case
+          when roll_number = 10000 then '10000'
+          else lpad(roll_number::text, 4, '0')
+        end
       ),
       'ERP-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 16))
     from generate_series(1, v_lot_quantity) as roll_number;
