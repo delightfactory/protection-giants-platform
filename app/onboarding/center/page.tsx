@@ -17,6 +17,7 @@ const errorMessages: Record<string, string> = {
   session: "تعذر إثبات جلسة الدعوة. افتح رابط الدعوة الأصلي مرة أخرى أو اطلب إعادة إصداره.",
   invalid: "راجع الاسم ورقم الهاتف وكلمتي المرور ثم حاول مرة أخرى.",
   "invite-state": "الدعوة لم تعد متاحة للإكمال. قد تكون أُلغيت أو استُبدلت بدعوة أحدث.",
+  "invite-review": "تم إيقاف إكمال هذه الدعوة احترازيًا وتحتاج مراجعة من إدارة Protection Giants قبل المحاولة مرة أخرى.",
   "invite-identity": "هوية البريد الحالية لا تطابق الدعوة المسجلة للمركز.",
   "center-inactive": "المركز موقوف حاليًا، لذلك لا يمكن إكمال تفعيل الحساب حتى تتم إعادة تفعيله.",
   "center-onboarded": "تم ربط حساب تشغيلي بالمركز بالفعل. لا يمكن استخدام دعوة الحساب الأول لإنشاء حساب إضافي.",
@@ -35,7 +36,7 @@ function ErrorState({ message }: { message: string }) {
           <h1 id="onboarding-error-title">تعذر إكمال الدعوة</h1>
         </div>
         <FeedbackBanner tone="error">{message}</FeedbackBanner>
-        <p>لن يتم إنشاء أي صلاحية تشغيلية من رابط غير صالح أو دعوة لم تعد نشطة.</p>
+        <p>لن يتم إنشاء أي صلاحية تشغيلية من رابط غير صالح أو دعوة لم تعد نشطة أو تحتاج مراجعة إدارية.</p>
         <Link href="/" className="auth-back-link">العودة إلى الموقع العام</Link>
       </section>
     </main>
@@ -73,7 +74,7 @@ export default async function CenterOnboardingPage({ searchParams }: CenterOnboa
 
   const { data: invitation, error: invitationError } = await supabaseAdmin
     .from("center_onboarding_invitations")
-    .select("id, installation_center_id, invited_email, auth_user_id, status, accepted_at")
+    .select("id, installation_center_id, invited_email, auth_user_id, status, accepted_at, review_required_at, failure_code")
     .eq("auth_user_id", userId)
     .in("status", ["pending", "accepted"])
     .order("created_at", { ascending: false })
@@ -83,6 +84,9 @@ export default async function CenterOnboardingPage({ searchParams }: CenterOnboa
   if (invitationError) throw invitationError;
   if (!invitation || invitation.auth_user_id !== userId) {
     return <ErrorState message={errorMessages[error ?? "invite-state"] ?? errorMessages["invite-state"]} />;
+  }
+  if (invitation.review_required_at || invitation.failure_code) {
+    return <ErrorState message={errorMessages["invite-review"]} />;
   }
 
   const { data: authResult, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
