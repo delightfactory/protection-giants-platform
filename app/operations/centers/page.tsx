@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { PageHeader } from "@/components/ui/page-header";
 import { RecordItem, RecordList } from "@/components/ui/record-list";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { requireAdminProfile } from "@/lib/auth/operational-profile";
+import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { setCenterStatus } from "./actions";
 
@@ -19,23 +20,41 @@ type OperationsCentersPageProps = {
 };
 
 export default async function OperationsCentersPage({ searchParams }: OperationsCentersPageProps) {
-  await requireAdminProfile();
-  const { error: pageError } = await searchParams;
+  const profile = await requireOperationalProfile();
+  if (profile.role === "center") redirect("/access-denied");
 
+  const { error: pageError } = await searchParams;
   const supabase = await createSupabaseServerClient();
-  const [centersResult, dealersResult] = await Promise.all([
+  const [centersResult, dealersResult, agentsResult, partiesResult] = await Promise.all([
     supabase
       .from("installation_centers")
-      .select("id, code, name, dealer_id, country_code, city, status")
+      .select("id, code, name, dealer_id, country_agent_id, country_code, city, status")
       .order("name", { ascending: true }),
     supabase.from("dealers").select("id, code, name"),
+    profile.role === "dealer"
+      ? Promise.resolve({ data: [], error: null })
+      : supabase.from("country_agents").select("id, code, name"),
+    supabase
+      .from("operational_parties")
+      .select("installation_center_id, transfer_code")
+      .eq("party_type", "center"),
   ]);
 
   if (centersResult.error) throw centersResult.error;
   if (dealersResult.error) throw dealersResult.error;
+  if (agentsResult.error) throw agentsResult.error;
+  if (partiesResult.error) throw partiesResult.error;
 
   const dealerNames = new Map(
     dealersResult.data.map((dealer) => [dealer.id, `${dealer.name} (${dealer.code})`]),
+  );
+  const agentNames = new Map(
+    agentsResult.data.map((agent) => [agent.id, `${agent.name} (${agent.code})`]),
+  );
+  const transferCodes = new Map(
+    partiesResult.data
+      .filter((party) => party.installation_center_id)
+      .map((party) => [party.installation_center_id as string, party.transfer_code]),
   );
 
   return (
@@ -43,7 +62,9 @@ export default async function OperationsCentersPage({ searchParams }: Operations
       <PageHeader
         eyebrow="الهيكل التشغيلي"
         title="مراكز التركيب"
-        description="إدارة المراكز المعتمدة وموقعها والتبعية التشغيلية لكل مركز."
+        description={profile.role === "admin"
+          ? "إدارة المراكز وموقعها والتبعية التشغيلية لكل مركز."
+          : "إدارة مراكز التركيب الواقعة داخل نطاقك التشغيلي."}
         meta={`${centersResult.data.length} مركز مسجل`}
         actions={<Link href="/operations/centers/new" className="button button-primary">إضافة مركز</Link>}
       />
@@ -55,8 +76,8 @@ export default async function OperationsCentersPage({ searchParams }: Operations
       {centersResult.data.length === 0 ? (
         <EmptyState
           eyebrow="مراكز التركيب"
-          title="لا توجد مراكز تركيب مسجلة بعد"
-          description="أنشئ أول مركز تشغيلي وحدد إن كان مباشرًا للشركة أو تابعًا لوكيل."
+          title="لا توجد مراكز تركيب في نطاقك بعد"
+          description="أنشئ مركزًا جديدًا وحدد تبعيته التشغيلية المسموح بها لهذا الحساب."
           action={<Link href="/operations/centers/new" className="button button-primary">إضافة مركز</Link>}
         />
       ) : (
@@ -64,8 +85,10 @@ export default async function OperationsCentersPage({ searchParams }: Operations
           {centersResult.data.map((center) => {
             const isSuspended = center.status === "suspended";
             const parentName = center.dealer_id
-              ? dealerNames.get(center.dealer_id) ?? "وكيل غير متاح"
-              : "مباشر للشركة";
+              ? dealerNames.get(center.dealer_id) ?? "موزع غير متاح"
+              : center.country_agent_id
+                ? agentNames.get(center.country_agent_id) ?? "وكيل دولة غير متاح"
+                : "مباشر للشركة";
 
             return (
               <RecordItem
@@ -75,6 +98,7 @@ export default async function OperationsCentersPage({ searchParams }: Operations
                 facts={[
                   { label: "الموقع", value: <>{center.city} · <span dir="ltr">{center.country_code}</span></> },
                   { label: "التبعية", value: parentName },
+                  { label: "Transfer ID", value: transferCodes.get(center.id) ?? "غير متاح", dir: "ltr" },
                 ]}
                 status={
                   <StatusBadge tone={isSuspended ? "neutral" : "success"}>
