@@ -75,7 +75,27 @@ async function signIn(email) {
   return result.body.access_token;
 }
 
-async function createDealer(accessToken) {
+async function createCountryAgent(accessToken) {
+  const result = await request("/rest/v1/country_agents", {
+    method: "POST",
+    token: accessToken,
+    headers: { Prefer: "return=representation" },
+    body: {
+      code: "CI-USER-READ-AGENT",
+      name: "وكيل دولة اختبار قراءة المستخدمين",
+      country_code: "EG",
+      status: "active",
+    },
+  });
+
+  if (!result.response.ok || !Array.isArray(result.body) || !result.body[0]?.id) {
+    throw new Error(`Admin Agent setup failed (${result.response.status}): ${JSON.stringify(result.body)}`);
+  }
+
+  return result.body[0];
+}
+
+async function createDealer(accessToken, countryAgentId) {
   const result = await request("/rest/v1/dealers", {
     method: "POST",
     token: accessToken,
@@ -84,6 +104,7 @@ async function createDealer(accessToken) {
       code: "CI-USER-READ",
       name: "وكيل اختبار قراءة المستخدمين",
       country_code: "EG",
+      country_agent_id: countryAgentId,
       status: "active",
     },
   });
@@ -118,7 +139,8 @@ const adminUser = await createOperationalUser({
   role: "admin",
 });
 const adminToken = await signIn(adminEmail);
-const dealer = await createDealer(adminToken);
+const countryAgent = await createCountryAgent(adminToken);
+const dealer = await createDealer(adminToken, countryAgent.id);
 
 const dealerUser = await createOperationalUser({
   email: dealerEmail,
@@ -145,4 +167,4 @@ if (
   throw new Error(`Dealer profile scope exceeded own-profile access: ${JSON.stringify(dealerProfiles)}`);
 }
 
-console.log("Profile admin-read RLS smoke test passed.");
+console.log("Profile admin-read RLS smoke test passed with Agent-bound Dealer fixture.");
