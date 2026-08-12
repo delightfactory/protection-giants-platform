@@ -59,8 +59,8 @@ function rawValue(formData: FormData, key: string): string {
   return typeof raw === "string" ? raw : "";
 }
 
-export function isOperationalUserId(valueToCheck: string): boolean {
-  return uuidPattern.test(valueToCheck);
+export function isOperationalUserId(valueToCheck: unknown): valueToCheck is string {
+  return typeof valueToCheck === "string" && uuidPattern.test(valueToCheck);
 }
 
 export function parseOperationalProfileInput(
