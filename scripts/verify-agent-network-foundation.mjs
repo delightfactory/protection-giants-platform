@@ -163,6 +163,25 @@ const dealerCreatedCenter = one(await rest("installation_centers?select=id,code,
   },
 }), "Dealer creates own Center");
 
+const companyDirectCenter = one(await rest("installation_centers?select=id,code,country_code,dealer_id,country_agent_id,status", adminToken, {
+  method: "POST", prefer: true,
+  body: {
+    code: "NET-C-COMPANY",
+    name: "Company Direct Center",
+    country_code: "EG",
+    city: "Alexandria",
+  },
+}), "Admin creates Company-direct Center");
+
+none(
+  await rest(`installation_centers?id=eq.${companyDirectCenter.id}&select=id,dealer_id,country_agent_id`, agentAToken),
+  "Agent A reads Company-direct Center",
+);
+none(
+  await rest(`installation_centers?id=eq.${companyDirectCenter.id}&select=id,dealer_id,country_agent_id`, dealerAToken),
+  "Dealer A reads Company-direct Center",
+);
+
 const dealerDirectCreate = await rest("installation_centers?select=id", dealerAToken, {
   method: "POST", prefer: true,
   body: {
@@ -233,6 +252,7 @@ for (const [type, id, field] of [
   ["center", directCenter.id, "installation_center_id"],
   ["center", dealerCenter.id, "installation_center_id"],
   ["center", dealerCreatedCenter.id, "installation_center_id"],
+  ["center", companyDirectCenter.id, "installation_center_id"],
 ]) {
   const matches = parties.body.filter((party) => party.party_type === type && party[field] === id);
   if (matches.length !== 1) throw new Error(`Entity ${id} does not have exactly one ${type} party.`);
