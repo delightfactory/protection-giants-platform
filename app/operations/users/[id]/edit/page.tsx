@@ -10,7 +10,7 @@ import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { isOperationalUserId } from "@/lib/users/operational-user-input";
+import { isOperationalUserId, type OperationalUserRole } from "@/lib/users/operational-user-input";
 import { setOperationalUserStatus } from "../../actions";
 import {
   resetOperationalUserPassword,
@@ -52,18 +52,20 @@ export default async function UserEditPage({ params, searchParams }: UserEditPag
   const supabase = await createSupabaseServerClient();
   const supabaseAdmin = createSupabaseAdminClient();
 
-  const [profileResult, dealersResult, centersResult, authResult] = await Promise.all([
+  const [profileResult, agentsResult, dealersResult, centersResult, authResult] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, display_name, phone, role, status, dealer_id, installation_center_id, created_at")
+      .select("id, display_name, phone, role, status, country_agent_id, dealer_id, installation_center_id, created_at")
       .eq("id", id)
       .maybeSingle(),
+    supabase.from("country_agents").select("id, code, name, status").order("name"),
     supabase.from("dealers").select("id, code, name, status").order("name"),
     supabase.from("installation_centers").select("id, code, name, status").order("name"),
     supabaseAdmin.auth.admin.getUserById(id),
   ]);
 
   if (profileResult.error) throw profileResult.error;
+  if (agentsResult.error) throw agentsResult.error;
   if (dealersResult.error) throw dealersResult.error;
   if (centersResult.error) throw centersResult.error;
   if (authResult.error || !authResult.data.user || !profileResult.data) notFound();
@@ -97,13 +99,15 @@ export default async function UserEditPage({ params, searchParams }: UserEditPag
               description="هذه البيانات هي مصدر الصلاحية الفعلي داخل المنصة."
             >
               <OperationalUserFields
+                agents={agentsResult.data}
                 dealers={dealersResult.data}
                 centers={centersResult.data}
                 lockRole={isSelf}
                 defaultValues={{
                   displayName: profile.display_name,
                   phone: profile.phone,
-                  role: profile.role as "admin" | "dealer" | "center",
+                  role: profile.role as OperationalUserRole,
+                  countryAgentId: profile.country_agent_id,
                   dealerId: profile.dealer_id,
                   centerId: profile.installation_center_id,
                 }}
