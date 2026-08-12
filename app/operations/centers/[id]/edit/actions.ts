@@ -8,7 +8,7 @@ import { parseCenterParentRef } from "@/lib/centers/center-parent";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAuthUserByEmail } from "@/lib/users/auth-admin";
-import { isOperationalUserId, parseOperationalUserEmail } from "@/lib/users/operational-user-input";
+import { parseOperationalUserEmail } from "@/lib/users/operational-user-input";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const countryCodePattern = /^[A-Z]{2}$/;
@@ -81,10 +81,23 @@ async function issueCenterInvitation({
 }) {
   if (await readAnyCenterProfile(center.id)) return "invite-onboarded";
 
+  const supabaseAdmin = createSupabaseAdminClient();
+  const { data: openInvitation, error: openInvitationError } = await supabaseAdmin
+    .from("center_onboarding_invitations")
+    .select("id, status")
+    .eq("installation_center_id", center.id)
+    .in("status", ["pending", "accepted"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (openInvitationError) throw openInvitationError;
+  if (openInvitation?.status === "pending") return "invite-pending";
+  if (openInvitation?.status === "accepted") return "invite-locked";
+
   const existingAuthUser = await findAuthUserByEmail(email);
   if (existingAuthUser) return "invite-email-unavailable";
 
-  const supabaseAdmin = createSupabaseAdminClient();
   const { data: invitation, error: invitationError } = await supabaseAdmin
     .from("center_onboarding_invitations")
     .insert({
