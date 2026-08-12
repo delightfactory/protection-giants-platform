@@ -77,9 +77,11 @@ Only centers registered/approved in the platform can be presented as approved ce
 The production-order feature records the product, quantity, relevant date/source information, lot breakdown, and printable order. It is not a procurement/shipping management workflow in the first release.
 
 ### PD-014 — Physical transfer uses scan confirmation
-**Status:** Approved
+**Status:** Approved; clarified 2026-08-12
 
 When physical rolls are transferred to another operational holder, scanning is used to ensure the serials recorded in the transfer match the physical rolls actually moved.
+
+**Clarification:** scanning is a confirmation method for small/mixed physical movements and receipt verification; it is not mandatory to scan every Roll individually in a trusted whole-Lot bulk transfer. A whole-Lot selection may be one operator action while the platform expands it into individual Roll transfer items. If only part of a Lot is currently held/eligible, the available quantity must be shown explicitly and the system must not represent it as a complete-Lot move.
 
 ### PD-015 — Product warranty policy drives warranty duration
 **Status:** Approved
@@ -116,3 +118,37 @@ The product stores the current default warranty duration plus customer-facing co
 Each SKU identifies one Product definition with one stable nominal specification set. A commercially meaningful change in width, length, thickness, version/model, or another defining specification is represented by a separate Product/SKU rather than by a variant engine inside the same SKU.
 
 This keeps production orders, lots, rolls, labels, transfers, and warranties anchored to one unambiguous Product definition in the first release. A generalized variant subsystem is deferred unless a later business requirement demonstrates that multiple sellable configurations must share one SKU.
+
+### PD-021 — Country Agent is a separate operational entity and role
+**Status:** Approved — 2026-08-12
+
+Country Agent is distinct from Dealer. Protection Giants/Admin creates Agents; Agents create Dealers and may create Centers in their network; Dealers create their Centers. The system must not overload Dealer records or Dealer-role users to represent Agents.
+
+### PD-022 — Organizational hierarchy does not hard-code transfer routes
+**Status:** Approved — 2026-08-12
+
+Company → Agent → Dealer/Center is the normal management hierarchy and visibility boundary, but physical Roll transfers are not forced through that chain. Transfer authorization is based on confirmed current custody, active recipient identity, and transfer rules so legitimate direct/return/cross-peer movements can be supported without redesigning the hierarchy.
+
+### PD-023 — Transfer recipients use a stable private Transfer ID, not a global directory
+**Status:** Approved — 2026-08-12
+
+Every Agent, Dealer, and Center receives a stable platform-wide unique Transfer ID and QR representation. Ordinary users do not browse a global directory of all entities. A sender may enter or scan the exact Transfer ID and receive only the minimal recipient identity needed to verify the intended party before sending.
+
+Transfer ID is an identifier analogous to an account number, not a rotating OTP or secret. Knowing it does not grant custody.
+
+### PD-024 — Recipient acceptance is required before confirmed custody changes
+**Status:** Approved — 2026-08-12
+
+Creating a Transfer reserves the selected Rolls but leaves confirmed custody with the sender. The recipient must accept receipt before custody moves. Rejection or sender cancellation before receipt releases the reservation. Partial receipt is supported: received Rolls move custody individually while unresolved Rolls remain reserved until their physical status is resolved.
+
+### PD-025 — Center Onboarding is invitation-based and part of the current transfer foundation
+**Status:** Approved — 2026-08-12
+
+A Center entity may exist and receive a Transfer ID before it has any user account. Its first operational user is onboarded through a controlled invitation bound to the already-existing Center. Public operational signup remains disabled, and the recipient cannot choose or alter the protected Center role/entity binding.
+
+Agents are registered by the Parent Company and Dealers are registered by Agents; the invitation-based onboarding flow is specifically for Centers in the current scope.
+
+### PD-026 — Operational Center registration and Warranty approval are separate
+**Status:** Approved — 2026-08-12
+
+An operationally registered/active Center may participate in the network and custody flow without automatically becoming an approved Warranty Activation center or public approved-center listing. Warranty approval is a later explicit business permission and must not be inferred from Center creation or onboarding.
