@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const operationalRoles = ["admin", "dealer", "center"] as const;
+const operationalRoles = ["admin", "agent", "dealer", "center"] as const;
 
 export type OperationalRole = (typeof operationalRoles)[number];
 
@@ -12,6 +12,7 @@ type OperationalProfileRow = Pick<
   | "display_name"
   | "role"
   | "status"
+  | "country_agent_id"
   | "dealer_id"
   | "installation_center_id"
 >;
@@ -22,23 +23,37 @@ type ActiveProfileBase = Pick<OperationalProfileRow, "id" | "display_name"> & {
 
 export type AdminProfile = ActiveProfileBase & {
   role: "admin";
+  country_agent_id: null;
+  dealer_id: null;
+  installation_center_id: null;
+};
+
+export type AgentProfile = ActiveProfileBase & {
+  role: "agent";
+  country_agent_id: string;
   dealer_id: null;
   installation_center_id: null;
 };
 
 export type DealerProfile = ActiveProfileBase & {
   role: "dealer";
+  country_agent_id: null;
   dealer_id: string;
   installation_center_id: null;
 };
 
 export type CenterProfile = ActiveProfileBase & {
   role: "center";
+  country_agent_id: null;
   dealer_id: null;
   installation_center_id: string;
 };
 
-export type OperationalProfile = AdminProfile | DealerProfile | CenterProfile;
+export type OperationalProfile =
+  | AdminProfile
+  | AgentProfile
+  | DealerProfile
+  | CenterProfile;
 
 function isOperationalRole(role: string): role is OperationalRole {
   return operationalRoles.some((allowedRole) => allowedRole === role);
@@ -53,6 +68,7 @@ function toOperationalProfile(
 
   if (
     profile.role === "admin" &&
+    profile.country_agent_id === null &&
     profile.dealer_id === null &&
     profile.installation_center_id === null
   ) {
@@ -60,7 +76,17 @@ function toOperationalProfile(
   }
 
   if (
+    profile.role === "agent" &&
+    profile.country_agent_id !== null &&
+    profile.dealer_id === null &&
+    profile.installation_center_id === null
+  ) {
+    return profile as AgentProfile;
+  }
+
+  if (
     profile.role === "dealer" &&
+    profile.country_agent_id === null &&
     profile.dealer_id !== null &&
     profile.installation_center_id === null
   ) {
@@ -69,6 +95,7 @@ function toOperationalProfile(
 
   if (
     profile.role === "center" &&
+    profile.country_agent_id === null &&
     profile.dealer_id === null &&
     profile.installation_center_id !== null
   ) {
@@ -90,7 +117,7 @@ export async function requireOperationalProfile(): Promise<OperationalProfile> {
   const { data: profile, error } = await supabase
     .from("profiles")
     .select(
-      "id, display_name, role, status, dealer_id, installation_center_id",
+      "id, display_name, role, status, country_agent_id, dealer_id, installation_center_id",
     )
     .eq("id", userId)
     .maybeSingle();
@@ -107,6 +134,22 @@ export async function requireOperationalProfile(): Promise<OperationalProfile> {
 
   if (!operationalProfile) {
     redirect("/access-denied");
+  }
+
+  if (operationalProfile.role === "agent") {
+    const { data: agent, error: agentError } = await supabase
+      .from("country_agents")
+      .select("id, status")
+      .eq("id", operationalProfile.country_agent_id)
+      .maybeSingle();
+
+    if (agentError) {
+      throw agentError;
+    }
+
+    if (!agent || agent.status !== "active") {
+      redirect("/access-denied");
+    }
   }
 
   if (operationalProfile.role === "dealer") {
