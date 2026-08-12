@@ -6,6 +6,7 @@ import { OperationsNavLinks } from "@/components/operations-nav-links";
 
 const roleLabels = {
   admin: "إدارة الشركة",
+  agent: "وكيل الدولة",
   dealer: "وكيل / موزع",
   center: "مركز تركيب",
 } satisfies Record<OperationalProfile["role"], string>;
