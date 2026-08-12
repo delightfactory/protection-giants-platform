@@ -5,13 +5,13 @@
 -- single supported five-digit boundary value 10000.
 
 alter table public.rolls
-  drop constraint rolls_serial_format;
+  drop constraint rolls_serial_format_check;
 
 alter table public.rolls
-  add constraint rolls_serial_format
+  add constraint rolls_serial_format_check
     check (
       serial_number ~ '^PG-R-[0-9]{8}-[0-9]{8}-[0-9]{2}-([0-9]{4}|10000)$'
     );
 
-comment on constraint rolls_serial_format on public.rolls is
+comment on constraint rolls_serial_format_check on public.rolls is
   'Internal Roll serial format; supports Roll indices 0001..9999 and the configured 10000 boundary.';
