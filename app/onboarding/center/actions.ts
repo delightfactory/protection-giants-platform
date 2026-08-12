@@ -151,6 +151,40 @@ export async function completeCenterOnboarding(formData: FormData) {
       .eq("status", "accepted");
   };
 
+  // Recheck the mutable operational conditions after the invitation claim and
+  // immediately before protected provisioning. This closes the practical race
+  // where a Center is suspended or receives its first account during form work.
+  const [latestCenterResult, concurrentProfileResult] = await Promise.all([
+    supabaseAdmin
+      .from("installation_centers")
+      .select("id, status")
+      .eq("id", center.id)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("role", "center")
+      .eq("installation_center_id", center.id)
+      .neq("id", userId)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (latestCenterResult.error || concurrentProfileResult.error) {
+    await rollbackClaim();
+    throw latestCenterResult.error ?? concurrentProfileResult.error;
+  }
+
+  if (!latestCenterResult.data || latestCenterResult.data.status !== "active") {
+    await rollbackClaim();
+    redirect(onboardingPath("error=center-inactive"));
+  }
+
+  if (concurrentProfileResult.data) {
+    await rollbackClaim();
+    redirect(onboardingPath("error=center-onboarded"));
+  }
+
   const previousAppMetadata = stagedUserResult.user.app_metadata ?? {};
   const { error: provisioningError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
     app_metadata: {
@@ -185,10 +219,34 @@ export async function completeCenterOnboarding(formData: FormData) {
     createdProfile.phone === (phone || null);
 
   if (createdProfileError || !exactProfile) {
-    await supabaseAdmin.auth.admin.updateUserById(userId, {
-      app_metadata: previousAppMetadata,
-    });
-    await rollbackClaim();
+    // A mismatch after pg_provisioning is a security boundary, not a normal
+    // validation error. If a Profile exists, fail closed by suspending both
+    // Auth and the Profile and keep the invitation claimed for admin review.
+    // If no Profile was created, restore app metadata and reopen the invitation
+    // so the same trusted recipient can retry safely.
+    if (createdProfile) {
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        app_metadata: previousAppMetadata,
+        ban_duration: "876000h",
+      });
+      await supabaseAdmin
+        .from("profiles")
+        .update({ status: "suspended" })
+        .eq("id", userId);
+    } else if (!createdProfileError) {
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        app_metadata: previousAppMetadata,
+      });
+      await rollbackClaim();
+    } else {
+      // We cannot prove whether Profile creation happened while the read path
+      // is failing. Ban Auth and leave the claimed invitation locked for a
+      // deliberate admin review rather than risking a second provisioning path.
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        ban_duration: "876000h",
+      });
+    }
+
     redirect(onboardingPath("error=profile"));
   }
 
