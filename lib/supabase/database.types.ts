@@ -9,6 +9,60 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      center_onboarding_invitations: {
+        Row: {
+          accepted_at: string | null
+          auth_user_id: string | null
+          cancelled_at: string | null
+          created_at: string
+          id: string
+          installation_center_id: string
+          invited_by_profile_id: string
+          invited_email: string
+          status: string
+          superseded_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          auth_user_id?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          id?: string
+          installation_center_id: string
+          invited_by_profile_id: string
+          invited_email: string
+          status?: string
+          superseded_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          auth_user_id?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          id?: string
+          installation_center_id?: string
+          invited_by_profile_id?: string
+          invited_email?: string
+          status?: string
+          superseded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "center_onboarding_invitations_installation_center_id_fkey"
+            columns: ["installation_center_id"]
+            isOneToOne: false
+            referencedRelation: "installation_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "center_onboarding_invitations_invited_by_profile_id_fkey"
+            columns: ["invited_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       country_agents: {
         Row: {
           code: string
@@ -733,7 +787,7 @@ export type CompositeTypes<
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
