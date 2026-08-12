@@ -44,13 +44,15 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
     .from("production_orders")
     .select(orderFields)
     .order("created_at", { ascending: false })
+    .order("order_number", { ascending: false })
     .limit(100);
   if (ordersError) throw ordersError;
 
   let rollsQuery = supabase
     .from("rolls")
     .select("id, product_id, production_order_id, production_lot_id, roll_index, serial_number, erp_serial, created_at")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("serial_number", { ascending: true });
 
   if (search) {
     rollsQuery = rollsQuery.or(`serial_number.ilike.%${search}%,erp_serial.ilike.%${search}%`);
@@ -97,7 +99,7 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
   ];
   const ordersById = new Map(allKnownOrders.map((order) => [order.id, order]));
   const dropdownOrders = [...ordersById.values()]
-    .sort((a, b) => b.production_date.localeCompare(a.production_date))
+    .sort((a, b) => b.production_date.localeCompare(a.production_date) || b.order_number.localeCompare(a.order_number))
     .slice(0, selectedOrderResult.data ? 101 : 100);
   const lotsById = new Map(lotsResult.data.map((lot) => [lot.id, lot]));
   const filtersActive = Boolean(search || orderFilter);
