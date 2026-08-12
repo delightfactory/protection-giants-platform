@@ -245,11 +245,15 @@ const prepareInvitee = await request(`/auth/v1/admin/users/${inviteeId}`, {
   body: {
     password,
     email_confirm: true,
-    user_metadata: { center_name: "Onboarding Center One" },
+    user_metadata: {
+      center_name: "Onboarding Center One",
+      display_name: "Center Invitee",
+      phone: "+201000000001",
+    },
   },
 });
 if (!prepareInvitee.response.ok) {
-  throw new Error(`Could not prepare invited Auth user for RLS probe: ${prepareInvitee.response.status} ${JSON.stringify(prepareInvitee.body)}`);
+  throw new Error(`Could not stage invited user metadata before provisioning: ${prepareInvitee.response.status} ${JSON.stringify(prepareInvitee.body)}`);
 }
 
 const inviteeToken = await signIn(invitation.invited_email);
@@ -301,12 +305,6 @@ const provisioningResult = await request(`/auth/v1/admin/users/${inviteeId}`, {
   key: serviceRoleKey,
   token: serviceRoleKey,
   body: {
-    password,
-    user_metadata: {
-      center_name: "Onboarding Center One",
-      display_name: "Center Invitee",
-      phone: "+201000000001",
-    },
     app_metadata: {
       pg_provisioning: {
         version: "operational-v1",
