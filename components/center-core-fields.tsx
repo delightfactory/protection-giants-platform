@@ -1,27 +1,28 @@
 import { FormField } from "@/components/ui/form-field";
 import { FormGrid } from "@/components/ui/form-layout";
 
-type DealerOption = {
-  id: string;
-  code: string;
-  name: string;
-  status: string;
+export type CenterParentOption = {
+  value: string;
+  label: string;
+  countryCode: string;
 };
 
 type CenterCoreFieldValues = {
   code: string;
   name: string;
-  dealerId: string | null;
-  countryCode: string;
+  parentRef: string;
   city: string;
 };
 
 type CenterCoreFieldsProps = {
-  dealers: DealerOption[];
+  parentOptions: CenterParentOption[];
   values?: CenterCoreFieldValues;
+  lockParent?: boolean;
 };
 
-export function CenterCoreFields({ dealers, values }: CenterCoreFieldsProps) {
+export function CenterCoreFields({ parentOptions, values, lockParent = false }: CenterCoreFieldsProps) {
+  const selectedParent = parentOptions.find((option) => option.value === values?.parentRef);
+
   return (
     <FormGrid>
       <FormField
@@ -48,34 +49,26 @@ export function CenterCoreFields({ dealers, values }: CenterCoreFieldsProps) {
       </FormField>
 
       <FormField
-        label="الوكيل / الموزع الأب"
-        hint="اختر «مباشر للشركة» إذا لم يكن المركز تابعًا لوكيل."
-        optional
+        label="التبعية التشغيلية"
+        hint="الدولة تُستمد تلقائيًا من الطرف الأب ولا تُدخل يدويًا."
       >
-        <select name="dealer_id" defaultValue={values?.dealerId ?? ""}>
-          <option value="">مباشر للشركة</option>
-          {dealers.map((dealer) => (
-            <option value={dealer.id} key={dealer.id}>
-              {dealer.name} ({dealer.code}){dealer.status === "suspended" ? " — موقوف" : ""}
-            </option>
-          ))}
-        </select>
-      </FormField>
-
-      <FormField label="كود الدولة">
-        <input
-          name="country_code"
-          type="text"
-          minLength={2}
-          maxLength={2}
-          pattern="[A-Za-z]{2}"
-          placeholder="EG"
-          autoCapitalize="characters"
-          spellCheck={false}
-          dir="ltr"
-          defaultValue={values?.countryCode}
-          required
-        />
+        {lockParent ? (
+          <>
+            <input type="hidden" name="parent_ref" value={values?.parentRef ?? ""} />
+            <select value={values?.parentRef ?? ""} disabled aria-disabled="true">
+              <option value={values?.parentRef ?? ""}>{selectedParent?.label ?? "التبعية غير متاحة"}</option>
+            </select>
+          </>
+        ) : (
+          <select name="parent_ref" defaultValue={values?.parentRef ?? ""} required>
+            <option value="" disabled>اختر التبعية</option>
+            {parentOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label} — {option.countryCode}
+              </option>
+            ))}
+          </select>
+        )}
       </FormField>
 
       <FormField label="المدينة" full>
