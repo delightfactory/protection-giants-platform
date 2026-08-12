@@ -31,9 +31,30 @@ const adminDesktopItems: NavItem[] = [
   { href: "/operations/production-orders", label: "الإنتاج", icon: "production" },
 ];
 
-const basicItems: NavItem[] = [
+const agentItems: NavItem[] = [
   { href: "/operations", label: "الرئيسية", icon: "home" },
+  { href: "/operations/dealers", label: "الموزعون", icon: "dealers" },
+  { href: "/operations/centers", label: "المراكز", icon: "centers" },
+  { href: "/operations/products", label: "المنتجات", icon: "products" },
 ];
+
+const dealerItems: NavItem[] = [
+  { href: "/operations", label: "الرئيسية", icon: "home" },
+  { href: "/operations/centers", label: "المراكز", icon: "centers" },
+  { href: "/operations/products", label: "المنتجات", icon: "products" },
+];
+
+const centerItems: NavItem[] = [
+  { href: "/operations", label: "الرئيسية", icon: "home" },
+  { href: "/operations/products", label: "المنتجات", icon: "products" },
+];
+
+function itemsForRole(role: OperationalRole, variant: NavVariant) {
+  if (role === "admin") return variant === "mobile" ? adminMobileItems : adminDesktopItems;
+  if (role === "agent") return agentItems;
+  if (role === "dealer") return dealerItems;
+  return centerItems;
+}
 
 function isActivePath(pathname: string, href: string) {
   return href === "/operations" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
@@ -41,12 +62,10 @@ function isActivePath(pathname: string, href: string) {
 
 export function OperationsNavLinks({ role, variant }: { role: OperationalRole; variant: NavVariant }) {
   const pathname = usePathname();
-  const items = role === "admin"
-    ? variant === "mobile" ? adminMobileItems : adminDesktopItems
-    : basicItems;
+  const items = itemsForRole(role, variant);
   const isTaskRoute = pathname.endsWith("/new") || pathname.endsWith("/edit");
 
-  if (variant === "mobile" && (role !== "admin" || isTaskRoute)) {
+  if (variant === "mobile" && isTaskRoute) {
     return null;
   }
 
