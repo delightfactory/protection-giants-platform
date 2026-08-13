@@ -20,9 +20,10 @@ export default async function CenterLocationPage() {
   if (error) throw error;
   if (!center) redirect("/access-denied");
 
-  const locationSource = center.location_source === "center_device" || center.location_source === "admin"
-    ? center.location_source
-    : null;
+  const locationSource: "center_device" | "admin" | null =
+    center.location_source === "center_device" || center.location_source === "admin"
+      ? center.location_source
+      : null;
 
   const initialLocation = (
     center.latitude !== null &&
