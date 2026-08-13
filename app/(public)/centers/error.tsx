@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { PageIntro } from "@/components/page-intro";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function CentersError() {
   return (
@@ -13,11 +14,12 @@ export default function CentersError() {
       />
       <section className="section">
         <div className="container">
-          <div className="empty-state">
-            <strong>الدليل غير متاح مؤقتًا</strong>
-            <p>لم نتمكن من تحميل بيانات المراكز العامة الآن.</p>
-            <Link href="/centers" className="button button-primary">إعادة المحاولة</Link>
-          </div>
+          <EmptyState
+            eyebrow="دليل المراكز"
+            title="الدليل غير متاح مؤقتًا"
+            description="لم نتمكن من تحميل بيانات المراكز العامة الآن."
+            action={<Link href="/centers" className="button button-primary">إعادة المحاولة</Link>}
+          />
         </div>
       </section>
     </>
