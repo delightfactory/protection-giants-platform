@@ -51,7 +51,15 @@ function ensureMapCss() {
   document.head.appendChild(link);
 }
 
-export function CenterDirectoryMap({ centers, onSelect }: { centers: CenterMapItem[]; onSelect: (key: string) => void }) {
+export function CenterDirectoryMap({
+  centers,
+  selectedKey,
+  onSelect,
+}: {
+  centers: CenterMapItem[];
+  selectedKey: string | null;
+  onSelect: (key: string) => void;
+}) {
   const [libraryReady, setLibraryReady] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
@@ -119,12 +127,7 @@ export function CenterDirectoryMap({ centers, onSelect }: { centers: CenterMapIt
       element.title = center.name;
       element.addEventListener("click", () => onSelect(center.key));
       const popup = new maplibre.Popup({ offset: 18 }).setText(`${center.name} · ${center.city} · ${center.classification === "approved" ? "معتمد" : "مسجل"}`);
-      markersRef.current.push(
-        new maplibre.Marker({ element, anchor: "bottom" })
-          .setLngLat([center.longitude, center.latitude])
-          .setPopup(popup)
-          .addTo(map),
-      );
+      markersRef.current.push(new maplibre.Marker({ element, anchor: "bottom" }).setLngLat([center.longitude, center.latitude]).setPopup(popup).addTo(map));
     });
 
     if (centers.length === 1) {
@@ -133,11 +136,16 @@ export function CenterDirectoryMap({ centers, onSelect }: { centers: CenterMapIt
     }
     const latitudes = centers.map((center) => center.latitude);
     const longitudes = centers.map((center) => center.longitude);
-    map.fitBounds(
-      [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]],
-      { padding: 48, maxZoom: 11, duration: 0 },
-    );
+    map.fitBounds([[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]], { padding: 48, maxZoom: 11, duration: 0 });
   }, [centers, onSelect]);
+
+  useEffect(() => {
+    if (!selectedKey || !mapRef.current) return;
+    const selected = centers.find((center) => center.key === selectedKey);
+    if (!selected) return;
+    mapRef.current.flyTo({ center: [selected.longitude, selected.latitude], zoom: 13, essential: false });
+    containerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [centers, selectedKey]);
 
   return (
     <section className="center-directory-map-panel" aria-label="خريطة مراكز التركيب">
