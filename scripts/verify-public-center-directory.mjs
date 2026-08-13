@@ -131,7 +131,14 @@ one(await rest(`installation_centers?id=eq.${suspendedCenter.id}&select=id,statu
   body: { status: "suspended" },
 }), "Suspend public exclusion Center");
 
-const publicRows = rows(await rest("public_center_directory?select=*&order=center_name.asc"), "Anon reads public Center directory");
+const fixtureCenterNames = new Set([
+  "Public Approved Center",
+  "Public Registered Center",
+  "Public Suspended Center",
+  "Public No Location Center",
+]);
+const anonDirectoryRows = rows(await rest("public_center_directory?select=*&order=center_name.asc"), "Anon reads public Center directory");
+const publicRows = anonDirectoryRows.filter((row) => fixtureCenterNames.has(row.center_name));
 if (publicRows.length !== 2) throw new Error(`Expected 2 public Centers, got ${JSON.stringify(publicRows)}`);
 
 const approvedPublic = publicRows.find((row) => row.center_name === "Public Approved Center");
@@ -143,7 +150,7 @@ if (publicRows.some((row) => row.center_name.includes("Suspended") || row.center
 }
 
 const expectedKeys = ["center_name", "city", "classification", "country_code", "latitude", "longitude"];
-for (const row of publicRows) {
+for (const row of anonDirectoryRows) {
   const keys = Object.keys(row).sort();
   if (JSON.stringify(keys) !== JSON.stringify(expectedKeys)) throw new Error(`Public projection columns changed: ${JSON.stringify(keys)}`);
 }
@@ -151,8 +158,11 @@ for (const row of publicRows) {
 mustFail(await rest("installation_centers?select=id,name,approval_status"), "Anon reads operational Centers directly");
 mustFail(await rest("public_center_directory?select=center_name,dealer_id"), "Anon requests private hierarchy field from public projection");
 
-const authenticatedRows = rows(await rest("public_center_directory?select=*", adminToken), "Authenticated reads public directory");
-if (authenticatedRows.length !== 2) throw new Error("Authenticated public projection differs from anonymous projection.");
+const authenticatedRows = rows(await rest("public_center_directory?select=*&order=center_name.asc", adminToken), "Authenticated reads public directory")
+  .filter((row) => fixtureCenterNames.has(row.center_name));
+if (JSON.stringify(authenticatedRows) !== JSON.stringify(publicRows)) {
+  throw new Error("Authenticated public projection differs from anonymous projection.");
+}
 
 const changedLocation = await setLocation(adminToken, approvedCenter.id, 30.0501, 31.2402);
 const afterMove = one(await rest("public_center_directory?center_name=eq.Public%20Approved%20Center&select=*"), "Public projection after approved Center moves");
