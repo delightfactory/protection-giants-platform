@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -60,8 +60,12 @@ export function CenterLocationCapture({ initialLocation }: CenterLocationCapture
   const [candidate, setCandidate] = useState<CandidateLocation | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const locatingRef = useRef(false);
+  const savingRef = useRef(false);
 
   function startCapture() {
+    if (locatingRef.current || savingRef.current) return;
+
     setMessage(null);
     setCandidate(null);
 
@@ -71,9 +75,12 @@ export function CenterLocationCapture({ initialLocation }: CenterLocationCapture
       return;
     }
 
+    locatingRef.current = true;
     setPhase("locating");
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        locatingRef.current = false;
+
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
         const accuracyM = position.coords.accuracy;
@@ -103,6 +110,7 @@ export function CenterLocationCapture({ initialLocation }: CenterLocationCapture
         setPhase("review");
       },
       (error) => {
+        locatingRef.current = false;
         setPhase("error");
         setMessage(geolocationErrorMessage(error));
       },
@@ -115,35 +123,43 @@ export function CenterLocationCapture({ initialLocation }: CenterLocationCapture
   }
 
   async function saveCapture() {
-    if (!candidate || phase === "saving") return;
+    if (!candidate || savingRef.current || locatingRef.current) return;
 
+    savingRef.current = true;
     setPhase("saving");
     setMessage(null);
 
-    const supabase = getSupabaseBrowserClient();
-    const { data, error } = await supabase.rpc("update_own_center_location", {
-      p_latitude: candidate.latitude,
-      p_longitude: candidate.longitude,
-      p_accuracy_m: candidate.accuracyM,
-    });
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase.rpc("update_own_center_location", {
+        p_latitude: candidate.latitude,
+        p_longitude: candidate.longitude,
+        p_accuracy_m: candidate.accuracyM,
+      });
 
-    const saved = data?.[0];
-    if (error || !saved) {
+      const saved = data?.[0];
+      if (error || !saved) {
+        setPhase("error");
+        setMessage("تعذر حفظ الموقع. قد تكون حالة الحساب أو المركز تغيرت، أو انتهت الجلسة. أعد تحميل الصفحة ثم حاول مرة أخرى.");
+        return;
+      }
+
+      setStoredLocation({
+        latitude: saved.latitude,
+        longitude: saved.longitude,
+        accuracyM: saved.accuracy_m,
+        capturedAt: saved.captured_at,
+        source: "center_device",
+      });
+      setCandidate(null);
+      setPhase("success");
+      setMessage("تم حفظ موقع المركز وتسجيل عملية الالتقاط في السجل بنجاح.");
+    } catch {
       setPhase("error");
-      setMessage("تعذر حفظ الموقع. قد تكون حالة الحساب أو المركز تغيرت، أو انتهت الجلسة. أعد تحميل الصفحة ثم حاول مرة أخرى.");
-      return;
+      setMessage("تعذر الاتصال بالنظام لحفظ الموقع. تحقق من الاتصال ثم أعد المحاولة.");
+    } finally {
+      savingRef.current = false;
     }
-
-    setStoredLocation({
-      latitude: saved.latitude,
-      longitude: saved.longitude,
-      accuracyM: saved.accuracy_m,
-      capturedAt: saved.captured_at,
-      source: saved.source as "center_device" | "admin",
-    });
-    setCandidate(null);
-    setPhase("success");
-    setMessage("تم حفظ موقع المركز وتسجيل عملية الالتقاط في السجل بنجاح.");
   }
 
   return (
