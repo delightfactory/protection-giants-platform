@@ -60,6 +60,48 @@ export type Database = {
           },
         ]
       }
+      center_network_approval_events: {
+        Row: {
+          action: string
+          actor_profile_id: string | null
+          created_at: string
+          id: string
+          installation_center_id: string
+          occurred_at: string
+        }
+        Insert: {
+          action: string
+          actor_profile_id?: string | null
+          created_at?: string
+          id?: string
+          installation_center_id: string
+          occurred_at: string
+        }
+        Update: {
+          action?: string
+          actor_profile_id?: string | null
+          created_at?: string
+          id?: string
+          installation_center_id?: string
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "center_network_approval_events_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "center_network_approval_events_installation_center_id_fkey"
+            columns: ["installation_center_id"]
+            isOneToOne: false
+            referencedRelation: "installation_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       center_onboarding_invitations: {
         Row: {
           accepted_at: string | null
@@ -187,6 +229,9 @@ export type Database = {
       }
       installation_centers: {
         Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by_profile_id: string | null
           city: string
           code: string
           country_agent_id: string | null
@@ -204,6 +249,9 @@ export type Database = {
           status: string
         }
         Insert: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by_profile_id?: string | null
           city: string
           code: string
           country_agent_id?: string | null
@@ -221,6 +269,9 @@ export type Database = {
           status?: string
         }
         Update: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by_profile_id?: string | null
           city?: string
           code?: string
           country_agent_id?: string | null
@@ -244,6 +295,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "country_agents"
             referencedColumns: ["id", "country_code"]
+          },
+          {
+            foreignKeyName: "installation_centers_approved_by_profile_id_fkey"
+            columns: ["approved_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "installation_centers_dealer_country_fkey"
@@ -729,6 +787,16 @@ export type Database = {
           source: string
         }[]
       }
+      approve_center_network: {
+        Args: { p_center_id: string }
+        Returns: {
+          approval_status: string
+          approved_at: string
+          approved_by_profile_id: string
+          changed: boolean
+          installation_center_id: string
+        }[]
+      }
       create_production_order: {
         Args: {
           p_lots: Json
@@ -757,6 +825,16 @@ export type Database = {
           entity_code: string
           entity_type: string
           party_id: string
+        }[]
+      }
+      revoke_center_network_approval: {
+        Args: { p_center_id: string }
+        Returns: {
+          approval_status: string
+          approved_at: string
+          approved_by_profile_id: string
+          changed: boolean
+          installation_center_id: string
         }[]
       }
       update_own_center_location: {
