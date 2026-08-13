@@ -1,0 +1,28 @@
+name: Temp Name Public Center Directory Migration
+
+on:
+  push:
+    branches:
+      - feature/public-center-directory-map
+    paths:
+      - .github/workflows/temp-name-public-center-directory-migration.yml
+
+permissions:
+  contents: read
+
+jobs:
+  name-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+      - name: Generate migration name
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase --version
+          supabase migration new public_center_directory
+          find supabase/migrations -maxdepth 1 -type f -name '*_public_center_directory.sql' -printf '%f\n'
