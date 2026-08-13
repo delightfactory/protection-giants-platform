@@ -2,32 +2,45 @@
 
 ## Current capability
 
-The admin operations portal exposes controlled dealer listing, creation, core-data editing, and lifecycle control.
+Dealer administration is network-aware and functionally complete for the current foundation.
 
-The list page:
-- requires an active `admin` operational profile;
-- reads dealer records through the existing admin-scoped dealer RLS policy;
-- shows code, name, country code, and lifecycle status;
-- exposes only write actions whose secured paths already exist.
+### Admin
 
-Creation and core-data editing:
-- require the same admin application gate;
-- reuse one validation and normalization contract for code, name, and two-letter country code;
-- create through an explicit admin-only `INSERT` policy;
-- update only the `code`, `name`, and `country_code` columns through column-scoped database privileges plus admin RLS;
-- report invalid and duplicate data without bypassing database constraints.
+Admin can list, create, edit, reassign, suspend, and reactivate any Dealer. A Dealer must always belong to a real Country Agent.
 
-Lifecycle control:
-- grants `status` update separately from ordinary profile editing;
-- accepts only `active` or `suspended` through the server action;
-- reuses the active-admin update RLS boundary;
-- immediately affects dealer-role operational access because the shared access gate requires the bound dealer to be active.
+### Country Agent
 
-## Deliberately not included yet
+An active Agent can list and manage Dealers belonging to its exact network only. It cannot create, read, mutate, reassign, or lifecycle another Agent's Dealer.
 
-Dealer administration does not yet add:
-- installation-center administration;
-- user provisioning or account assignment;
-- addresses, contacts, documents, commercial terms, or other dealer-profile extensions.
+Agent-side forms do not trust a submitted Agent ID: server logic fixes the parent Agent to the caller's own `country_agent_id`.
 
-The minimum dealer administration layer is complete at this point. Installation centers are the next dependent entity layer.
+## Country invariant
+
+The operator does not independently maintain Dealer country. The server reads the selected/authorized Country Agent and stores its country with the Dealer. Database constraints enforce that both remain consistent.
+
+Admin may move a Dealer to another active Country Agent. Agent users cannot reparent a Dealer outside themselves.
+
+## Dealer account management
+
+The Dealer edit surface includes scoped account management for Admin and the owning Agent:
+
+- create a Dealer operational account;
+- fixed `role=dealer` and fixed target `dealer_id`;
+- suspend/reactivate that account across Auth + Profile lifecycle;
+- reset its password.
+
+Before any privileged Auth Admin operation, the target Dealer is first proven visible through the caller's ordinary RLS scope. Privileged Profile reads then include explicit `role=dealer` and exact `dealer_id` predicates.
+
+The Agent never receives `/operations/users` global access or an Auth-user directory.
+
+## Transfer identity
+
+Every Dealer owns exactly one Operational Party and immutable Transfer ID. The Dealer administration surface displays that stable identifier without turning it into an authentication secret.
+
+## Lifecycle
+
+Dealer suspension blocks Dealer users through the operational access gate but does not alter Center statuses below it.
+
+## Deferred downstream behavior
+
+Dealer administration does not itself implement Roll stock/custody/transfers, commercial terms, warranty activation, or generic CRM functionality.

@@ -14,6 +14,10 @@ name: Database Quality
       - "scripts/verify-user-admin-lifecycle.mjs"
       - "scripts/verify-operational-entities-lifecycle.mjs"
       - "scripts/verify-operational-entity-access-status.mjs"
+      - "scripts/verify-agent-network-foundation.mjs"
+      - "scripts/verify-center-onboarding.mjs"
+      - "scripts/verify-center-onboarding-state-races.mjs"
+      - "scripts/verify-center-onboarding-review-state.mjs"
       - "scripts/verify-product-foundation.mjs"
       - "scripts/verify-product-foundation-constraints.mjs"
       - "scripts/verify-product-operational-access.mjs"
@@ -51,7 +55,27 @@ jobs:
         run: supabase start
 
       - name: Rebuild database from migrations
-        run: supabase db reset --local --no-seed
+        id: db_reset
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          supabase db reset --local --no-seed 2>&1 | tee /tmp/db-reset.log
+
+      - name: Upload database reset diagnostics
+        if: steps.db_reset.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-reset-diagnostics
+          path: /tmp/db-reset.log
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Stop after database reset failure
+        if: steps.db_reset.outcome == 'failure'
+        run: |
+          echo "Database rebuild failed. Diagnostic log was uploaded as database-reset-diagnostics."
+          exit 1
 
       - name: Verify local stack
         run: supabase status
@@ -87,8 +111,12 @@ jobs:
           drop function public.__ci_default_function_privilege_probe();
           SQL
 
-      - name: Verify Auth, Data API grants, RLS, entity lifecycle, Product and Production contracts
+      - name: Verify Auth, Data API grants, RLS, Agent network, Center onboarding, Product and Production contracts
+        id: contract_tests
+        continue-on-error: true
+        shell: bash
         run: |
+          exec > >(tee /tmp/database-contracts.log) 2>&1
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
 
@@ -123,6 +151,26 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-operational-entity-access-status.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-agent-network-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-onboarding.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-onboarding-state-races.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-onboarding-review-state.mjs
             test_status=$?
           fi
 
@@ -188,7 +236,24 @@ jobs:
             exit "$test_status"
           fi
 
+      - name: Upload database contract diagnostics
+        if: steps.contract_tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-contract-diagnostics
+          path: /tmp/database-contracts.log
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Stop after database contract failure
+        if: steps.contract_tests.outcome == 'failure'
+        run: |
+          echo "Database contract verification failed. Diagnostic log was uploaded as database-contract-diagnostics."
+          exit 1
+
       - name: Verify generated database types
+        id: generated_types
+        continue-on-error: true
         run: |
           supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
           cp lib/supabase/database.types.ts /tmp/committed.database.types.ts
@@ -207,6 +272,21 @@ jobs:
             echo "Committed database types are out of sync with the public application schema."
             exit 1
           fi
+
+      - name: Upload generated database types
+        if: steps.generated_types.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-database-types
+          path: /tmp/generated.database.types.ts
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Stop after database type mismatch
+        if: steps.generated_types.outcome == 'failure'
+        run: |
+          echo "Generated database types differ from the committed file. The generated file was uploaded as generated-database-types."
+          exit 1
 
       - name: Stop local stack
         if: always()

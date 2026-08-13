@@ -2,87 +2,54 @@
 
 ## Status
 
-**Promoted to the current Distribution Network foundation — 2026-08-12.**
+**Implemented as part of Agent & Network Foundation on the working branch.**
 
-This document originally recorded Center Onboarding as a deferred cube. That timing has been superseded by the approved recipient-acceptance flow for Roll transfers.
+The filename is retained to preserve existing documentation links; the original “deferred” timing is superseded by `distribution-network-flow-spec.md`.
 
-The current source of truth for implementation scope, Auth integration, permissions, invitation lifecycle, and downstream Transfer contracts is:
+## Purpose
 
-- `docs/distribution-network-flow-spec.md`
+A Center is an operational entity independent from its users. It can exist, receive a Transfer ID, and later participate in custody flows before any individual account exists.
 
-## Why the timing changed
+Center invitation onboarding supplies the first controlled self-completion path without enabling public operational signup.
 
-A Transfer will not move confirmed custody until the recipient accepts it.
+## Implemented flow
 
-A newly created Installation Center can therefore be a real operational entity and pending transfer recipient before it has any user account, but it needs a secure onboarding path before it can accept the Transfer itself.
+1. Authorized Admin/Agent/Dealer selects an existing active Center already inside the caller's RLS scope.
+2. Server rejects an already-onboarded Center, conflicting Auth email, or another open invitation.
+3. Application creates a server-only audit row before sending the Supabase Auth invitation.
+4. Auth user ID returned by the invite is bound to that exact audit row; failed persistence triggers compensating cleanup of the unclaimed Auth user.
+5. Email link uses a token-hash confirmation route and establishes an invite session.
+6. `/onboarding/center` requires that Auth session plus an open invitation bound to the same Auth user/email.
+7. Invitee supplies display name, optional phone, and a password. No role or Center selector exists.
+8. Server stages non-security user metadata/password first.
+9. Server conditionally claims `pending → accepted` and re-checks Center activity / competing Center Profile.
+10. Server sets protected `app_metadata.pg_provisioning` with fixed `role=center` and invitation Center ID.
+11. Existing Auth trigger creates the Profile; server verifies the exact resulting binding.
+12. User enters Operations only after Profile creation succeeds.
 
-Center Onboarding is consequently a prerequisite for a complete Transfer flow rather than an optional later convenience.
+## Audit and race invariants
 
-## Core invariant preserved
+`center_onboarding_invitations` stores Center, invited email, Auth user ID, inviter Profile, state, and timestamps. It never stores raw Supabase invite tokens.
 
-An Installation Center is an operational **entity** independent from its user accounts.
+States are `pending | accepted | cancelled | superseded`.
 
-A Roll is transferred to / held by the Center entity through its operational party identity, never by an individual Auth user.
+Pending and Accepted are both considered open. Unique partial indexes permit only one open invitation per Center, email, and bound Auth user.
 
-Therefore:
+Cancel/reissue first wins a conditional `pending` transition and only then deletes an unclaimed Auth user. Onboarding first wins `pending → accepted` before protected provisioning. Therefore parent cancellation and recipient provisioning cannot both succeed on the same Pending state.
 
-- a Center may exist before it has any platform user;
-- a Center receives its stable Transfer ID when the entity is created;
-- a Center may be named as a pending transfer recipient before onboarding is complete;
-- one or more users may later represent the Center without changing Roll custody history;
-- replacing, suspending, or adding users never rewrites historical transfers;
-- permanent Roll Serial, ERP Serial, Product SKU, Lot number, Activation identifier, Warranty identifier, and Center Transfer ID remain separate concepts.
-
-## Approved onboarding boundary
-
-Invitation-based onboarding applies to **Installation Centers only**.
-
-- Protection Giants/Admin creates and codes Country Agents.
-- Country Agents create and code Dealers.
-- Country Agents or Dealers create Center entities within their authorized network.
-- A Center's first operational user may then be invited to onboard to the already-existing Center.
-
-Public operational signup remains disabled.
-
-## Approved first-user flow
-
-1. Authorized Agent or Dealer creates/selects a Center entity.
-2. Platform already knows the exact `installation_center_id` and Transfer ID.
-3. Authorized parent sends an email invitation from a trusted server-side path.
-4. Recipient opens the invitation and reaches the dedicated Center onboarding experience.
-5. Recipient establishes the Auth account/password and supplies minimal personal profile data.
-6. Trusted server fixes `role = center` and the predetermined `installation_center_id` through protected provisioning metadata.
-7. Existing operational-profile provisioning creates the profile.
-8. Center can enter Operations and accept pending Transfers.
-
-The invited person never chooses their role or operational-entity binding.
+If final Profile verification is unexpectedly ambiguous, the implementation fails closed: a proven mismatched Profile/Auth identity is suspended rather than leaving uncertain access active.
 
 ## Security boundary
 
-The existing trusted `pg_provisioning` model remains the authorization baseline.
+- public signup remains disabled;
+- service/secret key remains server-only;
+- invitee cannot choose authorization metadata;
+- invitation audit has no ordinary authenticated Data API access;
+- Center entity access is not granted before Profile provisioning;
+- operational Center status remains separate from future warranty approval.
 
-Center Onboarding must not:
+## Production deployment prerequisite
 
-- enable unrestricted public signup;
-- trust user-editable metadata for role/entity authorization;
-- allow a permanent Roll/ERP/QR identifier to create an operational account;
-- auto-bind an existing operational account to another Center;
-- create warranty approval merely because onboarding succeeded.
+The repository includes the local invite template and confirmation route. A hosted Supabase production project must configure its real Site URL/allowed redirect behavior, equivalent invite template, and production-grade custom SMTP before production invitations are relied upon.
 
-Invitation/acceptance state is audited separately; raw Supabase invitation tokens are not stored by the application.
-
-## Scope limit
-
-The current onboarding foundation is deliberately limited to the Center's initial controlled account setup needed for operational participation and Transfer acceptance.
-
-It does not introduce:
-
-- public self-registration;
-- KYC/document workflows;
-- CRM or marketing onboarding;
-- OTP/SMS authentication;
-- automatic Roll ownership from scanning a label;
-- automatic Warranty approval;
-- a generic organization-membership or RBAC engine.
-
-Additional users for an already-onboarded Center continue to belong to the existing controlled user-management capability unless a later demonstrated requirement justifies a separate member-invitation flow.
+The canonical production Supabase configuration and smoke-test checklist is `docs/production-supabase-readiness.md`. It must be reviewed when the production project is created; local `config.toml` values alone are not production sign-off.

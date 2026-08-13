@@ -15,7 +15,7 @@ type UserCreatePageProps = {
 
 const errorMessages: Record<string, string> = {
   invalid: "راجع البيانات المدخلة. الاسم والبريد والدور وكلمة المرور مطلوبة بالقيم الصحيحة.",
-  entity: "الوكيل أو مركز التركيب المحدد غير متاح أو موقوف حاليًا.",
+  entity: "الكيان التشغيلي المحدد غير متاح أو موقوف حاليًا.",
   duplicate: "يوجد حساب Auth آخر بنفس البريد الإلكتروني.",
   password: "كلمة المرور غير مقبولة حسب سياسة Supabase Auth. استخدم كلمة مرور أقوى.",
   auth: "تعذر إنشاء حساب تسجيل الدخول. لم يتم حفظ حساب تشغيلي ناقص.",
@@ -28,11 +28,13 @@ export default async function UserCreatePage({ searchParams }: UserCreatePagePro
   const errorMessage = error ? errorMessages[error] : undefined;
 
   const supabase = await createSupabaseServerClient();
-  const [dealersResult, centersResult] = await Promise.all([
+  const [agentsResult, dealersResult, centersResult] = await Promise.all([
+    supabase.from("country_agents").select("id, code, name, status").eq("status", "active").order("name"),
     supabase.from("dealers").select("id, code, name, status").eq("status", "active").order("name"),
     supabase.from("installation_centers").select("id, code, name, status").eq("status", "active").order("name"),
   ]);
 
+  if (agentsResult.error) throw agentsResult.error;
   if (dealersResult.error) throw dealersResult.error;
   if (centersResult.error) throw centersResult.error;
 
@@ -84,7 +86,11 @@ export default async function UserCreatePage({ searchParams }: UserCreatePagePro
             title="الهوية والصلاحية التشغيلية"
             description="الدور والارتباط هما مصدر الصلاحية الفعلي داخل التطبيق."
           >
-            <OperationalUserFields dealers={dealersResult.data} centers={centersResult.data} />
+            <OperationalUserFields
+              agents={agentsResult.data}
+              dealers={dealersResult.data}
+              centers={centersResult.data}
+            />
           </FormSection>
 
           <div className="operations-form-actions">

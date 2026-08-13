@@ -41,7 +41,14 @@ async function expectDenied(label, promise) {
   }
 }
 
-for (const table of ["profiles", "products", "dealers", "installation_centers"]) {
+for (const table of [
+  "profiles",
+  "products",
+  "country_agents",
+  "dealers",
+  "installation_centers",
+  "operational_parties",
+]) {
   await expectDenied(
     `anon read on ${table}`,
     request(`/rest/v1/${table}?select=*`, { key: anonKey, token: anonKey }),
@@ -51,6 +58,17 @@ for (const table of ["profiles", "products", "dealers", "installation_centers"])
 await expectDenied(
   "service_role product read",
   request("/rest/v1/products?select=id", { key: serviceRoleKey, token: serviceRoleKey }),
+);
+
+await expectDenied(
+  "service_role country agent insert",
+  request("/rest/v1/country_agents", {
+    method: "POST",
+    key: serviceRoleKey,
+    token: serviceRoleKey,
+    headers: { Prefer: "return=representation" },
+    body: { code: "CI-GRANT-SERVICE-AGENT", name: "Denied Agent", country_code: "EG" },
+  }),
 );
 
 await expectDenied(
@@ -101,14 +119,32 @@ if (!signIn.response.ok || !signIn.body?.access_token) {
 }
 
 const adminToken = signIn.body.access_token;
+const agentCreate = await request("/rest/v1/country_agents", {
+  method: "POST",
+  token: adminToken,
+  headers: { Prefer: "return=representation" },
+  body: {
+    code: "CI-GRANT-AGENT",
+    name: "وكيل دولة اختبار صلاحيات Data API",
+    country_code: "EG",
+    status: "active",
+  },
+});
+
+if (!agentCreate.response.ok || !agentCreate.body?.[0]?.id) {
+  throw new Error(`Authenticated admin Agent creation failed (${agentCreate.response.status}): ${JSON.stringify(agentCreate.body)}`);
+}
+const agentId = agentCreate.body[0].id;
+
 const dealerCreate = await request("/rest/v1/dealers", {
   method: "POST",
   token: adminToken,
   headers: { Prefer: "return=representation" },
   body: {
     code: "CI-GRANT-DEALER",
-    name: "وكيل اختبار صلاحيات Data API",
+    name: "موزع اختبار صلاحيات Data API",
     country_code: "EG",
+    country_agent_id: agentId,
     status: "active",
   },
 });
@@ -138,6 +174,7 @@ if (!centerCreate.response.ok || !centerCreate.body?.[0]?.id) {
 
 for (const path of [
   `/rest/v1/profiles?id=eq.${encodeURIComponent(adminId)}&select=id,role,status`,
+  `/rest/v1/country_agents?id=eq.${encodeURIComponent(agentId)}&select=id,status`,
   `/rest/v1/dealers?id=eq.${encodeURIComponent(dealerId)}&select=id,status`,
   `/rest/v1/installation_centers?id=eq.${encodeURIComponent(centerCreate.body[0].id)}&select=id,status`,
 ]) {
@@ -146,6 +183,14 @@ for (const path of [
     throw new Error(`Expected service_role read access failed (${result.response.status}): ${JSON.stringify(result.body)}`);
   }
 }
+
+await expectDenied(
+  "service_role operational party read",
+  request("/rest/v1/operational_parties?select=id,transfer_code", {
+    key: serviceRoleKey,
+    token: serviceRoleKey,
+  }),
+);
 
 const profileUpdate = await request(`/rest/v1/profiles?id=eq.${encodeURIComponent(adminId)}`, {
   method: "PATCH",
@@ -169,4 +214,4 @@ await expectDenied(
   }),
 );
 
-console.log("Data API explicit-grant contract smoke test passed.");
+console.log("Data API explicit-grant contract smoke test passed with Agent network tables.");

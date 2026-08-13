@@ -1,63 +1,56 @@
 # Operational Access Gate
 
-This block defines the application-level gate between a valid Supabase Auth session and the operational portal.
+## Entry requirements
 
-## Access requirements
+`/operations` requires all of the following:
 
-A request may enter `/operations` only when all of the following are true:
+1. valid Supabase Auth session;
+2. matching `public.profiles` row;
+3. active Profile status;
+4. role in `admin | agent | dealer | center`;
+5. exact database-valid role/entity binding;
+6. active directly represented entity for Agent, Dealer, or Center.
 
-1. Supabase Auth has a valid session.
-2. The authenticated user has a row in `public.profiles`.
-3. The profile status is `active`.
-4. The profile role is one of `admin`, `dealer`, or `center`.
-5. The role/entity binding is structurally valid:
-   - admin has no dealer or center binding;
-   - dealer has one `dealer_id` only;
-   - center has one `installation_center_id` only.
-6. For dealer and center users, the directly represented operational entity is also `active`.
+Failure redirects to `/access-denied`.
 
-A missing, suspended, structurally invalid, or inactive-bound operational identity is redirected to `/access-denied`.
+## Entity activity
 
-## Current role boundary
+- Agent users require their bound Country Agent to be active.
+- Dealer users require their bound Dealer to be active.
+- Center users require their bound Center to be active.
 
-All three approved operational roles can enter the general operations overview at this stage.
+Parent suspension does not cascade: a suspended Agent does not automatically suspend its Dealers/Centers, and a suspended Dealer does not automatically suspend Centers.
 
-This gate validates who the user is and which operational entity they represent. Module-specific authorization still belongs to each business module and its database RLS policies.
+## Network visibility
 
-## Operational entity read scope
+RLS is the final normal-visibility boundary:
 
-Authenticated access to dealer and installation-center records is explicitly scoped by RLS:
+- Admin: all Agents/Dealers/Centers.
+- Agent: own Agent, own Dealers, direct Centers, and Centers below own Dealers.
+- Dealer: own Dealer and directly assigned Centers.
+- Center: own Center only.
 
-- `admin` may read all dealers and installation centers.
-- `dealer` may read its own dealer record and installation centers assigned to that dealer.
-- `center` may read only its own installation-center record.
+Company-direct Centers remain outside Agent/Dealer ordinary scope.
 
-A center is not granted dealer-table visibility merely because its center has a `dealer_id`; that access can be added later if a real workflow requires it.
+The exact Transfer-ID resolver is a deliberate exception to hierarchy visibility. It accepts only one exact high-entropy identifier, revalidates the caller and active recipient, and returns a fixed minimal verification card rather than a browse/search API.
 
-These policies require the requesting profile itself to remain `active`.
+## Module access
 
-## Data access
+The operations home and navigation expose only real modules available to each role:
 
-The operational profile is loaded through the shared typed Supabase server client. The profile RLS policy limits the authenticated user to their own profile row.
+- Admin: accounts, Country Agents, Dealers, Centers, Products, Production.
+- Agent: Dealers, Centers, Products.
+- Dealer: Centers, Products.
+- Center: Products.
 
-Database RLS remains the final security boundary for exposed business data. The route gate is not a replacement for table policies. Every business table must define its own role, status, ownership, or custody rules when introduced.
+Agent Dealer-account management is embedded inside the scoped Dealer management path and does not grant Agent access to global operational accounts.
 
-## Entity status
+## Center onboarding exception
 
-Dealer users require their bound dealer record to be active. Center users require their bound installation-center record to be active.
+`/onboarding/center` is intentionally outside the Operational Profile gate because the invited Auth user does not have a Profile yet.
 
-The current model does not automatically suspend a center when its optional parent dealer is suspended. That would be a separate business rule and is not introduced without an explicit operational requirement.
+That route still requires an authenticated invite session and a live `center_onboarding_invitations` row bound to the exact Auth user and invited email. It exposes no Operations data before protected Profile provisioning succeeds.
 
-## Suspension
+## Security principle
 
-A suspended profile keeps its authentication account but cannot enter the operational portal. This keeps account identity separate from operational authorization and allows access to be restored without recreating the user.
-
-## Deferred
-
-Not included yet:
-
-- Admin-only management modules beyond products.
-- Dealer-specific business-module access.
-- Center-specific business-module access.
-- User provisioning and profile administration UI.
-- Customer accounts.
+Application route checks improve UX but do not replace RLS. Every exposed business table/action must independently enforce role, status, hierarchy, ownership, or future custody rules.

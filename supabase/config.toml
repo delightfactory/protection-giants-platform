@@ -29,6 +29,10 @@ double_confirm_changes = true
 enable_confirmations = false
 secure_password_change = false
 
+[auth.email.template.invite]
+subject = "دعوة إلى منصة Protection Giants"
+content_path = "./supabase/templates/invite.html"
+
 [auth.sms]
 enable_signup = false
 enable_confirmations = false

@@ -19,7 +19,7 @@ async function getOperationalProfile(userId: string) {
   const supabaseAdmin = createSupabaseAdminClient();
   const { data, error } = await supabaseAdmin
     .from("profiles")
-    .select("id, display_name, phone, role, status, dealer_id, installation_center_id")
+    .select("id, display_name, phone, role, status, country_agent_id, dealer_id, installation_center_id")
     .eq("id", userId)
     .maybeSingle();
 
@@ -34,6 +34,20 @@ async function bindingIsAvailable(
   if (input.role === "admin") return true;
 
   const supabaseAdmin = createSupabaseAdminClient();
+
+  if (input.role === "agent") {
+    const { data, error } = await supabaseAdmin
+      .from("country_agents")
+      .select("id, status")
+      .eq("id", input.country_agent_id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return false;
+
+    const unchanged = current.role === "agent" && current.country_agent_id === input.country_agent_id;
+    return data.status === "active" || unchanged;
+  }
 
   if (input.role === "dealer") {
     const { data, error } = await supabaseAdmin

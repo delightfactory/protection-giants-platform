@@ -1,61 +1,75 @@
-# Operational Entities Core
+# Operational Entities & Network Identity
 
-This block establishes the minimum business entities required before operational users can be bound to a real dealer or installation center.
+## Current model
 
-## Why this precedes user administration
+The operational hierarchy is implemented as distinct business entities:
 
-A `dealer` or `center` profile must not rely on a free-text organization name. The represented operational entity exists first and receives its own stable identifier; user administration binds accounts to those identifiers rather than duplicating organization data inside profiles.
+- `public.country_agents`: Country Agents created and controlled by Protection Giants/Admin.
+- `public.dealers`: Dealers/Distributors. Every Dealer belongs to exactly one Country Agent.
+- `public.installation_centers`: Installation Centers. A Center may be under one Dealer, directly under one Country Agent, or exceptionally direct to Protection Giants.
 
-## Dealers
+Entity identity is independent from Auth users. Multiple users may represent the same entity without changing the entity or its future custody history.
 
-`public.dealers` represents a country dealer or agent.
+## Country Agent
 
-Core fields:
-- `id`: internal UUID.
-- `code`: unique uppercase operational code.
-- `name`: dealer/agent name.
-- `country_code`: two-letter uppercase country code.
-- `status`: `active` or `suspended`.
-- `created_at`: creation timestamp.
+Core fields are `id`, unique operational `code`, `name`, two-letter uppercase `country_code`, `status = active | suspended`, and `created_at`.
 
-## Installation centers
+Country code is not unique; multiple Agents may exist in one country.
 
-`public.installation_centers` represents an approved installation-center business record.
+## Dealer
 
-Core fields:
-- `id`: internal UUID.
-- `code`: unique uppercase operational code.
-- `name`: center name.
-- `dealer_id`: optional parent dealer. A null value keeps direct parent-company centers possible without inventing another hierarchy.
-- `country_code`: two-letter uppercase country code.
-- `city`: operational city name.
-- `status`: `active` or `suspended`.
-- `created_at`: creation timestamp.
+Every Dealer has `country_agent_id NOT NULL`. The database enforces that the Dealer country equals the selected Agent country.
 
-The optional dealer relationship is the ownership/scope boundary available for dealer-specific operations. It does not by itself grant data access.
+Ordinary creation does not ask the operator to maintain a second independent country value: application actions derive the Dealer country from the selected Agent.
+
+## Installation Center
+
+Center parent rules are database-enforced:
+
+- `dealer_id != null`, `country_agent_id = null`: under Dealer.
+- `dealer_id = null`, `country_agent_id != null`: direct to Agent.
+- both null: direct to Company.
+- both non-null: invalid.
+
+For Agent/Dealer parent paths, the Center country is derived from the parent and validated by composite foreign-key constraints. Company-direct Centers retain an explicit country because no parent supplies one.
+
+## Operational Party and Transfer ID
+
+Every Company/Agent/Dealer/Center receives exactly one row in `public.operational_parties`.
+
+The party registry is intentionally thin. It exists only to provide:
+
+1. one uniform future custody identity; and
+2. one stable platform-wide `transfer_code` (Transfer ID).
+
+Transfer IDs are generated automatically, globally unique, immutable through the Data API, and do not encode country. Creating an Agent, Dealer, or Center atomically ensures its party exists; entity creation fails if party creation fails.
+
+Ordinary users cannot browse a global party directory. They can see parties only within their normal management scope. A separate exact Transfer-ID resolver may cross normal hierarchy visibility and returns only minimal recipient verification data.
+
+## Management hierarchy and RLS
+
+Read/management scope is enforced by database RLS, not hidden fields:
+
+- Admin: all Agents, Dealers, Centers.
+- Agent: own Agent, own Dealers, direct Centers, and Centers under own Dealers.
+- Dealer: own Dealer and directly assigned Centers.
+- Center: own Center only.
+
+Company-direct Centers are Admin-only in ordinary visibility.
+
+Child management follows the same hierarchy. Suspension does not cascade to descendant entity status.
 
 ## Profile binding
 
-The identity layer now references these entities directly:
+Operational profiles bind to exactly one represented entity:
 
-- a dealer-role profile references one dealer;
-- a center-role profile references one installation center;
-- an admin profile references neither.
+- Admin: no entity binding.
+- Agent: exactly one `country_agent_id`.
+- Dealer: exactly one `dealer_id`.
+- Center: exactly one `installation_center_id`.
 
-The database enforces that role/entity combination, so future permissions can scope operations by stable IDs instead of names or UI state.
+These constraints are enforced in PostgreSQL and mirrored by application validation.
 
-## Security boundary
+## Not part of this foundation
 
-RLS is enabled on both entity tables.
-
-No anonymous or general authenticated table permissions were granted by the core entity block. Admin management, dealer visibility, center visibility, and business-module access remain explicit permission cubes so each path can be reviewed independently.
-
-## Intentionally deferred
-
-This entity core does not include:
-- admin management screens;
-- account provisioning;
-- role-specific business-module permissions;
-- public approved-center pages;
-- addresses, maps, media, documents, commercial terms, or other profile content;
-- roll, stock, transfer, activation, warranty, or claim logic.
+This foundation does not implement Roll custody/transfer records, warranty activation/approval, public approved-center pages, CRM/KYC, or a generic organization/RBAC engine. Those later modules consume the stable entities and party identities defined here.

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdminProfile } from "@/lib/auth/operational-profile";
+import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -15,7 +15,8 @@ function isCenterStatus(value: string): value is CenterStatus {
 }
 
 export async function setCenterStatus(formData: FormData) {
-  await requireAdminProfile();
+  const profile = await requireOperationalProfile();
+  if (profile.role === "center") redirect("/access-denied");
 
   const centerId = String(formData.get("center_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();

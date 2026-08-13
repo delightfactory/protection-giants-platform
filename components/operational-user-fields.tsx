@@ -13,12 +13,14 @@ type EntityOption = {
 };
 
 type OperationalUserFieldsProps = {
+  agents: EntityOption[];
   dealers: EntityOption[];
   centers: EntityOption[];
   defaultValues?: {
     displayName?: string;
     phone?: string | null;
     role?: OperationalUserRole;
+    countryAgentId?: string | null;
     dealerId?: string | null;
     centerId?: string | null;
   };
@@ -31,6 +33,7 @@ function optionLabel(option: EntityOption) {
 }
 
 export function OperationalUserFields({
+  agents,
   dealers,
   centers,
   defaultValues,
@@ -89,11 +92,23 @@ export function OperationalUserFields({
           >
             <option value="" disabled>اختر الدور</option>
             <option value="admin">إدارة الشركة</option>
+            <option value="agent">وكيل الدولة</option>
             <option value="dealer">وكيل / موزع</option>
             <option value="center">مركز تركيب</option>
           </select>
         )}
       </FormField>
+
+      {role === "agent" ? (
+        <FormField label="وكيل الدولة المرتبط" hint="الحساب سيمثل وكيل الدولة المحدد فقط داخل النظام.">
+          <select name="country_agent_id" required defaultValue={defaultValues?.countryAgentId ?? ""}>
+            <option value="" disabled>اختر وكيل الدولة</option>
+            {agents.map((agent) => (
+              <option key={agent.id} value={agent.id}>{optionLabel(agent)}</option>
+            ))}
+          </select>
+        </FormField>
+      ) : null}
 
       {role === "dealer" ? (
         <FormField label="الوكيل / الموزع المرتبط" hint="الحساب سيمثل هذا الكيان فقط داخل النظام.">
@@ -119,7 +134,7 @@ export function OperationalUserFields({
 
       {role === "admin" ? (
         <div className="user-role-note ui-form-grid-full">
-          حساب إدارة الشركة لا يرتبط بوكيل أو مركز تركيب.
+          حساب إدارة الشركة لا يرتبط بوكيل دولة أو موزع أو مركز تركيب.
         </div>
       ) : null}
     </FormGrid>

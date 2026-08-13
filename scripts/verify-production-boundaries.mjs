@@ -218,11 +218,30 @@ const shortVoidRejected = await rpc("void_production_order", {
 }, adminToken);
 assert(!shortVoidRejected.response.ok, "A too-short void reason unexpectedly passed the audit contract.");
 
+const countryAgent = expectSingleRow(
+  await rest("country_agents?select=id,country_code", {
+    method: "POST",
+    token: adminToken,
+    body: {
+      code: "BOUNDARY-AGENT",
+      name: "Boundary Country Agent",
+      country_code: "EG",
+      status: "active",
+    },
+  }),
+  "Boundary Country Agent creation",
+);
+
 const dealer = expectSingleRow(
   await rest("dealers?select=id", {
     method: "POST",
     token: adminToken,
-    body: { code: "BOUNDARY-DEALER", name: "Boundary Dealer", country_code: "EG" },
+    body: {
+      code: "BOUNDARY-DEALER",
+      name: "Boundary Dealer",
+      country_code: "EG",
+      country_agent_id: countryAgent.id,
+    },
   }),
   "Boundary dealer creation",
 );
@@ -238,4 +257,4 @@ for (const [table, filter] of [
   assert(result.response.ok && Array.isArray(result.body) && result.body.length === 0, `Dealer unexpectedly read ${table}.`);
 }
 
-console.log("Production boundary contracts passed: 10,000 Rolls, 50 Lots, overflow rejection, idempotency ownership, void validation, and RLS.");
+console.log("Production boundary contracts passed with Agent-bound Dealer fixture: 10,000 Rolls, 50 Lots, overflow rejection, idempotency ownership, void validation, and RLS.");
