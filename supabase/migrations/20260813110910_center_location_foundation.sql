@@ -58,6 +58,41 @@ alter table public.installation_centers
     )
   );
 
+-- Existing Center creation paths intentionally retain their current network-scoped
+-- INSERT policies. Every new Center must, however, start without a geographic
+-- projection so that the first location is always created by one of the audited
+-- RPCs below rather than being smuggled through the entity INSERT.
+create or replace function public.reject_center_location_on_entity_insert()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.latitude is not null
+    or new.longitude is not null
+    or new.location_accuracy_m is not null
+    or new.location_captured_at is not null
+    or new.location_source is not null
+    or new.location_updated_by_profile_id is not null
+  then
+    raise exception using
+      errcode = '23514',
+      message = 'Center location must be captured or corrected after Center creation';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.reject_center_location_on_entity_insert() from public;
+revoke all on function public.reject_center_location_on_entity_insert() from anon;
+revoke all on function public.reject_center_location_on_entity_insert() from authenticated;
+revoke all on function public.reject_center_location_on_entity_insert() from service_role;
+
+create trigger installation_centers_initial_location_empty
+before insert on public.installation_centers
+for each row execute function public.reject_center_location_on_entity_insert();
+
 create table public.center_location_events (
   id uuid primary key default gen_random_uuid(),
   installation_center_id uuid not null
