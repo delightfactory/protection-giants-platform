@@ -7,7 +7,13 @@ name: Roll Custody Quality
     paths:
       - "supabase/migrations/20260813234500_roll_custody_foundation.sql"
       - "supabase/migrations/20260813235000_roll_custody_rls_hardening.sql"
-      - "scripts/verify-roll-custody-foundation.mjs"
+      - "supabase/migrations/20260813235500_roll_custody_roll_projection.sql"
+      - "supabase/migrations/20260813235600_roll_custody_private_audit.sql"
+      - "supabase/migrations/20260813235700_roll_custody_roll_rls.sql"
+      - "supabase/migrations/20260813235800_roll_custody_current_view.sql"
+      - "scripts/setup-roll-custody-fixture.mjs"
+      - "scripts/verify-roll-custody-public.mjs"
+      - "scripts/verify-roll-custody-private.sql"
       - ".github/workflows/roll-custody-quality.yml"
 
 permissions:
@@ -38,11 +44,18 @@ jobs:
       - name: Rebuild database from migrations
         run: supabase db reset --local --no-seed
 
-      - name: Verify Roll custody contracts
+      - name: Verify Roll custody public contracts
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
-          node scripts/verify-roll-custody-foundation.mjs
+          node scripts/setup-roll-custody-fixture.mjs
+          node scripts/verify-roll-custody-public.mjs
+
+      - name: Verify private custody audit contracts
+        run: |
+          db_container="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$db_container"
+          docker exec -i "$db_container" psql -U postgres -d postgres < scripts/verify-roll-custody-private.sql
 
       - name: Stop local stack
         if: always()
