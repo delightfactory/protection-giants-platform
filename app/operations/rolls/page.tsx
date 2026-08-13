@@ -4,7 +4,7 @@ import { FilterActions, FilterBar, FilterField, FilterGrid } from "@/components/
 import { PageHeader } from "@/components/ui/page-header";
 import { RecordItem, RecordList } from "@/components/ui/record-list";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { requireAdminProfile } from "@/lib/auth/operational-profile";
+import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -33,22 +33,44 @@ function rollsHref(search: string, orderFilter: string, page: number) {
   return `/operations/rolls${query ? `?${query}` : ""}`;
 }
 
+function formatCustodyDate(value: string | undefined) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 export default async function RollsPage({ searchParams }: RollsPageProps) {
-  await requireAdminProfile();
+  const profile = await requireOperationalProfile();
+  const isAdmin = profile.role === "admin";
   const params = await searchParams;
   const search = (params.q ?? "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 80);
-  const orderFilter = uuidPattern.test(params.order ?? "") ? params.order ?? "" : "";
+  const orderFilter = isAdmin && uuidPattern.test(params.order ?? "") ? params.order ?? "" : "";
   const page = parsePage(params.page);
   const offset = (page - 1) * PAGE_SIZE;
   const supabase = await createSupabaseServerClient();
 
-  const { data: recentOrders, error: ordersError } = await supabase
-    .from("production_orders")
-    .select(orderFields)
-    .order("created_at", { ascending: false })
-    .order("order_number", { ascending: false })
-    .limit(100);
-  if (ordersError) throw ordersError;
+  let recentOrders: Array<{
+    id: string;
+    order_number: string;
+    production_date: string;
+    product_id: string;
+    product_code_snapshot: string;
+    product_name_snapshot: string;
+    status: string;
+  }> = [];
+
+  if (isAdmin) {
+    const { data, error } = await supabase
+      .from("production_orders")
+      .select(orderFields)
+      .order("created_at", { ascending: false })
+      .order("order_number", { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    recentOrders = data;
+  }
 
   let rollsQuery = supabase
     .from("rolls")
@@ -73,71 +95,152 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
   const hasNext = rollRows.length > PAGE_SIZE;
   const rolls = hasNext ? rollRows.slice(0, PAGE_SIZE) : rollRows;
   const hasPrevious = page > 1;
+  const rollIds = rolls.map((roll) => roll.id);
   const lotIds = [...new Set(rolls.map((roll) => roll.production_lot_id))];
+  const productIds = [...new Set(rolls.map((roll) => roll.product_id))];
   const referencedOrderIds = [...new Set(rolls.map((roll) => roll.production_order_id))];
-  const selectedOrderIsRecent = Boolean(orderFilter && recentOrders.some((order) => order.id === orderFilter));
 
-  const [lotsResult, referencedOrdersResult, selectedOrderResult] = await Promise.all([
-    lotIds.length
-      ? supabase.from("production_lots").select("id, lot_number").in("id", lotIds)
-      : Promise.resolve({ data: [], error: null }),
-    referencedOrderIds.length
-      ? supabase
+  const custodyResult = rollIds.length
+    ? await supabase
+        .from("roll_custody_current")
+        .select("roll_id, custodian_party_id, confirmed_at")
+        .in("roll_id", rollIds)
+    : { data: [], error: null };
+  if (custodyResult.error) throw custodyResult.error;
+  const custodyByRoll = new Map(custodyResult.data.map((row) => [row.roll_id, row]));
+
+  let productsById = new Map<string, { code: string; name: string }>();
+  if (!isAdmin && productIds.length) {
+    const productsResult = await supabase
+      .from("products")
+      .select("id, code, name")
+      .in("id", productIds);
+    if (productsResult.error) throw productsResult.error;
+    productsById = new Map(productsResult.data.map((product) => [product.id, product]));
+  }
+
+  let ordersById = new Map<string, (typeof recentOrders)[number]>();
+  let dropdownOrders = recentOrders;
+  let lotsById = new Map<string, { id: string; lot_number: string }>();
+
+  if (isAdmin) {
+    const selectedOrderIsRecent = Boolean(orderFilter && recentOrders.some((order) => order.id === orderFilter));
+
+    const lotsResult = lotIds.length
+      ? await supabase.from("production_lots").select("id, lot_number").in("id", lotIds)
+      : { data: [], error: null };
+    if (lotsResult.error) throw lotsResult.error;
+
+    const referencedOrdersResult = referencedOrderIds.length
+      ? await supabase
           .from("production_orders")
           .select(orderFields)
           .in("id", referencedOrderIds)
-      : Promise.resolve({ data: [], error: null }),
-    orderFilter && !selectedOrderIsRecent
-      ? supabase
+      : { data: [], error: null };
+    if (referencedOrdersResult.error) throw referencedOrdersResult.error;
+
+    const selectedOrderResult = orderFilter && !selectedOrderIsRecent
+      ? await supabase
           .from("production_orders")
           .select(orderFields)
           .eq("id", orderFilter)
           .maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-  ]);
+      : { data: null, error: null };
+    if (selectedOrderResult.error) throw selectedOrderResult.error;
 
-  if (lotsResult.error) throw lotsResult.error;
-  if (referencedOrdersResult.error) throw referencedOrdersResult.error;
-  if (selectedOrderResult.error) throw selectedOrderResult.error;
+    const allKnownOrders = [
+      ...recentOrders,
+      ...referencedOrdersResult.data,
+      ...(selectedOrderResult.data ? [selectedOrderResult.data] : []),
+    ];
+    ordersById = new Map(allKnownOrders.map((order) => [order.id, order]));
+    dropdownOrders = [...ordersById.values()]
+      .sort((a, b) => b.production_date.localeCompare(a.production_date) || b.order_number.localeCompare(a.order_number))
+      .slice(0, selectedOrderResult.data ? 101 : 100);
+    lotsById = new Map(lotsResult.data.map((lot) => [lot.id, lot]));
+  }
 
-  const allKnownOrders = [
-    ...recentOrders,
-    ...referencedOrdersResult.data,
-    ...(selectedOrderResult.data ? [selectedOrderResult.data] : []),
-  ];
-  const ordersById = new Map(allKnownOrders.map((order) => [order.id, order]));
-  const dropdownOrders = [...ordersById.values()]
-    .sort((a, b) => b.production_date.localeCompare(a.production_date) || b.order_number.localeCompare(a.order_number))
-    .slice(0, selectedOrderResult.data ? 101 : 100);
-  const lotsById = new Map(lotsResult.data.map((lot) => [lot.id, lot]));
+  const partyIds = isAdmin
+    ? [...new Set(custodyResult.data.map((row) => row.custodian_party_id))]
+    : [];
+  const partyLabels = new Map<string, string>();
+
+  if (isAdmin && partyIds.length) {
+    const partiesResult = await supabase
+      .from("operational_parties")
+      .select("id, party_type, country_agent_id, dealer_id, installation_center_id, transfer_code")
+      .in("id", partyIds);
+    if (partiesResult.error) throw partiesResult.error;
+
+    const agentIds = partiesResult.data.flatMap((party) => party.country_agent_id ? [party.country_agent_id] : []);
+    const dealerIds = partiesResult.data.flatMap((party) => party.dealer_id ? [party.dealer_id] : []);
+    const centerIds = partiesResult.data.flatMap((party) => party.installation_center_id ? [party.installation_center_id] : []);
+
+    const agentNames = new Map<string, string>();
+    const dealerNames = new Map<string, string>();
+    const centerNames = new Map<string, string>();
+
+    if (agentIds.length) {
+      const result = await supabase.from("country_agents").select("id, name").in("id", agentIds);
+      if (result.error) throw result.error;
+      for (const row of result.data) agentNames.set(row.id, row.name);
+    }
+    if (dealerIds.length) {
+      const result = await supabase.from("dealers").select("id, name").in("id", dealerIds);
+      if (result.error) throw result.error;
+      for (const row of result.data) dealerNames.set(row.id, row.name);
+    }
+    if (centerIds.length) {
+      const result = await supabase.from("installation_centers").select("id, name").in("id", centerIds);
+      if (result.error) throw result.error;
+      for (const row of result.data) centerNames.set(row.id, row.name);
+    }
+
+    for (const party of partiesResult.data) {
+      let label = "Protection Giants";
+      if (party.party_type === "agent" && party.country_agent_id) {
+        label = agentNames.get(party.country_agent_id) ?? "وكيل دولة";
+      } else if (party.party_type === "dealer" && party.dealer_id) {
+        label = dealerNames.get(party.dealer_id) ?? "موزع";
+      } else if (party.party_type === "center" && party.installation_center_id) {
+        label = centerNames.get(party.installation_center_id) ?? "مركز تركيب";
+      }
+      partyLabels.set(party.id, label);
+    }
+  }
+
   const filtersActive = Boolean(search || orderFilter);
 
   return (
     <>
       <PageHeader
-        eyebrow="الإنتاج"
-        title="سجل اللفات"
-        description="ابحث بالرقم الداخلي للفة أو ERP Serial، أو اعرض لفات أمر إنتاج محدد."
+        eyebrow="العهدة"
+        title={isAdmin ? "سجل عهدة اللفات" : "اللفات في عهدتك"}
+        description={isAdmin
+          ? "اعرض كل لفة وهوية حامل العهدة المؤكدة حاليًا، مع الاحتفاظ ببيانات الإنتاج كسجل مرجعي."
+          : "تظهر هنا فقط اللفات المؤكدة حاليًا في عهدة جهتك التشغيلية."}
         meta={`صفحة ${page.toLocaleString("en-US")} · ${rolls.length.toLocaleString("en-US")} لفة${hasNext ? " · يوجد المزيد" : ""}`}
-        actions={<Link href="/operations/production-orders" className="button button-ghost">أوامر الإنتاج</Link>}
+        actions={isAdmin ? <Link href="/operations/production-orders" className="button button-ghost">أوامر الإنتاج</Link> : undefined}
       />
 
-      <FilterBar label="البحث في اللفات">
+      <FilterBar label="البحث في العهدة">
         <form method="get">
           <FilterGrid>
             <FilterField label="Serial / ERP Serial" wide>
               <input name="q" type="search" defaultValue={search} placeholder="PG-R-... أو ERP-..." dir="ltr" />
             </FilterField>
-            <FilterField label="أمر الإنتاج">
-              <select name="order" defaultValue={orderFilter}>
-                <option value="">كل الأوامر</option>
-                {dropdownOrders.map((order) => (
-                  <option key={order.id} value={order.id}>
-                    {order.order_number}{order.status === "voided" ? " — مُبطل" : ""}
-                  </option>
-                ))}
-              </select>
-            </FilterField>
+            {isAdmin ? (
+              <FilterField label="أمر الإنتاج">
+                <select name="order" defaultValue={orderFilter}>
+                  <option value="">كل الأوامر</option>
+                  {dropdownOrders.map((order) => (
+                    <option key={order.id} value={order.id}>
+                      {order.order_number}{order.status === "voided" ? " — مُبطل" : ""}
+                    </option>
+                  ))}
+                </select>
+              </FilterField>
+            ) : null}
             <FilterActions>
               <button type="submit" className="button button-primary">بحث</button>
               {filtersActive ? <Link href="/operations/rolls" className="button button-ghost">مسح</Link> : null}
@@ -148,46 +251,81 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
 
       {rolls.length === 0 ? (
         <EmptyState
-          eyebrow="سجل اللفات"
-          title={hasPrevious ? "لا توجد لفات في هذه الصفحة" : filtersActive ? "لم يتم العثور على لفة مطابقة" : "لا توجد لفات مولّدة بعد"}
+          eyebrow="عهدة اللفات"
+          title={hasPrevious
+            ? "لا توجد لفات في هذه الصفحة"
+            : filtersActive
+              ? "لم يتم العثور على لفة مطابقة"
+              : isAdmin
+                ? "لا توجد لفات مولّدة بعد"
+                : "لا توجد لفات في عهدتك حاليًا"}
           description={hasPrevious
             ? "ارجع للصفحة السابقة أو غيّر معايير البحث."
-            : filtersActive ? "راجع الرقم أو أمر الإنتاج ثم أعد البحث." : "تظهر اللفات هنا تلقائيًا بعد إنشاء أول أمر إنتاج."}
+            : filtersActive
+              ? "راجع الرقم ثم أعد البحث."
+              : isAdmin
+                ? "تظهر العهدة تلقائيًا عند إنشاء أول أمر إنتاج."
+                : "ستظهر اللفات هنا عندما تصبح عهدتها مؤكدة لجهتك في مسار التشغيل."}
           action={hasPrevious
             ? <Link href={rollsHref(search, orderFilter, page - 1)} className="button button-ghost">الصفحة السابقة</Link>
             : filtersActive
-              ? <Link href="/operations/rolls" className="button button-ghost">عرض أحدث اللفات</Link>
-              : <Link href="/operations/production-orders/new" className="button button-primary">إنشاء أمر إنتاج</Link>}
+              ? <Link href="/operations/rolls" className="button button-ghost">عرض العهدة</Link>
+              : isAdmin
+                ? <Link href="/operations/production-orders/new" className="button button-primary">إنشاء أمر إنتاج</Link>
+                : undefined}
         />
       ) : (
         <>
-          <RecordList label="قائمة اللفات">
+          <RecordList label="قائمة عهدة اللفات">
             {rolls.map((roll) => {
+              const custody = custodyByRoll.get(roll.id);
               const order = ordersById.get(roll.production_order_id);
               const lot = lotsById.get(roll.production_lot_id);
+              const product = productsById.get(roll.product_id);
               const isVoided = order?.status === "voided";
+              const custodyLabel = isAdmin
+                ? custody ? partyLabels.get(custody.custodian_party_id) ?? "جهة تشغيلية" : "غير مسجلة"
+                : "جهتك التشغيلية";
+
+              const facts = isAdmin
+                ? [
+                    { label: "ERP Serial", value: roll.erp_serial, dir: "ltr" as const },
+                    { label: "العهدة الحالية", value: custodyLabel, dir: "rtl" as const },
+                    { label: "تأكيد العهدة", value: formatCustodyDate(custody?.confirmed_at), dir: "ltr" as const },
+                    { label: "Lot", value: lot?.lot_number ?? "—", dir: lot ? "ltr" as const : "rtl" as const },
+                    { label: "أمر الإنتاج", value: order?.order_number ?? "—", dir: order ? "ltr" as const : "rtl" as const },
+                  ]
+                : [
+                    { label: "ERP Serial", value: roll.erp_serial, dir: "ltr" as const },
+                    { label: "العهدة الحالية", value: custodyLabel, dir: "rtl" as const },
+                    { label: "تأكيد العهدة", value: formatCustodyDate(custody?.confirmed_at), dir: "ltr" as const },
+                    { label: "ترتيب اللفة", value: roll.roll_index.toLocaleString("en-US"), dir: "ltr" as const },
+                  ];
 
               return (
                 <RecordItem
                   key={roll.id}
-                  kicker={order ? <span dir="ltr">{order.product_code_snapshot}</span> : undefined}
+                  kicker={isAdmin
+                    ? order ? <span dir="ltr">{order.product_code_snapshot}</span> : undefined
+                    : product ? <span dir="ltr">{product.code}</span> : undefined}
                   title={<span dir="ltr">{roll.serial_number}</span>}
-                  subtitle={order?.product_name_snapshot}
-                  facts={[
-                    { label: "ERP Serial", value: roll.erp_serial, dir: "ltr" },
-                    { label: "Lot", value: lot?.lot_number ?? "—", dir: lot ? "ltr" : "rtl" },
-                    { label: "أمر الإنتاج", value: order?.order_number ?? "—", dir: order ? "ltr" : "rtl" },
-                    { label: "ترتيب اللفة", value: roll.roll_index.toLocaleString("en-US"), dir: "ltr" },
-                  ]}
-                  status={order ? <StatusBadge tone={isVoided ? "danger" : "success"}>{isVoided ? "أمر مُبطل" : "صالح تشغيليًا"}</StatusBadge> : undefined}
-                  actions={order ? <Link href={`/operations/production-orders/${order.id}`} className="button button-ghost">فتح الأمر</Link> : undefined}
+                  subtitle={isAdmin ? order?.product_name_snapshot : product?.name}
+                  facts={facts}
+                  status={isAdmin
+                    ? !custody
+                      ? <StatusBadge tone="danger">عهدة غير مكتملة</StatusBadge>
+                      : <StatusBadge tone={isVoided ? "danger" : "success"}>{isVoided ? "أمر مُبطل" : "عهدة مؤكدة"}</StatusBadge>
+                    : <StatusBadge tone="success">في عهدتك</StatusBadge>}
+                  actions={isAdmin && order
+                    ? <Link href={`/operations/production-orders/${order.id}`} className="button button-ghost">فتح الأمر</Link>
+                    : undefined}
                 />
               );
             })}
           </RecordList>
 
           {(hasPrevious || hasNext) ? (
-            <nav className="production-pagination" aria-label="صفحات سجل اللفات">
+            <nav className="production-pagination" aria-label="صفحات عهدة اللفات">
               {hasPrevious ? <Link href={rollsHref(search, orderFilter, page - 1)} className="button button-ghost">السابق</Link> : <span />}
               <span>صفحة {page.toLocaleString("en-US")}</span>
               {hasNext ? <Link href={rollsHref(search, orderFilter, page + 1)} className="button button-ghost">التالي</Link> : <span />}
