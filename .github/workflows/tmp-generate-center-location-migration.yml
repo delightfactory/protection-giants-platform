@@ -1,0 +1,44 @@
+name: Generate Center Location Migration
+
+on:
+  push:
+    branches:
+      - feature/center-location-foundation
+    paths:
+      - .github/workflows/tmp-generate-center-location-migration.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/center-location-foundation
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Generate migration with pinned Supabase CLI
+        run: npx --yes supabase@2.105.0 migration new center_location_foundation
+
+      - name: Commit generated migration and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          migration="$(ls -1t supabase/migrations/*_center_location_foundation.sql | head -n 1)"
+          test -n "$migration"
+          echo "Generated $migration"
+          rm .github/workflows/tmp-generate-center-location-migration.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$migration" .github/workflows/tmp-generate-center-location-migration.yml
+          git commit -m "chore: add generated center location migration"
+          git push origin HEAD:feature/center-location-foundation
