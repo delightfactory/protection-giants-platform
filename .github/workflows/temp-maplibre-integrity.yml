@@ -17,3 +17,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Calculate MapLibre 5.16.0 SRI
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="$(npm pack --silent maplibre-gl@5.16.0)"
+          mkdir package
+          tar -xzf "$package" -C package --strip-components=1
+          printf 'JS_SHA384=sha384-'
+          openssl dgst -sha384 -binary package/dist/maplibre-gl.js | openssl base64 -A
+          printf '\nCSS_SHA384=sha384-'
+          openssl dgst -sha384 -binary package/dist/maplibre-gl.css | openssl base64 -A
+          printf '\n'
