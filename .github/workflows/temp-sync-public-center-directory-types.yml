@@ -1,0 +1,20 @@
+name: Temp Sync Public Center Directory Types
+
+on:
+  push:
+    branches:
+      - feature/public-center-directory-map
+    paths:
+      - .github/workflows/temp-sync-public-center-directory-types.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/public-center-directory-map
