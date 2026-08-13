@@ -20,17 +20,21 @@ export default async function CenterLocationPage() {
   if (error) throw error;
   if (!center) redirect("/access-denied");
 
+  const locationSource = center.location_source === "center_device" || center.location_source === "admin"
+    ? center.location_source
+    : null;
+
   const initialLocation = (
     center.latitude !== null &&
     center.longitude !== null &&
     center.location_captured_at !== null &&
-    (center.location_source === "center_device" || center.location_source === "admin")
+    locationSource !== null
   ) ? {
       latitude: center.latitude,
       longitude: center.longitude,
       accuracyM: center.location_accuracy_m,
       capturedAt: center.location_captured_at,
-      source: center.location_source,
+      source: locationSource,
     }
     : null;
 
