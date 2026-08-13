@@ -8,12 +8,25 @@ on:
       - .github/workflows/temp-install-maplibre.yml
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   install:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          ref: feature/public-center-directory-map
+          node-version: "22"
+          cache: npm
+      - name: Install pinned MapLibre dependency
+        run: npm install --save-exact maplibre-gl@5.16.0 --no-audit --no-fund
+      - name: Upload package files
+        uses: actions/upload-artifact@v4
+        with:
+          name: maplibre-package-files
+          path: |
+            package.json
+            package-lock.json
+          retention-days: 3
