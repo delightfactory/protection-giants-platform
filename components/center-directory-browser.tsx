@@ -14,8 +14,8 @@ export type PublicCenterDirectoryItem = {
 
 type Filter = "all" | "approved" | "registered";
 
-function centerKey(center: PublicCenterDirectoryItem) {
-  return `${center.center_name}|${center.latitude}|${center.longitude}`;
+function centerKey(center: PublicCenterDirectoryItem, index: number) {
+  return `${center.center_name}|${center.latitude}|${center.longitude}|${index}`;
 }
 
 function matchesQuery(center: PublicCenterDirectoryItem, query: string) {
@@ -29,14 +29,18 @@ export function CenterDirectoryBrowser({ centers }: { centers: PublicCenterDirec
   const [filter, setFilter] = useState<Filter>("all");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  const filteredCenters = useMemo(
-    () => centers.filter((center) => (filter === "all" || center.classification === filter) && matchesQuery(center, query)),
-    [centers, filter, query],
+  const entries = useMemo(
+    () => centers.map((center, index) => ({ center, key: centerKey(center, index) })),
+    [centers],
+  );
+  const filteredEntries = useMemo(
+    () => entries.filter(({ center }) => (filter === "all" || center.classification === filter) && matchesQuery(center, query)),
+    [entries, filter, query],
   );
   const approvedCount = centers.filter((center) => center.classification === "approved").length;
   const registeredCount = centers.length - approvedCount;
-  const mapCenters: CenterMapItem[] = filteredCenters.map((center) => ({
-    key: centerKey(center),
+  const mapCenters: CenterMapItem[] = filteredEntries.map(({ center, key }) => ({
+    key,
     name: center.center_name,
     city: center.city,
     latitude: center.latitude,
@@ -69,15 +73,14 @@ export function CenterDirectoryBrowser({ centers }: { centers: PublicCenterDirec
         <CenterDirectoryMap centers={mapCenters} selectedKey={selectedKey} onSelect={selectFromMap} />
         <section className="center-directory-results" aria-live="polite" aria-label="نتائج المراكز">
           <div className="center-directory-results-head">
-            <strong>{filteredCenters.length} مركز</strong>
+            <strong>{filteredEntries.length} مركز</strong>
             <span>المعتمد يحمل علامة اعتماد واضحة، والمسجل مركز نشط ومحدد الموقع دون اعتماد شبكة حالي.</span>
           </div>
-          {filteredCenters.length === 0 ? (
+          {filteredEntries.length === 0 ? (
             <div className="center-directory-no-results"><strong>لا توجد نتائج مطابقة</strong><p>غيّر عبارة البحث أو اختر حالة أخرى.</p></div>
           ) : (
             <div className="center-directory-list">
-              {filteredCenters.map((center) => {
-                const key = centerKey(center);
+              {filteredEntries.map(({ center, key }) => {
                 const approved = center.classification === "approved";
                 return (
                   <article key={key} data-center-key={key} className={`center-directory-card${selectedKey === key ? " is-selected" : ""}`}>
