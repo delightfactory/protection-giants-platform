@@ -1,0 +1,27 @@
+name: Temp Name Center Network Approval Revoke Migration
+
+on:
+  push:
+    branches:
+      - feature/center-network-approval
+    paths:
+      - .github/workflows/temp-name-center-network-approval-revoke-migration.yml
+
+permissions:
+  contents: read
+
+jobs:
+  name-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.105.0
+      - name: Generate migration name
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase --version
+          supabase migration new center_network_approval_revoke
+          find supabase/migrations -maxdepth 1 -type f -name '*_center_network_approval_revoke.sql' -printf '%f\n'
