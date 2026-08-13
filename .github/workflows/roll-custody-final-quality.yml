@@ -1,0 +1,54 @@
+name: Roll Custody Final Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260813240000_roll_custody_current_schema.sql"
+      - "supabase/migrations/20260813240100_roll_custody_audit.sql"
+      - "supabase/migrations/20260813240200_roll_custody_initial_event.sql"
+      - "supabase/migrations/20260813240300_roll_custody_access.sql"
+      - "supabase/migrations/20260813240400_roll_custody_view.sql"
+      - "scripts/setup-roll-custody-fixture.mjs"
+      - "scripts/verify-roll-custody-public.mjs"
+      - ".github/workflows/roll-custody-final-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Verify Roll custody contracts
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/setup-roll-custody-fixture.mjs
+          node scripts/verify-roll-custody-public.mjs
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
