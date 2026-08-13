@@ -51,3 +51,5 @@ If final Profile verification is unexpectedly ambiguous, the implementation fail
 ## Production deployment prerequisite
 
 The repository includes the local invite template and confirmation route. A hosted Supabase production project must configure its real Site URL/allowed redirect behavior, equivalent invite template, and production-grade custom SMTP before production invitations are relied upon.
+
+The canonical production Supabase configuration and smoke-test checklist is `docs/production-supabase-readiness.md`. It must be reviewed when the production project is created; local `config.toml` values alone are not production sign-off.
