@@ -1,6 +1,6 @@
 # Public Center Directory & Map — Implementation Contract
 
-**Status:** Implementation in progress  
+**Status:** Code complete; combined B+C local/browser acceptance passed; post-retarget CI pending  
 **Date:** 2026-08-13  
 **Roadmap:** `docs/gap-closure-roadmap.md` — Cube C only
 
@@ -8,7 +8,7 @@
 
 Expose a deliberately narrow public discovery surface for active located Protection Giants installation Centers without exposing operational or identity data.
 
-Cube C is stacked temporarily on Cube B while B awaits combined local acceptance. Cube C must be retargeted to updated `main` only after Cube B is accepted and merged.
+Cube B has been accepted and merged into `main`. Cube C has been retargeted to updated `main`; the remaining gate before merge consideration is the final post-retarget CI run plus explicit merge approval.
 
 ## Public projection
 
@@ -84,4 +84,4 @@ Cube C does not implement Center detail profiles, public contact publishing, dir
 
 ## Definition of Done
 
-Cube C is complete only when the public projection, privacy boundary, Registered/Approved classification, mobile map/list UX, failure states, permanent database regression, generated types, TypeScript, production build, combined B+C local acceptance and two review passes are complete. It remains unmerged until Cube B is merged first and explicit user approval is given.
+Cube C is complete only when the public projection, privacy boundary, Registered/Approved classification, mobile map/list UX, failure states, permanent database regression, generated types, TypeScript, production build, combined B+C local acceptance, two review passes, and final post-retarget CI are complete. It remains unmerged until explicit user approval is given.
