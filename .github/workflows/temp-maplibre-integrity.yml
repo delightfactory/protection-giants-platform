@@ -1,0 +1,19 @@
+name: Temp MapLibre Integrity
+
+on:
+  push:
+    branches:
+      - feature/public-center-directory-map
+    paths:
+      - .github/workflows/temp-maplibre-integrity.yml
+
+permissions:
+  contents: read
+
+jobs:
+  hash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
