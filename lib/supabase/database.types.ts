@@ -788,7 +788,7 @@ export type Database = {
         }[]
       }
       approve_center_network: {
-        Args: { p_center_id: string }
+        Args: { p_center_id: string; p_expected_location_captured_at: string }
         Returns: {
           approval_status: string
           approved_at: string
@@ -984,3 +984,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
