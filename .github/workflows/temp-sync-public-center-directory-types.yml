@@ -8,7 +8,7 @@ on:
       - .github/workflows/temp-sync-public-center-directory-types.yml
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   sync-types:
@@ -16,5 +16,21 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v2
         with:
-          ref: feature/public-center-directory-map
+          version: 2.105.0
+          github-token: ${{ github.token }}
+      - name: Generate canonical public schema types
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase start
+          supabase db reset --local --no-seed
+          supabase gen types typescript --local --schema public > /tmp/database.types.ts
+          supabase stop --no-backup
+      - name: Upload canonical types
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-center-directory-types
+          path: /tmp/database.types.ts
+          retention-days: 3
