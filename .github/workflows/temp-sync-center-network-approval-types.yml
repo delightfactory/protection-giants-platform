@@ -1,0 +1,42 @@
+name: Temp Sync Center Network Approval Types
+
+on:
+  push:
+    branches:
+      - feature/center-network-approval
+    paths:
+      - .github/workflows/temp-sync-center-network-approval-types.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/center-network-approval
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+      - name: Rebuild and generate canonical types
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase start
+          supabase db reset --local --no-seed
+          supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
+          supabase stop --no-backup
+      - name: Commit generated types and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/temp-sync-center-network-approval-types.yml
+          git add lib/supabase/database.types.ts
+          git commit -m "Sync Center Network Approval database types"
+          git push origin HEAD:feature/center-network-approval
