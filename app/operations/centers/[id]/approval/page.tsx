@@ -85,7 +85,10 @@ export default async function CenterApprovalPage({ params, searchParams }: Cente
       : "مباشر للشركة";
 
   const actorIds = profile.role === "admin"
-    ? Array.from(new Set(historyResult.data.map((event) => event.actor_profile_id).filter((value): value is string => Boolean(value))))
+    ? Array.from(new Set([
+        ...historyResult.data.map((event) => event.actor_profile_id),
+        center.approved_by_profile_id,
+      ].filter((value): value is string => Boolean(value))))
     : [];
   const actorResult = actorIds.length > 0
     ? await supabase.from("profiles").select("id, display_name").in("id", actorIds)
@@ -111,7 +114,7 @@ export default async function CenterApprovalPage({ params, searchParams }: Cente
       />
 
       {pageError === "approve" ? (
-        <FeedbackBanner tone="error">تعذر اعتماد المركز. تحقق من أن المركز نشط وله موقع جغرافي صالح وأنه ما زال داخل نطاق صلاحيتك.</FeedbackBanner>
+        <FeedbackBanner tone="error">تعذر اعتماد المركز. ربما تغير الموقع منذ فتح الصفحة، أو لم يعد المركز نشطًا أو داخل نطاق صلاحيتك. أعد تحميل الصفحة وراجع الموقع الحالي ثم حاول مرة أخرى.</FeedbackBanner>
       ) : null}
       {pageError === "revoke" ? (
         <FeedbackBanner tone="error">تعذر إلغاء اعتماد المركز. تحقق من أن المركز ما زال داخل نطاق صلاحيتك ثم أعد المحاولة.</FeedbackBanner>
@@ -135,6 +138,9 @@ export default async function CenterApprovalPage({ params, searchParams }: Cente
               <p>اعتماد الشبكة: <strong>{isApproved ? "معتمد" : "غير معتمد"}</strong></p>
               {isApproved && center.approved_at ? (
                 <p>آخر اعتماد: <span dir="ltr">{formatDate(center.approved_at)}</span></p>
+              ) : null}
+              {isApproved && center.approved_by_profile_id ? (
+                <p>اعتمد بواسطة: {actorLabel(center.approved_by_profile_id)}</p>
               ) : null}
               <StatusBadge tone={isApproved ? "success" : "neutral"}>
                 {isApproved ? "معتمد" : "غير معتمد"}
@@ -182,6 +188,7 @@ export default async function CenterApprovalPage({ params, searchParams }: Cente
             ) : canApprove ? (
               <form action={approveCenterNetwork} className="operations-form">
                 <input type="hidden" name="center_id" value={center.id} />
+                <input type="hidden" name="location_captured_at" value={center.location_captured_at!} />
                 <FeedbackBanner tone="info">المركز نشط وله موقع جغرافي مسجل، لذلك يستوفي شروط منح اعتماد الشبكة الحالية.</FeedbackBanner>
                 <div className="operations-form-actions">
                   <button type="submit" className="button button-primary">اعتماد المركز</button>
