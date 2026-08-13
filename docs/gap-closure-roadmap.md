@@ -2,161 +2,137 @@
 
 **Status:** Approved sequencing baseline — 2026-08-13  
 **Applies after:** merged Agent & Network Foundation (`main` at `bfc72c00`)  
-**Purpose:** close the remaining operational gaps in small complete cubes without forcing one module to wait on unrelated work or allowing a later workflow to start without its real prerequisites.
+**Purpose:** close the remaining operational gaps in small complete cubes, with every cube starting only after its real prerequisites exist.
 
-## 1. Authority and precedence
+## 1. Authority and correction
 
-This roadmap records the current implementation sequence after reviewing the approved Product Decisions, the Distribution Network specification, the Center Location/Approval amendment, the merged Network Foundation, and the already-closed Product/Production foundations.
+This roadmap is the current sequencing authority for the remaining gaps.
 
-Where an older document says simply **Production Labels → Roll Custody & Transfers**, this roadmap is the newer sequencing authority.
+It was produced after re-reading:
 
-That older order was too coarse because it treated all physical labels as one dependency. The actual dependency is narrower:
+- `docs/development-governance.md`;
+- `docs/product-decisions.md`;
+- `docs/distribution-network-flow-spec.md`;
+- `docs/center-location-approval-activation-amendment.md`;
+- `docs/center-location-approval-impact-review.md`;
+- the merged Agent & Network Foundation;
+- the already-closed Product and Production foundations.
 
-- current Roll custody does **not** depend on a printed label;
-- transfer state/reservation does **not** depend on the complete Production Label package;
-- the **scan-based physical transfer path** does require a machine-readable physical Roll identity;
-- therefore only a small **Operational Roll Scan Label** is a prerequisite for the scan path;
-- Activation/Warranty labels remain owned by their later identifier/lifecycle decisions and are not pulled forward merely to unblock Transfers.
+Where older wording says simply **Production Labels → Roll Custody & Transfers**, this document supersedes that ordering.
 
-This roadmap changes implementation order only. It does not change the approved business rules in `docs/product-decisions.md`.
+The old order was too coarse because it treated every physical label as one dependency. The real dependency is narrower:
 
-## 2. Development rule
+- **current Roll custody does not depend on a label**;
+- **Transfer state/reservation does not depend on a label**;
+- **scan-based Transfer UX does depend on a machine-readable physical Roll identity**;
+- therefore a narrow **Operational Roll Scan Identity Label** is required before the scan workflow, not the complete Production Label package;
+- Activation/Warranty labels remain behind their own future identifier/lifecycle decisions.
 
-The project continues to use the cube principle:
-
-1. one clear responsibility per cube;
-2. no advanced workflow before its dependencies exist;
-3. each cube is functionally complete for its declared responsibility;
-4. no placeholder/dead UI;
-5. no speculative generic engines;
-6. affected security/RLS/failure paths are part of the cube;
-7. double review before merge/closure;
-8. the next cube starts from updated `main`, not from an unrelated feature branch.
-
-A macro-capability may contain several small cubes, but the project must finish the whole dependency chain for that macro-capability before declaring it closed.
+This is a sequencing correction only. Approved business rules in `product-decisions.md` remain unchanged.
 
 ---
 
-# 3. Current completed foundations
+## 2. Cube discipline
 
-The following prerequisites already exist in `main` and are not reopened:
+Every remaining cube follows the existing project governance:
 
-## 3.1 Product Foundation — complete
+1. one clear responsibility;
+2. complete vertical slice for that responsibility;
+3. no speculative generic engines;
+4. no dead/placeholder UI;
+5. security/RLS/validation/failure paths are part of the feature;
+6. previous completed cubes are not reopened merely for convenience;
+7. double review before closure/merge;
+8. each new cube starts from updated `main`.
 
-Provides:
-
-- canonical Product/SKU;
-- stable physical Product specification;
-- Product public/internal data boundaries;
-- Product warranty policy source;
-- Product assets.
-
-## 3.2 Production Order / Lot / Roll Foundation — complete
-
-Provides:
-
-- immutable Production Order;
-- Lot lineage;
-- one record per physical Roll;
-- internal Roll serial;
-- independent ERP serial;
-- historical Product snapshot;
-- voided Production Order downstream block contract.
-
-## 3.3 Agent & Network Foundation — complete
-
-Provides:
-
-- Country Agent entity and role;
-- Company → Agent → Dealer → Center management hierarchy;
-- scoped RLS/management permissions;
-- Operational Party registry;
-- stable Transfer ID and exact recipient resolver;
-- Center invitation/onboarding and trusted first-user provisioning.
-
-These foundations already satisfy the identity prerequisites for the remaining work.
+A larger capability may contain several small cubes. The individual cubes stay small, but the larger capability is not called complete until all of its required cubes are closed.
 
 ---
 
-# 4. Remaining gap-closure sequence
+# 3. Foundations already complete
+
+## Product Foundation
+
+Already provides canonical SKU, stable physical specification, Product assets/content boundaries and the Product warranty-policy source.
+
+## Production Order / Lot / Roll Foundation
+
+Already provides immutable Production Orders, Lots, one record per physical Roll, internal Roll serial, independent ERP serial, historical Product snapshot and the voided-order downstream block rule.
+
+## Agent & Network Foundation
+
+Already provides Country Agent, Company/Agent/Dealer/Center hierarchy and RLS, Operational Parties, stable Transfer ID/exact resolver, and controlled Center invitation/onboarding.
+
+These are closed dependencies and are not redesigned by the remaining roadmap.
+
+---
+
+# 4. Center Foundation Completion
+
+The previously agreed Center correction remains a three-step dependency chain.
 
 ## Cube A — Center Location Foundation
-
-### Responsibility
-
-Give each operational Center an auditable current physical location without mixing in network approval or public map behavior.
 
 ### Depends on
 
 - Center entity;
 - Center operational account/onboarding;
-- existing Admin/Agent/Dealer/Center authorization model.
+- existing operational authorization.
 
-All are already implemented.
+All dependencies are already merged.
 
-### Includes
+### Owns
 
-- current Center latitude/longitude projection;
+- current latitude/longitude;
 - reported accuracy;
 - capture timestamp/source;
 - append-only location history;
-- Center self-capture using device/browser geolocation while at premises;
-- initial application acceptance target of 50m accuracy or better;
-- Admin manual correction path;
-- server/database validation and authorization;
+- Center self-capture from browser/device while at the premises;
+- initial 50m-or-better application accuracy target;
+- Admin correction path;
+- server/database validation;
 - Center dashboard location state;
-- mobile geolocation permission/error/retry states.
+- mobile permission/retry/error handling.
 
-### Does not include
+### Does not own
 
-- network approval;
-- public Center map;
-- custody/Transfers;
-- Activation/Warranty.
+Network approval, public map, custody, Transfers or Activation.
 
-### Closure condition
+### Done when
 
-Center and Admin location workflows are fully usable and auditable, with cross-Center/location authorization regression covered.
+Center and Admin location workflows are secure, auditable and fully usable.
 
 ---
 
 ## Cube B — Center Network Approval Foundation
 
-### Responsibility
-
-Implement Protection Giants network approval as a separate trust/quality state.
-
 ### Depends on
 
-- **Cube A — Center Location Foundation**;
+- **Cube A — Center Location**;
 - Agent network scope from the merged Network Foundation.
 
-### Includes
+### Owns
 
-- current `approved | unapproved` projection;
-- approval/revocation audit events;
+- `approved | unapproved` current projection;
+- immutable approval/revocation audit events;
 - Admin approval/revocation for any Center;
 - Agent approval/revocation only inside own network;
 - Dealer/Center denial;
-- approval blocked when Center is suspended or has no valid location;
-- atomic invalidation of approval when saved Center location changes;
-- Center/Admin/Agent UI state.
+- approval blocked without active Center + valid current location;
+- atomic approval invalidation when saved location changes;
+- Center/Admin/Agent approval-state UI.
 
-### Critical non-dependency
+### Critical rule
 
-Network approval is **not** a custody, Roll Opening, or Warranty Activation permission.
+Network approval is a trust/public designation. It is **not** a custody, Roll Opening or Warranty Activation permission.
 
-### Closure condition
+### Done when
 
-Approval can be granted/revoked only by authorized actors, location changes invalidate it atomically, and operational status/custody remain independent.
+Approval authority, prerequisites and invalidation rules are fully enforced and audited.
 
 ---
 
 ## Cube C — Public Center Directory & Map
-
-### Responsibility
-
-Complete the public-facing Center discovery experience so the Center macro-foundation is not left with unused internal location/approval data.
 
 ### Depends on
 
@@ -164,183 +140,171 @@ Complete the public-facing Center discovery experience so the Center macro-found
 - **Cube B — Network Approval**;
 - existing public application shell.
 
-### Includes
+### Owns
 
-- narrow public Center projection/API/view/RPC;
-- only active Centers with valid current location;
-- Registered Center vs Approved Center visual distinction;
+- narrow public Center projection;
+- only active located Centers;
+- Registered Center vs Approved Center distinction;
 - public map/list mobile experience;
-- no Transfer ID, Auth/profile IDs, private email, private operational hierarchy, or audit-history leakage;
-- light provider-agnostic map integration chosen at implementation time.
+- no leakage of Transfer ID, Auth/profile IDs, private email, private hierarchy or audit history;
+- light provider-agnostic map visualization chosen during implementation.
 
-### Closure condition
+### Done when
 
-The public Center discovery flow works from controlled public data and the complete Center Location/Approval/Public Map macro-capability passes double review.
+Public Center discovery works from deliberately public data only.
 
-### Macro gate after Cube C
+### Macro gate
 
-Only after A+B+C are complete is **Center Foundation Completion** considered closed.
+Only after **A + B + C** are closed is **Center Foundation Completion** considered Done.
 
 ---
 
+# 5. Roll Custody & Transfers
+
+This macro-capability is intentionally decomposed so we do not make labels a fake dependency and do not make Transfers incomplete.
+
 ## Cube D — Roll Custody Foundation
-
-### Responsibility
-
-Create the authoritative current-custodian projection and immutable custody history prerequisites without yet implementing the Transfer workflow.
 
 ### Depends on
 
-- physical Rolls from Production Foundation;
-- Operational Parties from Network Foundation;
+- physical Rolls from Production;
+- Operational Parties;
 - singleton Company party.
 
-It does **not** depend on Center Location, Network Approval, Public Map, or any printed label.
+### Does not depend on
 
-### Includes
+Center location, Center approval, public map, or any printed label.
 
-- one current-custody row/projection per operational Roll;
-- current custodian references `operational_parties.id`, never a User ID;
-- existing Rolls backfilled to Company custody;
-- future Roll insert initialization to Company custody through a narrow database path without reopening the Production RPC;
-- immutable initial/current custody event contract;
+### Owns
+
+- one authoritative current-custody projection per Roll;
+- custodian = `operational_parties.id`, never User ID;
+- backfill existing Rolls to Company custody;
+- initialize future Rolls to Company custody through a narrow database path without reopening the Production RPC;
+- immutable custody-history/event contract;
+- one confirmed custodian only;
 - voided Production Order downstream eligibility rule;
-- RLS/read contracts appropriate to current custodian visibility;
-- concurrency/uniqueness protection so one Roll cannot have two confirmed custodians.
+- custody read/RLS contracts.
 
-### Does not include
+### Does not own
 
-- pending Transfers;
-- recipient acceptance;
-- scan UI;
-- labels;
-- Roll Opening/Activation.
+Pending Transfer, reservation, receipt, scan UX, labels or Activation.
 
-### Closure condition
+### Done when
 
-Every eligible Roll has exactly one confirmed current custodian and the state/history cannot drift or duplicate.
+Every eligible Roll has exactly one confirmed custodian and custody cannot drift or duplicate.
 
 ---
 
 ## Cube E — Operational Roll Scan Identity Label
 
-### Responsibility
-
-Provide the minimum physical machine-readable Roll identity required for reliable scan-based movement and later Roll Opening workflows.
-
-This is deliberately **not** the complete Production Labels cube.
-
 ### Depends on
 
-- existing Production Order/Lot/Roll identities only.
+- existing Roll identity from Production only.
 
-It does not depend on Custody or Transfers.
+### Does not depend on
 
-### Identifier contract
+Custody or Transfer implementation.
 
-The scan label represents the existing canonical physical Roll identity. It must not generate a new business identifier and must not impersonate:
+### Purpose
+
+Provide the minimum physical machine-readable identity needed by the later scan workflow and later Roll Opening scan flow.
+
+This is **not** the full Production Labels cube.
+
+### Identity contract
+
+The label represents the existing canonical physical Roll identity. It creates no new business identifier and must never masquerade as:
 
 - Activation code;
 - Warranty token;
 - Transfer ID;
 - Product marketing QR.
 
-The human-readable Roll identity must remain visible alongside the machine-readable code where required for operational verification.
+### Owns
 
-The exact QR/barcode symbology and print dimensions are frozen inside this cube after real print/scan verification.
-
-### Includes
-
-- one fixed operational Roll identity label template;
-- deterministic print/reprint from persisted Roll data;
+- one fixed operational Roll identity label;
+- deterministic print/reprint;
+- human-readable identity beside the machine code where operationally required;
 - bounded Admin print path;
-- machine-readable payload tests;
-- physical scan readability review;
-- voided Production Order protection.
+- payload/readability tests;
+- exact QR/barcode symbology and physical dimensions frozen after real print/scan validation;
+- voided-order protection.
 
-### Does not include
+### Does not own
 
-- carton artwork;
-- bag/case artwork;
-- Marketing label package;
-- Activation sticker;
-- vehicle/warranty/invoice QR labels;
-- generic template engine.
+Carton/bag artwork, ERP label package, Activation sticker, vehicle/warranty/invoice QR, or generic template engine.
 
-### Why it is separated
+### Why this cube exists
 
-PD-014 requires scan confirmation for small/mixed physical movements. Building the complete Production Label package merely to obtain one scannable Roll identity would create an unnecessary dependency and would pull unresolved Activation/Warranty identifiers forward.
+PD-014 requires scan confirmation for small/mixed movements. Pulling the entire Production Label package forward merely to obtain one scan identity would add false dependencies and would pressure the design to invent unresolved Activation/Warranty identifiers.
 
-### Closure condition
+### Done when
 
-A real physical Roll can carry a deterministic label that resolves its existing Roll identity accurately and can be reprinted without creating new identity/state.
+A physical Roll can be scanned reliably into its existing canonical Roll identity and the label can be safely reprinted.
 
 ---
 
 ## Cube F — Roll Transfer State & Reservation Engine
 
-### Responsibility
-
-Implement the transfer state machine and atomic Roll reservation rules before adding complete operator/recipient UI.
-
 ### Depends on
 
 - **Cube D — Roll Custody Foundation**;
 - Operational Party / Transfer ID foundation;
-- active-recipient resolver;
-- existing Roll/Production eligibility rules.
+- exact active-recipient resolver;
+- Roll/Production eligibility rules.
 
-It does not technically require Cube E for database state transitions, but the full Transfer macro-capability cannot close until the scan path has Cube E available.
+### Important non-dependency
 
-### Includes
+**Cube F does not depend on Cube E.**
 
-- Transfer header and per-Roll items;
-- idempotent Transfer creation;
+The database/service Transfer state machine can be built and tested using canonical Roll IDs. The label becomes a dependency only when the real camera/scan UX is implemented in Cube G.
+
+### Owns
+
+- Transfer header and Roll items;
+- idempotent creation;
 - sender must be confirmed current custodian;
-- active recipient must differ from sender;
-- no conflicting reservation;
-- parent Production Order must be generated/non-voided;
-- reservation without changing confirmed custody;
-- immutable transfer/custody event history;
-- cancellation/rejection rules before receipt;
-- no automatic expiry in first release unless later approved.
+- active recipient != sender;
+- atomic no-conflicting-reservation rule;
+- generated/non-voided Production Order check;
+- reservation while custody remains with sender;
+- immutable Transfer/custody events;
+- rejection/cancellation rules before receipt;
+- race/concurrency protection.
 
-### Closure condition
+### Done when
 
-The database/service state machine is race-safe and cannot double-transfer or move custody before recipient confirmation.
+The Transfer state machine cannot double-reserve, double-transfer or move confirmed custody before recipient receipt.
 
 ---
 
-## Cube G — Transfer Send UX: Transfer ID + Scan/Select/Lot
-
-### Responsibility
-
-Make Transfer creation usable in the real physical workflow.
+## Cube G — Transfer Send UX: Transfer ID + Scan / Select / Lot
 
 ### Depends on
 
 - **Cube F — Transfer engine**;
 - **Cube E — Operational Roll Scan Identity Label** for scan mode;
-- exact Transfer ID resolver already implemented.
+- exact Transfer ID resolver already merged.
 
-### Includes
+### Owns
 
 - enter/scan exact recipient Transfer ID;
 - minimal recipient verification card;
-- `Scan Rolls` for small/mixed movements;
+- `Scan Rolls` for small/mixed moves;
 - `Select Rolls` for known subsets;
 - `Select Lot` for trusted bulk movement;
-- whole-Lot expansion into individual Roll items;
-- explicit `total / available / elsewhere` behavior for partially held Lots;
+- Lot expansion into individual Roll items;
+- explicit total/available/elsewhere behavior for partially held Lots;
 - review count before send;
-- mobile camera/scanner-friendly flow;
-- interrupted/duplicate submission handling.
+- mobile camera/scanner flow;
+- duplicate/interrupted submission handling.
 
-### Important rule
+### Rule retained from PD-014
 
-Per-Roll scanning is not mandatory for a trusted whole-Lot transfer. The platform still records every Roll item individually.
+Per-Roll scan is not mandatory for a trusted whole-Lot move. The system still records each physical Roll as an individual Transfer item.
 
-### Closure condition
+### Done when
 
 Sender can create a valid pending Transfer through every approved input mode without bypassing custody/reservation rules.
 
@@ -348,194 +312,190 @@ Sender can create a valid pending Transfer through every approved input mode wit
 
 ## Cube H — Transfer Receipt, Partial Receipt & Resolution
 
-### Responsibility
-
-Close the recipient side so confirmed custody can move safely and physical discrepancies are represented truthfully.
-
 ### Depends on
 
 - **Cube F — Transfer engine**;
 - **Cube G — send workflow**.
 
-### Includes
+### Owns
 
 - recipient pending-transfer inbox/detail;
-- accept confirmed received Rolls;
+- receipt confirmation;
 - scan-assisted receipt verification where appropriate;
 - partial receipt;
-- unresolved Roll remains reserved with sender custody unchanged;
+- custody moves only for confirmed received Rolls;
+- unresolved Roll remains reserved and sender remains confirmed custodian;
 - whole-transfer rejection before any receipt;
 - sender cancellation before any receipt;
-- explicit resolution path for unresolved items within the approved first-release rules;
-- atomic custody move for received Rolls;
+- first-release unresolved-item resolution path;
 - audit/timeline;
 - mobile failure/connectivity states.
 
-### Macro gate after Cube H
+### Macro gate
 
-Only after D+E+F+G+H are complete is **Roll Custody & Transfers** considered functionally closed.
+Only after **D + E + F + G + H** are closed is **Roll Custody & Transfers** considered Done.
 
-A Transfer implementation without receipt/partial-receipt handling or without the required scan mode is not considered Done.
+A Transfer implementation without recipient receipt/partial-receipt behavior or without the approved scan path is not complete.
 
 ---
 
-## Cube I — Production Label Package (production-owned labels only)
+# 6. Production-owned Label Package
 
-### Responsibility
-
-Complete the broader factory label package whose truth already exists in Product/Production data.
+## Cube I — Production Label Package
 
 ### Depends on
 
 - Product Foundation;
 - Production Foundation;
-- print primitives proven by Cube E.
+- print primitives proven by **Cube E**.
 
-It does **not** depend on Roll custody/Transfers and does not block them.
+### Does not depend on
 
-### Includes, subject to final physical matrix
+Custody or Transfers, and therefore does not block them.
+
+### Owns, after final physical label matrix is approved
 
 - outer carton Product/Roll labels;
 - bag/case labels;
-- inner Roll identity presentation if broader artwork is required beyond Cube E;
+- broader inner-Roll presentation where required;
 - ERP serial label;
-- Product/Lot/specification data;
+- Product/Lot/spec data;
 - informational Marketing website QR;
 - bounded batch print/reprint;
-- final copy counts/sizes and printer tolerances.
+- physical copy counts, dimensions and printer tolerances.
 
 ### Explicit exclusion
 
-Do not include Activation/Warranty labels merely because they are physically printed near Production time.
+Activation/Warranty labels are not included merely because they may eventually be printed near Production time.
 
-### Closure condition
+### Done when
 
 Every approved production-owned label can be deterministically printed/reprinted from existing immutable data with no invented business identity.
 
 ---
 
-# 5. Activation/Warranty decision gate after gap closure
+# 7. Activation/Warranty label decision gate
 
-The following physical labels remain intentionally outside Cubes E and I until their owning identifiers/lifecycles are formally defined:
+The following remain outside Cubes E and I until their owning identifiers/lifecycles are formally defined:
 
 - Activation sticker/QR;
 - vehicle-pillar QR;
 - warranty-card QR;
 - invoice QR.
 
-Before these labels are implemented, the future Activation/Warranty specification must decide:
+Before implementing them, the future Activation/Warranty specification must decide:
 
-1. when the Activation identifier is allocated;
-2. which business object owns it;
-3. whether it is printed at Production time or later;
-4. whether customer vehicle/card/invoice QR copies share one Warranty public URL/token or use another approved model;
+1. when Activation identity is allocated;
+2. which object owns it;
+3. whether it is printable at Production time or later;
+4. whether vehicle/card/invoice copies share one Warranty public URL/token or use another approved model;
 5. reprint and anti-enumeration behavior.
 
-The current identifiers must not be substituted for these future identifiers merely to finish artwork.
+Current SKU, Roll serial, ERP serial or Transfer ID must not be substituted for these future identities just to complete artwork.
 
 ---
 
-# 6. Later sequence after the current gap-closure roadmap
+# 8. Later operational sequence
 
-After Center Foundation Completion and Roll Custody & Transfers are closed, the next operational macro-flow should be planned against the already approved Product Decisions:
+After Center Foundation Completion and Roll Custody & Transfers are closed, the next macro-flow should be planned from the approved Product Decisions:
 
-1. **Roll Opening / Claiming** by authenticated active Center that holds confirmed custody;
+1. **Roll Opening / Claiming** by authenticated active Center holding confirmed custody;
 2. **Pre-install Roll Issue Reporting** after opening;
-3. **Warranty Activation** as a separate later event using customer/vehicle/VIN data and an atomic activation transaction;
-4. **Warranty public access/verification** and the customer QR copy strategy;
-5. Claims and later advanced replacement/reinstall flows.
+3. **Warranty Activation** as a separate event with customer/vehicle/VIN data and atomic activation;
+4. **Warranty public access/verification** and customer QR strategy;
+5. Claims and later replacement/reinstall flows.
 
 Network approval is not an Activation gate.
 
-The detailed implementation sequence for those cubes must be approved when that phase begins; this document does not pre-build them.
+This roadmap deliberately does not pre-build those later cubes.
 
 ---
 
-# 7. Dependency summary
+# 9. Dependency graph
 
 ```text
 COMPLETED
-Product ───────────────┐
-Production / Rolls ────┼──────────────────────────────┐
-Network / Parties ─────┼───────────────┐              │
-Center Onboarding ─────┘               │              │
-                                       │              │
-CENTER COMPLETION                      │              │
-A Location                             │              │
-  ↓                                    │              │
-B Network Approval                     │              │
-  ↓                                    │              │
-C Public Center Map                    │              │
-                                       │              │
-ROLL OPERATIONS                        │              │
-D Custody Foundation  ← Parties + Rolls│              │
-                                       │              │
-E Operational Scan Label ← Rolls ──────┘              │
-             D + E                                      │
-               ↓                                        │
-F Transfer State/Reservation                            │
-               ↓                                        │
-G Send UX + Scan/Select/Lot                             │
-               ↓                                        │
-H Receipt/Partial Receipt → Custody changes             │
-                                                        │
-PRODUCTION PRINTING                                     │
-I Production-owned Label Package ← Product/Production + E print primitives
+Product / Production Rolls ───────────────┐
+Network / Operational Parties ───────┐    │
+Center Onboarding ───────────────┐    │    │
+                                 │    │    │
+CENTER COMPLETION                │    │    │
+A Location                       │    │    │
+  ↓                              │    │    │
+B Network Approval               │    │    │
+  ↓                              │    │    │
+C Public Center Map              │    │    │
+                                      │    │
+ROLL OPERATIONS                       │    │
+D Custody Foundation ← Parties + Rolls    │
+  ↓                                        │
+F Transfer State/Reservation               │
+                                           │
+E Operational Scan Label ← Rolls ──────────┘
+              E + F
+                ↓
+G Send UX: Transfer ID + Scan/Select/Lot
+                ↓
+H Receipt / Partial Receipt → confirmed custody changes
+
+PRODUCTION PRINTING
+E print primitives
+  ↓
+I Broader Production-owned Label Package
 
 LATER DECISION GATE
-Activation/Warranty identity → Activation sticker + customer Warranty QR copies
+Activation/Warranty identity
+  ↓
+Activation sticker + vehicle/card/invoice Warranty QR strategy
 ```
 
-A+B+C form the remaining **Center Foundation Completion** macro-capability.
+The important dependency is:
 
-D+E+F+G+H form the **Roll Custody & Transfers** macro-capability, with E being a narrow physical prerequisite rather than the complete Production Label package.
+- D → F;
+- E is independent of D/F;
+- E + F → G;
+- G + F → H.
+
+This is the reason the full Production Label package is not placed in front of custody/Transfers.
 
 ---
 
-# 8. Immediate next development step
+# 10. Immediate next development step
 
 The immediate next code cube is:
 
 **Cube A — Center Location Foundation**
 
-Reason:
+Why:
 
-- all of its dependencies are already merged;
-- it is the first unfinished requirement in the approved Center correction;
+- all dependencies are already merged;
 - Network Approval depends on it;
 - Public Center Map depends on it;
-- it does not require Transfer or label work;
-- it can be completed and double-reviewed as a contained vertical slice.
+- it is the first unfinished part of the approved Center correction;
+- it is contained enough to complete and double-review without touching Transfer or label logic.
 
-After Cube A closes, proceed to Cube B, then Cube C. Do not start Transfer UI or full Production Labels in parallel on the same development branch.
+After A closes: B, then C.
+
+Only after Center Foundation Completion is closed do we move into the Roll Operations chain. D and E are independent foundations, but they must remain separate cubes/PRs rather than being mixed together.
 
 ---
 
-# 9. Review discipline for every remaining cube
+# 11. Review rule for every remaining cube
 
-Before merge of each cube:
+Before merge:
 
-### Review 1 — implementation review
+### Review 1 — implementation integrity
 
-Review complete affected stack:
+Review schema/migrations, invariants, atomicity, RLS/grants, server/RPC path, UI/mobile behavior, failure states, auditability and affected regressions.
 
-- schema/migrations;
-- invariants/atomicity;
-- RLS/grants;
-- server actions/RPCs;
-- UI/mobile behavior;
-- failure paths;
-- auditability;
-- regressions.
-
-### Review 2 — independent dependency review
+### Review 2 — fresh dependency review
 
 Re-read this roadmap plus applicable Product Decisions/specs and verify:
 
-- the cube did not silently absorb a later responsibility;
-- all dependencies are real and already available;
-- no later module was weakened or prematurely coupled;
-- previous completed cubes remain unchanged in meaning;
-- CI/database/type/build and relevant runtime smoke checks pass on the final head.
+- no later responsibility leaked into the cube;
+- all declared dependencies already exist;
+- no completed foundation was reopened unnecessarily;
+- no identifier was reused for a different business meaning;
+- CI/database/types/build and relevant runtime smoke tests pass on the final head.
 
 Only then may the cube be proposed for merge.
