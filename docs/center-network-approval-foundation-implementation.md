@@ -1,6 +1,6 @@
 # Center Network Approval Foundation — Implementation Contract
 
-**Status:** Implementation in progress  
+**Status:** Implementation in review  
 **Date:** 2026-08-13  
 **Roadmap:** `docs/gap-closure-roadmap.md` — Cube B only
 
@@ -77,6 +77,8 @@ Approval fields are not added to generic authenticated UPDATE grants. Changes oc
 - explicit EXECUTE grants only to `authenticated`;
 - PUBLIC/anon/service-role execution revoked.
 
+Approval also binds to the location snapshot reviewed by the operator. The approval form sends the current `location_captured_at`; after locking the Center row the database rejects approval if that timestamp no longer matches. The operator must reload and review the new location before approving it.
+
 ## Application flow
 
 ### Admin / Agent
@@ -90,11 +92,11 @@ A dedicated Center approval task shows:
 - approve/revoke action when authorized;
 - approval history.
 
-Approval is visibly blocked when the Center is suspended or has no current location.
+Approval is visibly blocked when the Center is suspended or has no current location. A stale approval attempt is rejected and requires a fresh location review.
 
 ### Center
 
-The Center Operations dashboard shows its current approval state and explains that approval is a Protection Giants trust/public designation and is separate from Roll custody and Warranty Activation eligibility. The Center receives no approval action.
+The Center Operations dashboard shows its current approval state and explains that approval is a Protection Giants trust/public designation. It is not a prerequisite for Roll custody, Roll Opening or Warranty Activation. The Center receives no approval action.
 
 ### Dealer
 
@@ -130,8 +132,10 @@ Dedicated regression coverage must prove at minimum:
 15. Dealer/Center cannot enumerate approval history;
 16. direct Data API mutation of approval projection fails;
 17. service role cannot invoke approval RPCs;
-18. existing Center Location, network, onboarding, Product and Production regressions remain green;
-19. generated database types, TypeScript and production build pass.
+18. stale reviewed-location approval is rejected without projection/history mutation;
+19. suspended Agent Profile or Country Agent entity cannot approve/revoke;
+20. existing Center Location, network, onboarding, Product and Production regressions remain green;
+21. generated database types, TypeScript and production build pass.
 
 ## Explicit non-goals
 
@@ -146,4 +150,4 @@ Cube B does not implement:
 
 ## Definition of Done
 
-Cube B is complete only when schema, audit, authority, location invalidation, Admin/Agent/Center UX, failure states, database contracts, generated types, TypeScript, production build, browser smoke, and two review passes are complete. It remains unmerged until explicit user approval.
+Cube B is complete only when schema, audit, authority, location invalidation, stale-location protection, Admin/Agent/Center UX, failure states, database contracts, generated types, TypeScript, production build, browser smoke, and two review passes are complete. It remains unmerged until explicit user approval.
