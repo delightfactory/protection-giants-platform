@@ -1,6 +1,6 @@
 # Center Location Foundation — Implementation Contract
 
-**Status:** Implementation contract for Cube A  
+**Status:** Implementation in review; Cube A remains open  
 **Date:** 2026-08-13  
 **Roadmap:** `docs/gap-closure-roadmap.md` — Cube A only
 
@@ -242,3 +242,22 @@ Cube A is Done only when:
 - generated types, typecheck and build pass;
 - existing network/user/Product/Production regressions remain green;
 - Review 1 and independent Review 2 both pass before merge.
+
+## 14. Verification snapshot — 2026-08-13
+
+Completed evidence on the feature branch:
+
+- the migration was generated with Supabase CLI `2.105.0` and applies on a fresh local stack;
+- `supabase db reset --local --no-seed` passed;
+- `supabase db lint --local --level warning --fail-on error` passed;
+- the dedicated Center Location database/RLS/audit contract passed;
+- a prefilled-location Center INSERT bypass discovered during review is blocked by a database trigger and covered by regression testing;
+- direct Data API location UPDATE remains unavailable because the existing Center UPDATE grant is column-scoped and no grant is added for the new location columns;
+- canonical `public` schema TypeScript types were regenerated from the rebuilt database and the temporary generation workflow removed itself.
+
+Still required before Cube A can be marked Done:
+
+- full repository Database Quality after the generated-type commit;
+- TypeScript + production build on the final feature head;
+- phone-width browser smoke test of permission, retry, review and save states;
+- Review 1 and independent Review 2.
