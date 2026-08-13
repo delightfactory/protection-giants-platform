@@ -20,11 +20,19 @@ async function requireApprovalOperator() {
 
 export async function approveCenterNetwork(formData: FormData) {
   await requireApprovalOperator();
+
   const centerId = String(formData.get("center_id") ?? "").trim();
+  const locationCapturedAt = String(formData.get("location_captured_at") ?? "").trim();
   if (!uuidPattern.test(centerId)) redirect("/operations/centers");
+  if (!locationCapturedAt || !Number.isFinite(Date.parse(locationCapturedAt))) {
+    redirect(`${approvalPath(centerId)}?error=approve`);
+  }
 
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.rpc("approve_center_network", { p_center_id: centerId });
+  const { data, error } = await supabase.rpc("approve_center_network", {
+    p_center_id: centerId,
+    p_expected_location_captured_at: locationCapturedAt,
+  });
   if (error || !data?.[0]) redirect(`${approvalPath(centerId)}?error=approve`);
 
   revalidatePath("/operations");
