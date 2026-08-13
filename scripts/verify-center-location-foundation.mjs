@@ -89,7 +89,7 @@ async function signIn(email) {
   return result.body.access_token;
 }
 
-await createUser({ email: "location-admin@example.test", role: "admin" });
+const adminUser = await createUser({ email: "location-admin@example.test", role: "admin" });
 const adminToken = await signIn("location-admin@example.test");
 
 const agent = one(await rest("country_agents?select=id,code,country_code,status", adminToken, {
@@ -108,6 +108,24 @@ const dealer = one(await rest("dealers?select=id,code,country_code,country_agent
     country_agent_id: agent.id,
   },
 }), "Admin creates location test Dealer");
+
+mustFail(await rest("installation_centers?select=id", adminToken, {
+  method: "POST",
+  prefer: true,
+  body: {
+    code: "LOC-C-BYPASS",
+    name: "Location Bypass Center",
+    country_code: "EG",
+    city: "Giza",
+    dealer_id: dealer.id,
+    latitude: 30.0131,
+    longitude: 31.2089,
+    location_accuracy_m: null,
+    location_captured_at: new Date().toISOString(),
+    location_source: "admin",
+    location_updated_by_profile_id: adminUser.id,
+  },
+}), "Admin creates Center with prefilled location projection");
 
 const centerOne = one(await rest("installation_centers?select=*", adminToken, {
   method: "POST",
