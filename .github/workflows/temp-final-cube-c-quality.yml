@@ -1,0 +1,17 @@
+name: Temp Final Cube C Quality
+
+on:
+  push:
+    branches:
+      - feature/public-center-directory-map
+    paths:
+      - .github/workflows/temp-final-cube-c-quality.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
