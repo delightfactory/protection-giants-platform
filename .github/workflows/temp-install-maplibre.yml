@@ -1,0 +1,19 @@
+name: Temp Install MapLibre
+
+on:
+  push:
+    branches:
+      - feature/public-center-directory-map
+    paths:
+      - .github/workflows/temp-install-maplibre.yml
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/public-center-directory-map
