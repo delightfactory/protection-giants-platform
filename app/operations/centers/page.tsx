@@ -28,7 +28,7 @@ export default async function OperationsCentersPage({ searchParams }: Operations
   const [centersResult, dealersResult, agentsResult, partiesResult] = await Promise.all([
     supabase
       .from("installation_centers")
-      .select("id, code, name, dealer_id, country_agent_id, country_code, city, status, latitude, longitude, location_source")
+      .select("id, code, name, dealer_id, country_agent_id, country_code, city, status, latitude, longitude, location_source, approval_status, approved_at")
       .order("name", { ascending: true }),
     supabase.from("dealers").select("id, code, name"),
     profile.role === "dealer"
@@ -63,8 +63,8 @@ export default async function OperationsCentersPage({ searchParams }: Operations
         eyebrow="الهيكل التشغيلي"
         title="مراكز التركيب"
         description={profile.role === "admin"
-          ? "إدارة المراكز وموقعها والتبعية التشغيلية لكل مركز."
-          : "إدارة مراكز التركيب الواقعة داخل نطاقك التشغيلي."}
+          ? "إدارة المراكز وموقعها والتبعية التشغيلية واعتماد الشبكة لكل مركز."
+          : "إدارة مراكز التركيب الواقعة داخل نطاقك التشغيلي ومراجعة حالة اعتمادها."}
         meta={`${centersResult.data.length} مركز مسجل`}
         actions={<Link href="/operations/centers/new" className="button button-primary">إضافة مركز</Link>}
       />
@@ -84,6 +84,7 @@ export default async function OperationsCentersPage({ searchParams }: Operations
         <RecordList label="قائمة مراكز التركيب">
           {centersResult.data.map((center) => {
             const isSuspended = center.status === "suspended";
+            const isApproved = center.approval_status === "approved";
             const parentName = center.dealer_id
               ? dealerNames.get(center.dealer_id) ?? "موزع غير متاح"
               : center.country_agent_id
@@ -99,6 +100,7 @@ export default async function OperationsCentersPage({ searchParams }: Operations
                 facts={[
                   { label: "الموقع", value: <>{center.city} · <span dir="ltr">{center.country_code}</span></> },
                   { label: "الموقع الجغرافي", value: hasLocation ? (center.location_source === "admin" ? "مسجل · تصحيح إداري" : "مسجل من المركز") : "غير مسجل" },
+                  { label: "اعتماد الشبكة", value: isApproved ? "معتمد" : "غير معتمد" },
                   { label: "التبعية", value: parentName },
                   { label: "Transfer ID", value: transferCodes.get(center.id) ?? "غير متاح", dir: "ltr" },
                 ]}
@@ -109,6 +111,9 @@ export default async function OperationsCentersPage({ searchParams }: Operations
                 }
                 actions={
                   <>
+                    {profile.role === "admin" || profile.role === "agent" ? (
+                      <Link href={`/operations/centers/${center.id}/approval`} className="button button-ghost">الاعتماد</Link>
+                    ) : null}
                     {profile.role === "admin" ? (
                       <Link href={`/operations/centers/${center.id}/location`} className="button button-ghost">الموقع</Link>
                     ) : null}
