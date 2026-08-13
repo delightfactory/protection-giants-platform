@@ -18,6 +18,7 @@ name: Database Quality
       - "scripts/verify-center-onboarding.mjs"
       - "scripts/verify-center-onboarding-state-races.mjs"
       - "scripts/verify-center-onboarding-review-state.mjs"
+      - "scripts/verify-center-location-foundation.mjs"
       - "scripts/verify-product-foundation.mjs"
       - "scripts/verify-product-foundation-constraints.mjs"
       - "scripts/verify-product-operational-access.mjs"
@@ -111,7 +112,7 @@ jobs:
           drop function public.__ci_default_function_privilege_probe();
           SQL
 
-      - name: Verify Auth, Data API grants, RLS, Agent network, Center onboarding, Product and Production contracts
+      - name: Verify Auth, Data API grants, RLS, Agent network, Center onboarding/location, Product and Production contracts
         id: contract_tests
         continue-on-error: true
         shell: bash
@@ -171,6 +172,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-center-onboarding-review-state.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-location-foundation.mjs
             test_status=$?
           fi
 

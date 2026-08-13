@@ -28,7 +28,7 @@ export default async function OperationsCentersPage({ searchParams }: Operations
   const [centersResult, dealersResult, agentsResult, partiesResult] = await Promise.all([
     supabase
       .from("installation_centers")
-      .select("id, code, name, dealer_id, country_agent_id, country_code, city, status")
+      .select("id, code, name, dealer_id, country_agent_id, country_code, city, status, latitude, longitude, location_source")
       .order("name", { ascending: true }),
     supabase.from("dealers").select("id, code, name"),
     profile.role === "dealer"
@@ -89,6 +89,7 @@ export default async function OperationsCentersPage({ searchParams }: Operations
               : center.country_agent_id
                 ? agentNames.get(center.country_agent_id) ?? "وكيل دولة غير متاح"
                 : "مباشر للشركة";
+            const hasLocation = center.latitude !== null && center.longitude !== null;
 
             return (
               <RecordItem
@@ -97,6 +98,7 @@ export default async function OperationsCentersPage({ searchParams }: Operations
                 title={center.name}
                 facts={[
                   { label: "الموقع", value: <>{center.city} · <span dir="ltr">{center.country_code}</span></> },
+                  { label: "الموقع الجغرافي", value: hasLocation ? (center.location_source === "admin" ? "مسجل · تصحيح إداري" : "مسجل من المركز") : "غير مسجل" },
                   { label: "التبعية", value: parentName },
                   { label: "Transfer ID", value: transferCodes.get(center.id) ?? "غير متاح", dir: "ltr" },
                 ]}
@@ -107,6 +109,9 @@ export default async function OperationsCentersPage({ searchParams }: Operations
                 }
                 actions={
                   <>
+                    {profile.role === "admin" ? (
+                      <Link href={`/operations/centers/${center.id}/location`} className="button button-ghost">الموقع</Link>
+                    ) : null}
                     <Link href={`/operations/centers/${center.id}/edit`} className="button button-ghost">تعديل</Link>
                     <form action={setCenterStatus}>
                       <input type="hidden" name="center_id" value={center.id} />

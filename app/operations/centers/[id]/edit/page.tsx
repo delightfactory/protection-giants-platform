@@ -63,7 +63,9 @@ const reviewFailureLabels: Record<string, string> = {
   "profile-read-uncertain": "تعذر إثبات حالة Profile بعد provisioning، فتم إيقاف Auth احترازيًا.",
 };
 
-function formatInviteDate(value: string) {
+function formatInviteDate(value: string | null) {
+  if (!value) return "غير متاح";
+
   return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",

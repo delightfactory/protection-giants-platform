@@ -6,7 +6,7 @@ const adminModules = [
   { href: "/operations/users", title: "الحسابات التشغيلية", description: "المستخدمون والأدوار والارتباطات التشغيلية.", icon: "users" as const },
   { href: "/operations/agents", title: "وكلاء الدول", description: "إدارة وكلاء الدول وهويتهم وحالتهم التشغيلية وTransfer ID.", icon: "users" as const },
   { href: "/operations/dealers", title: "الوكلاء والموزعون", description: "إدارة الكيانات الموزعة وحالتها التشغيلية.", icon: "dealers" as const },
-  { href: "/operations/centers", title: "مراكز التركيب", description: "إدارة المراكز المعتمدة وتبعيتها التشغيلية ودعوات الحساب الأول.", icon: "centers" as const },
+  { href: "/operations/centers", title: "مراكز التركيب", description: "إدارة المراكز المسجلة وتبعيتها التشغيلية ودعوات الحساب الأول.", icon: "centers" as const },
   { href: "/operations/products", title: "المنتجات", description: "هوية المنتج ومدة الضمان وحالة الإتاحة.", icon: "products" as const },
   { href: "/operations/production-orders", title: "الإنتاج واللفات", description: "إنشاء أوامر الإنتاج والـLots وتوليد هويات اللفات ومراجعتها.", icon: "production" as const },
 ];
@@ -23,6 +23,7 @@ const dealerModules = [
 ];
 
 const centerModules = [
+  { href: "/operations/location", title: "موقع المركز", description: "تسجيل الموقع الفعلي للمركز من الجهاز ومراجعة آخر قراءة محفوظة.", icon: "centers" as const },
   { href: "/operations/products", title: "المنتجات", description: "مراجعة بيانات المنتجات التشغيلية المتاحة للمركز.", icon: "products" as const },
 ];
 
