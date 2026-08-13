@@ -1,3 +1,4 @@
+# Retry after verified server-only profile mutation contract fix.
 name: Sync Center Location Types
 
 on:
