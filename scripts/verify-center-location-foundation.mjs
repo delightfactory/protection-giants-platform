@@ -324,21 +324,23 @@ if (!historyAfterRepeat.response.ok || historyAfterRepeat.body.length !== 3) {
   throw new Error(`Repeated save did not append a new event: ${JSON.stringify(historyAfterRepeat.body)}`);
 }
 
-one(await rest(`profiles?id=eq.${centerUser.id}&select=id,status`, adminToken, {
+one(await rest(`profiles?id=eq.${centerUser.id}&select=id,status`, serviceRoleKey, {
   method: "PATCH",
+  key: serviceRoleKey,
   prefer: true,
   body: { status: "suspended" },
-}), "Admin suspends Center user");
+}), "Service role suspends Center profile through server-only profile contract");
 mustFail(await rest("rpc/update_own_center_location", centerToken, {
   method: "POST",
   body: { p_latitude: 30.04, p_longitude: 31.23, p_accuracy_m: 10 },
 }), "Suspended Center user captures location");
 
-one(await rest(`profiles?id=eq.${centerUser.id}&select=id,status`, adminToken, {
+one(await rest(`profiles?id=eq.${centerUser.id}&select=id,status`, serviceRoleKey, {
   method: "PATCH",
+  key: serviceRoleKey,
   prefer: true,
   body: { status: "active" },
-}), "Admin reactivates Center user");
+}), "Service role reactivates Center profile through server-only profile contract");
 
 one(await rest(`installation_centers?id=eq.${centerOne.id}&select=id,status`, adminToken, {
   method: "PATCH",
