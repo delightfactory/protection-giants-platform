@@ -19,6 +19,7 @@ name: Database Quality
       - "scripts/verify-center-onboarding-state-races.mjs"
       - "scripts/verify-center-onboarding-review-state.mjs"
       - "scripts/verify-center-location-foundation.mjs"
+      - "scripts/verify-center-network-approval.mjs"
       - "scripts/verify-product-foundation.mjs"
       - "scripts/verify-product-foundation-constraints.mjs"
       - "scripts/verify-product-operational-access.mjs"
@@ -112,7 +113,7 @@ jobs:
           drop function public.__ci_default_function_privilege_probe();
           SQL
 
-      - name: Verify Auth, Data API grants, RLS, Agent network, Center onboarding/location, Product and Production contracts
+      - name: Verify Auth, Data API grants, RLS, Agent network, Center onboarding/location/approval, Product and Production contracts
         id: contract_tests
         continue-on-error: true
         shell: bash
@@ -177,6 +178,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-center-location-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-network-approval.mjs
             test_status=$?
           fi
 
@@ -263,7 +269,6 @@ jobs:
         run: |
           supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
           cp lib/supabase/database.types.ts /tmp/committed.database.types.ts
-          # Compare semantic generated content while normalizing only trailing LF characters.
           node <<'NODE'
           const fs = require("node:fs");
           for (const path of [
