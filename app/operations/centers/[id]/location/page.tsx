@@ -15,7 +15,7 @@ type CenterLocationAdminPageProps = {
   searchParams: Promise<{ error?: string; success?: string }>;
 };
 
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
