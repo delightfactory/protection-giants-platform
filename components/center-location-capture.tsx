@@ -101,8 +101,9 @@ export function CenterLocationCapture({ initialLocation }: CenterLocationCapture
         }
 
         if (accuracyM > MAX_CENTER_ACCURACY_M) {
+          const displayedAccuracyM = Math.ceil(accuracyM * 10) / 10;
           setPhase("error");
-          setMessage(`دقة القراءة الحالية نحو ${Math.round(accuracyM)} م، والمطلوب ${MAX_CENTER_ACCURACY_M} م أو أفضل. اقترب من واجهة المركز أو مكان أكثر انفتاحًا ثم أعد المحاولة.`);
+          setMessage(`دقة القراءة الحالية نحو ${displayedAccuracyM} م، والمطلوب ${MAX_CENTER_ACCURACY_M} م أو أفضل. اقترب من واجهة المركز أو مكان أكثر انفتاحًا ثم أعد المحاولة.`);
           return;
         }
 
