@@ -133,3 +133,161 @@ revoke all on function public.reject_center_network_approval_event_mutation() fr
 create trigger center_network_approval_events_immutable
 before update or delete on public.center_network_approval_events
 for each row execute function public.reject_center_network_approval_event_mutation();
+
+create or replace function public.invalidate_center_network_approval_on_location_change()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if old.approval_status = 'approved'
+    and (
+      new.latitude is distinct from old.latitude
+      or new.longitude is distinct from old.longitude
+    )
+  then
+    new.approval_status := 'unapproved';
+    new.approved_at := null;
+    new.approved_by_profile_id := null;
+
+    insert into public.center_network_approval_events (
+      installation_center_id,
+      action,
+      actor_profile_id,
+      occurred_at
+    )
+    values (
+      old.id,
+      'location_changed',
+      new.location_updated_by_profile_id,
+      clock_timestamp()
+    );
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.invalidate_center_network_approval_on_location_change() from public;
+revoke all on function public.invalidate_center_network_approval_on_location_change() from anon;
+revoke all on function public.invalidate_center_network_approval_on_location_change() from authenticated;
+revoke all on function public.invalidate_center_network_approval_on_location_change() from service_role;
+
+create trigger installation_centers_location_invalidates_network_approval
+before update of latitude, longitude on public.installation_centers
+for each row execute function public.invalidate_center_network_approval_on_location_change();
+
+create or replace function public.approve_center_network(p_center_id uuid)
+returns table (
+  installation_center_id uuid,
+  approval_status text,
+  approved_at timestamptz,
+  approved_by_profile_id uuid,
+  changed boolean
+)
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  caller_id uuid := auth.uid();
+  caller_role text;
+  caller_agent_id uuid;
+  target public.installation_centers%rowtype;
+  event_time timestamptz := clock_timestamp();
+begin
+  if caller_id is null then
+    raise exception using errcode = '42501', message = 'authentication required';
+  end if;
+
+  select p.role, p.country_agent_id
+    into caller_role, caller_agent_id
+  from public.profiles p
+  where p.id = caller_id
+    and p.status = 'active'
+    and (
+      (p.role = 'admin' and p.country_agent_id is null and p.dealer_id is null and p.installation_center_id is null)
+      or
+      (p.role = 'agent' and p.country_agent_id is not null and p.dealer_id is null and p.installation_center_id is null)
+    );
+
+  if caller_role = 'admin' then
+    select c.* into target
+    from public.installation_centers c
+    where c.id = p_center_id
+    for update;
+  elsif caller_role = 'agent' and caller_agent_id is not null then
+    if not exists (
+      select 1
+      from public.country_agents ca
+      where ca.id = caller_agent_id
+        and ca.status = 'active'
+    ) then
+      raise exception using errcode = '42501', message = 'active Country Agent required';
+    end if;
+
+    select c.* into target
+    from public.installation_centers c
+    left join public.dealers d on d.id = c.dealer_id
+    where c.id = p_center_id
+      and (
+        c.country_agent_id = caller_agent_id
+        or d.country_agent_id = caller_agent_id
+      )
+    for update of c;
+  else
+    raise exception using errcode = '42501', message = 'Admin or responsible Country Agent required';
+  end if;
+
+  if target.id is null then
+    raise exception using errcode = 'P0002', message = 'Center not found in approval scope';
+  end if;
+
+  if target.status <> 'active' then
+    raise exception using errcode = '55000', message = 'Center must be active before network approval';
+  end if;
+
+  if target.latitude is null
+    or target.longitude is null
+    or target.location_captured_at is null
+    or target.location_source is null
+    or target.location_updated_by_profile_id is null
+  then
+    raise exception using errcode = '55000', message = 'Center must have a valid current location before network approval';
+  end if;
+
+  if target.approval_status = 'approved' then
+    return query
+    select target.id, target.approval_status, target.approved_at, target.approved_by_profile_id, false;
+    return;
+  end if;
+
+  update public.installation_centers c
+  set approval_status = 'approved',
+      approved_at = event_time,
+      approved_by_profile_id = caller_id
+  where c.id = target.id;
+
+  insert into public.center_network_approval_events (
+    installation_center_id,
+    action,
+    actor_profile_id,
+    occurred_at
+  )
+  values (
+    target.id,
+    'approved',
+    caller_id,
+    event_time
+  );
+
+  return query
+  select target.id, 'approved'::text, event_time, caller_id, true;
+end;
+$$;
+
+revoke all on function public.approve_center_network(uuid) from public;
+revoke all on function public.approve_center_network(uuid) from anon;
+revoke all on function public.approve_center_network(uuid) from service_role;
+grant execute on function public.approve_center_network(uuid) to authenticated;
