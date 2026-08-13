@@ -773,7 +773,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_center_directory: {
+        Row: {
+          center_name: string | null
+          city: string | null
+          classification: string | null
+          country_code: string | null
+          latitude: number | null
+          longitude: number | null
+        }
+        Insert: {
+          center_name?: string | null
+          city?: string | null
+          classification?: never
+          country_code?: string | null
+          latitude?: number | null
+          longitude?: number | null
+        }
+        Update: {
+          center_name?: string | null
+          city?: string | null
+          classification?: never
+          country_code?: string | null
+          latitude?: number | null
+          longitude?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_update_center_location: {

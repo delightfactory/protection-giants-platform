@@ -20,6 +20,7 @@ name: Database Quality
       - "scripts/verify-center-onboarding-review-state.mjs"
       - "scripts/verify-center-location-foundation.mjs"
       - "scripts/verify-center-network-approval.mjs"
+      - "scripts/verify-public-center-directory.mjs"
       - "scripts/verify-product-foundation.mjs"
       - "scripts/verify-product-foundation-constraints.mjs"
       - "scripts/verify-product-operational-access.mjs"
@@ -183,6 +184,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-center-network-approval.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-public-center-directory.mjs
             test_status=$?
           fi
 

@@ -6,7 +6,7 @@ import styles from "./public-nav-links.module.css";
 
 const publicLinks = [
   { href: "/products", label: "المنتجات" },
-  { href: "/centers", label: "المراكز المعتمدة" },
+  { href: "/centers", label: "مراكز التركيب" },
   { href: "/warranty", label: "الضمان" },
 ];
 
