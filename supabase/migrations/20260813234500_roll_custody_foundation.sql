@@ -49,7 +49,7 @@ declare
   v_company_party_id uuid;
   v_company_count integer;
 begin
-  select count(*), min(id)
+  select count(*), min(id::text)::uuid
     into v_company_count, v_company_party_id
   from public.operational_parties
   where party_type = 'company';
