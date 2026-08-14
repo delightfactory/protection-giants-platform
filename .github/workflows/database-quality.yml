@@ -32,6 +32,7 @@ name: Database Quality
       - "scripts/verify-cube-e-identity.mjs"
       - "scripts/verify-roll-transfer-state-reservation.mjs"
       - "scripts/verify-roll-transfer-races-scale.mjs"
+      - "scripts/verify-roll-transfer-lifecycle-coverage.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -253,6 +254,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-roll-transfer-races-scale.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-roll-transfer-lifecycle-coverage.mjs
             test_status=$?
           fi
           set -e
