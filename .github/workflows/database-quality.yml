@@ -8,6 +8,7 @@ name: Database Quality
       - "supabase/**"
       - "lib/supabase/database.types.ts"
       - "scripts/verify-auth-config.mjs"
+      - "scripts/verify-auth-trigger-contract.mjs"
       - "scripts/verify-profile-auto-provisioning.mjs"
       - "scripts/verify-profile-admin-read.mjs"
       - "scripts/verify-data-api-grants.mjs"
@@ -97,6 +98,9 @@ jobs:
 
       - name: Lint local database
         run: supabase db lint --local --level warning --fail-on error
+
+      - name: Verify Auth trigger integrity after reset
+        run: node scripts/verify-auth-trigger-contract.mjs
 
       - name: Verify new public functions require explicit grants
         run: |
