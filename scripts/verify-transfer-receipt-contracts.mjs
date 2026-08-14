@@ -344,7 +344,7 @@ assert(retryRemaining.response.ok && retryRemaining.body === transferA,
 // Production is permanently non-voidable after confirmed distribution.
 await expectRpcError(
   "void_production_order",
-  { p_production_order_id: orderId },
+  { p_order_id: orderId, p_reason: "Cube H distributed-order void guard" },
   adminToken,
   "PG_TRANSFER_PRODUCTION_VOID_DISTRIBUTED",
 );
