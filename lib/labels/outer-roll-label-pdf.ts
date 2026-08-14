@@ -231,8 +231,8 @@ function drawFixedOuterRollLabel(
   });
 
   page.drawText("PROTECTION GIANTS", {
-    x: x(7),
-    y: y(92),
+    x: x(template.brandLabel.xMm),
+    y: y(template.brandLabel.yMm),
     size: 7.5,
     font: fonts.bold,
     color: WHITE,
@@ -241,9 +241,9 @@ function drawFixedOuterRollLabel(
     page,
     fonts.bold,
     productName,
-    x(7),
-    y(82),
-    millimetresToPdfPoints(96),
+    x(template.productName.xMm),
+    y(template.productName.yMm),
+    millimetresToPdfPoints(template.productName.widthMm),
     18,
     10,
     WHITE,
@@ -254,30 +254,41 @@ function drawFixedOuterRollLabel(
       page,
       fonts.bold,
       productVersion,
-      x(108),
-      y(83),
-      millimetresToPdfPoints(35),
+      x(template.productVersion.xMm),
+      y(template.productVersion.yMm),
+      millimetresToPdfPoints(template.productVersion.widthMm),
       9,
       6,
       WHITE,
     );
   }
   page.drawText("PPF / OUTER ROLL", {
-    x: x(108),
-    y: y(92),
+    x: x(template.sideLabel.xMm),
+    y: y(template.sideLabel.yMm),
     size: 5.5,
     font: fonts.regular,
     color: WHITE,
   });
 
   page.drawLine({
-    start: { x: x(5), y: y(template.footerDividerYMm) },
-    end: { x: x(145), y: y(template.footerDividerYMm) },
+    start: { x: x(template.safeInsetMm), y: y(template.footerDividerYMm) },
+    end: { x: x(template.widthMm - template.safeInsetMm), y: y(template.footerDividerYMm) },
     thickness: 0.5,
     color: BLACK,
   });
 
-  drawField(page, fonts, originXPt, originYPt, "SKU", sku, 7, 64, 52, 9);
+  drawField(
+    page,
+    fonts,
+    originXPt,
+    originYPt,
+    "SKU",
+    sku,
+    template.fields.sku.xMm,
+    template.fields.sku.yMm,
+    template.fields.sku.widthMm,
+    9,
+  );
   drawField(
     page,
     fonts,
@@ -285,9 +296,9 @@ function drawFixedOuterRollLabel(
     originYPt,
     "SIZE",
     `${formatNumber(model.widthMm)} mm x ${formatNumber(model.lengthM)} m`,
-    62,
-    64,
-    39,
+    template.fields.size.xMm,
+    template.fields.size.yMm,
+    template.fields.size.widthMm,
     9,
   );
   drawField(
@@ -297,13 +308,35 @@ function drawFixedOuterRollLabel(
     originYPt,
     "THICKNESS",
     `${formatNumber(model.thicknessMil)} mil`,
-    7,
-    51,
-    32,
+    template.fields.thickness.xMm,
+    template.fields.thickness.yMm,
+    template.fields.thickness.widthMm,
     9,
   );
-  drawField(page, fonts, originXPt, originYPt, "LOT", lotNumber, 42, 51, 59, 8.25);
-  drawField(page, fonts, originXPt, originYPt, "ROLL", rollSerial, 7, 37, 94, 7.2);
+  drawField(
+    page,
+    fonts,
+    originXPt,
+    originYPt,
+    "LOT",
+    lotNumber,
+    template.fields.lot.xMm,
+    template.fields.lot.yMm,
+    template.fields.lot.widthMm,
+    8.25,
+  );
+  drawField(
+    page,
+    fonts,
+    originXPt,
+    originYPt,
+    "ROLL",
+    rollSerial,
+    template.fields.roll.xMm,
+    template.fields.roll.yMm,
+    template.fields.roll.widthMm,
+    7.2,
+  );
 
   const barcode = buildOuterRollGtinBarcodeGeometry(
     gtin,
@@ -323,8 +356,8 @@ function drawFixedOuterRollLabel(
   );
 
   page.drawText(`GTIN ${gtin}`, {
-    x: x(7),
-    y: y(24),
+    x: x(template.gtinLabel.xMm),
+    y: y(template.gtinLabel.yMm),
     size: 5.5,
     font: fonts.bold,
     color: BLACK,
@@ -339,8 +372,8 @@ function drawFixedOuterRollLabel(
     color: WHITE,
   });
   page.drawText("ROLL QR", {
-    x: x(quietBox.xMm),
-    y: y(71),
+    x: x(template.qrLabel.xMm),
+    y: y(template.qrLabel.yMm),
     size: 5.5,
     font: fonts.bold,
     color: MUTED,
@@ -361,8 +394,8 @@ function drawFixedOuterRollLabel(
   );
 
   page.drawText("SCAN ROLL", {
-    x: x(114),
-    y: y(29.5),
+    x: x(template.scanLabel.xMm),
+    y: y(template.scanLabel.yMm),
     size: 5,
     font: fonts.bold,
     color: MUTED,
