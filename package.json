@@ -14,7 +14,9 @@
   "dependencies": {
     "@supabase/ssr": "0.12.4",
     "@supabase/supabase-js": "2.111.0",
+    "bwip-js": "4.11.2",
     "next": "16.2.11",
+    "pdf-lib": "1.17.1",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
