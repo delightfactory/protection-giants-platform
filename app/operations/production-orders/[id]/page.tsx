@@ -96,6 +96,11 @@ export default async function ProductionOrderDetailPage({ params, searchParams }
           <>
             <Link href="/operations/production-orders" className="button button-ghost">كل الأوامر</Link>
             <Link href={`/operations/rolls?order=${order.id}`} className="button button-ghost">كل اللفات</Link>
+            {!isVoided ? (
+              <Link href={`/operations/production-orders/${order.id}/outer-roll-labels`} className="button button-ghost">
+                ملصقات اللفات
+              </Link>
+            ) : null}
             <Link href={`/print/production-orders/${order.id}`} className="button button-primary">طباعة الأمر</Link>
           </>
         }
