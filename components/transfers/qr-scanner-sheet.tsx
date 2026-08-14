@@ -30,8 +30,18 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
   const scannerRef = useRef<{ stop: () => void; destroy: () => void } | null>(null);
   const busyRef = useRef(false);
   const lastPayloadRef = useRef<{ payload: string; at: number } | null>(null);
+  const onCloseRef = useRef(onClose);
+  const onDecodeRef = useRef(onDecode);
   const [cameraState, setCameraState] = useState<"starting" | "ready" | "error">("starting");
   const [feedback, setFeedback] = useState<{ text: string; tone: "success" | "warning" | "error" } | null>(null);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    onDecodeRef.current = onDecode;
+  }, [onDecode]);
 
   useEffect(() => {
     if (!open) return;
@@ -51,11 +61,11 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
 
       busyRef.current = true;
       try {
-        const outcome = await onDecode(trimmed);
+        const outcome = await onDecodeRef.current(trimmed);
         if (outcome.message) {
           setFeedback({ text: outcome.message, tone: outcome.tone ?? "warning" });
         }
-        if (outcome.action === "close") onClose();
+        if (outcome.action === "close") onCloseRef.current();
       } finally {
         busyRef.current = false;
       }
@@ -95,7 +105,7 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
       scannerRef.current?.destroy();
       scannerRef.current = null;
     };
-  }, [open, onClose, onDecode]);
+  }, [open]);
 
   async function scanImage(file: File | undefined) {
     if (!file) return;
@@ -103,9 +113,9 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
     try {
       const { default: QrScanner } = await import("qr-scanner");
       const result = await QrScanner.scanImage(file, { returnDetailedScanResult: true });
-      const outcome = await onDecode(decodedText(result));
+      const outcome = await onDecodeRef.current(decodedText(result));
       if (outcome.message) setFeedback({ text: outcome.message, tone: outcome.tone ?? "warning" });
-      if (outcome.action === "close") onClose();
+      if (outcome.action === "close") onCloseRef.current();
     } catch {
       setFeedback({ text: "لم أتمكن من قراءة QR من الصورة. جرّب صورة أوضح أو أدخل الكود يدويًا.", tone: "error" });
     }
