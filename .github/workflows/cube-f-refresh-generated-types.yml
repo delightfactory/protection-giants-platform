@@ -1,0 +1,53 @@
+name: Cube F Refresh Generated Types
+
+on:
+  push:
+    branches:
+      - agent/cube-f-transfer-state-reservation
+    paths:
+      - ".github/workflows/cube-f-refresh-generated-types.yml"
+      - "supabase/migrations/20260814193000_roll_transfer_state_reservation.sql"
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/cube-f-transfer-state-reservation
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Rebuild database
+        run: supabase db reset --local --no-seed
+
+      - name: Generate exact public database types
+        run: supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
+
+      - name: Commit generated types when changed
+        run: |
+          if git diff --quiet -- lib/supabase/database.types.ts; then
+            echo "Generated database types are already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/supabase/database.types.ts
+          git commit -m "Sync Cube F generated database types"
+          git push origin HEAD:agent/cube-f-transfer-state-reservation
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
