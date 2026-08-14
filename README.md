@@ -11,19 +11,20 @@ Start every development/review session with:
 - `docs/post-cube-e-canonical-status-amendment.md` — latest post-Cube-E implementation status and Transfer-context reconciliation; this controls where older status/Cube-E wording is stale;
 - `docs/product-decisions.md` — approved business decisions;
 - `docs/development-governance.md` — mandatory engineering/closure rules;
-- `docs/gap-closure-roadmap.md` — dependency boundaries for the remaining cubes, with current status checked against the latest canonical amendment;
+- `docs/gap-closure-roadmap.md` — dependency boundaries and current cube status;
 - the applicable current spec/amendment for the cube being changed;
 - `CONTRIBUTING.md`.
 
-For the current next cube, also read:
-- `docs/cube-f-pre-design-context-review.md` — implementation-aware Transfer constraints and unresolved design gates that must be resolved before Cube F code starts.
+For the current next cube, read both:
+- `docs/cube-f-pre-design-context-review.md` — implementation-aware Transfer constraints and discovered cross-module risks;
+- `docs/cube-f-roll-transfer-state-reservation-spec.md` — frozen Cube F state/reservation/authorization/concurrency implementation contract after its documentation PR is merged.
 
 For completed Cube E print/QR behavior, also read:
 - `docs/outer-roll-label-print-foundation-amendment.md`;
 - `docs/cube-e-outer-roll-label-print-foundation-spec.md`;
 - `docs/cube-e-pending-physical-print-validation.md`.
 
-The current next design/specification step is **Cube F — Roll Transfer State & Reservation Engine**. Do not begin its implementation from older roadmap status text or from the legacy repository.
+The current next software cube is **Cube F — Roll Transfer State & Reservation Engine**. Its implementation must start from fresh `main` only after the Cube F specification/decision documentation is merged. Do not implement it from older roadmap wording or from the legacy repository.
 
 Older documents such as `docs/scope-guardrails.md` remain useful for their high-level scope limits, but any wording superseded by a later Product Decision, normative amendment, roadmap correction, canonical-context note, or latest canonical-status amendment must not be treated as current authority.
 
