@@ -1,4 +1,10 @@
 import { normalizeRollSerial } from "@/lib/rolls/roll-qr";
+export {
+  buildTransferActionFingerprint,
+  clearTransferActionRequest,
+  receiptDraftStorageKey,
+  requestIdForTransferAction,
+} from "@/lib/transfers/receipt-idempotency";
 
 export type TransferStatus =
   | "pending"
@@ -176,62 +182,4 @@ export function transferActionErrorMessage(code: string): string {
 
 export function normalizeReceiptManualSerial(value: string): string | null {
   return normalizeRollSerial(value);
-}
-
-function sortedUnique(ids: string[]): string[] {
-  return [...new Set(ids)].sort();
-}
-
-async function sha256(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-export async function buildTransferActionFingerprint(
-  action: "receive" | "release" | "admin-release",
-  transferId: string,
-  rollIds: string[],
-  reason = "",
-): Promise<string> {
-  return sha256(JSON.stringify({
-    action,
-    transferId,
-    rollIds: sortedUnique(rollIds),
-    reason: reason.trim(),
-  }));
-}
-
-function actionStorageKey(action: string, transferId: string): string {
-  return `pg:transfer:${transferId}:${action}:request`;
-}
-
-export async function requestIdForTransferAction(
-  action: "receive" | "release" | "admin-release",
-  transferId: string,
-  rollIds: string[],
-  reason = "",
-): Promise<string> {
-  const fingerprint = await buildTransferActionFingerprint(action, transferId, rollIds, reason);
-  const key = actionStorageKey(action, transferId);
-  try {
-    const stored = JSON.parse(sessionStorage.getItem(key) ?? "null") as { fingerprint?: string; requestId?: string } | null;
-    if (stored?.fingerprint === fingerprint && stored.requestId) return stored.requestId;
-  } catch {
-    // Corrupt session state is replaceable field continuity, not business state.
-  }
-
-  const requestId = crypto.randomUUID();
-  sessionStorage.setItem(key, JSON.stringify({ fingerprint, requestId }));
-  return requestId;
-}
-
-export function clearTransferActionRequest(
-  action: "receive" | "release" | "admin-release",
-  transferId: string,
-): void {
-  sessionStorage.removeItem(actionStorageKey(action, transferId));
-}
-
-export function receiptDraftStorageKey(transferId: string): string {
-  return `pg:transfer:${transferId}:receipt-selection`;
 }
