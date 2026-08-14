@@ -21,7 +21,7 @@ function notFoundResponse() {
 
 export async function GET(request: Request, { params }: PublicRollResolverContext) {
   const { serial: rawSerial } = await params;
-  const serial = normalizeRollSerial(decodeURIComponent(rawSerial));
+  const serial = normalizeRollSerial(rawSerial);
   if (!serial) return notFoundResponse();
 
   const admin = createSupabaseAdminClient();
