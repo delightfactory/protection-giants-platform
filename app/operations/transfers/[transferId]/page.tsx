@@ -77,16 +77,13 @@ export default async function TransferDetailPage({
 
           <div className={styles.meta}>أُنشئ في {dateFormatter.format(new Date(detail.created_at))}</div>
 
-          <div className={styles.primaryArea}>
-            {detail.can_receive ? (
+          {detail.can_receive ? (
+            <div className={styles.primaryArea}>
               <Link className="button button-primary" href={`/operations/transfers/${detail.transfer_id}/receive`}>
                 {detail.status === "partially_received" ? "استكمال الاستلام" : "بدء الاستلام"}
               </Link>
-            ) : null}
-            <Link className="button button-ghost" href={`/operations/transfers/${detail.transfer_id}?view=items`}>
-              عرض اللفات
-            </Link>
-          </div>
+            </div>
+          ) : null}
         </section>
 
         <section className={styles.panel}>
