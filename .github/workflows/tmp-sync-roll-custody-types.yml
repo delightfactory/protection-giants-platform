@@ -1,0 +1,49 @@
+name: Temporary Sync Roll Custody Public Types
+
+"on":
+  push:
+    branches:
+      - agent/roll-custody-final
+    paths:
+      - ".github/workflows/tmp-sync-roll-custody-types.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Rebuild database
+        run: supabase db reset --local --no-seed
+
+      - name: Generate canonical public database types
+        run: supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
+
+      - name: Commit canonical types and remove helper
+        run: |
+          git rm .github/workflows/tmp-sync-roll-custody-types.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/supabase/database.types.ts
+          git commit -m "Sync public database types"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
