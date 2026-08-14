@@ -1,4 +1,4 @@
-type IconName = "home" | "users" | "dealers" | "centers" | "products" | "production" | "plus" | "search" | "filter" | "back" | "logout";
+type IconName = "home" | "users" | "dealers" | "centers" | "products" | "production" | "transfer" | "plus" | "search" | "filter" | "back" | "logout";
 
 type IconProps = {
   name: IconName;
@@ -29,6 +29,9 @@ export function Icon({ name, className = "" }: IconProps) {
   }
   if (name === "production") {
     return <svg {...commonProps}><path d="M4 6.5h16v11H4z"/><path d="M7 10h10M7 14h5"/><path d="M8 3.5v3M16 3.5v3"/></svg>;
+  }
+  if (name === "transfer") {
+    return <svg {...commonProps}><path d="M4 7h13"/><path d="m14 4 3 3-3 3"/><path d="M20 17H7"/><path d="m10 14-3 3 3 3"/></svg>;
   }
   if (name === "plus") {
     return <svg {...commonProps}><path d="M12 5v14M5 12h14"/></svg>;
