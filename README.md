@@ -15,6 +15,9 @@ Start every development/review session with:
 - the applicable current spec/amendment for the cube being changed;
 - `CONTRIBUTING.md`.
 
+For the current next cube, also read:
+- `docs/cube-f-pre-design-context-review.md` — implementation-aware Transfer constraints and unresolved design gates that must be resolved before Cube F code starts.
+
 For completed Cube E print/QR behavior, also read:
 - `docs/outer-roll-label-print-foundation-amendment.md`;
 - `docs/cube-e-outer-roll-label-print-foundation-spec.md`;
