@@ -582,6 +582,7 @@ export type Database = {
           currency_code: string | null
           default_warranty_months: number
           features: string[]
+          gtin: string | null
           id: string
           length_m: number | null
           marketing_description: string | null
@@ -607,6 +608,7 @@ export type Database = {
           currency_code?: string | null
           default_warranty_months: number
           features?: string[]
+          gtin?: string | null
           id?: string
           length_m?: number | null
           marketing_description?: string | null
@@ -632,6 +634,7 @@ export type Database = {
           currency_code?: string | null
           default_warranty_months?: number
           features?: string[]
+          gtin?: string | null
           id?: string
           length_m?: number | null
           marketing_description?: string | null
