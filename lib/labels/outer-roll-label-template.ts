@@ -15,7 +15,7 @@ export const OUTER_ROLL_LABEL_TEMPLATE = {
   },
   qrQuietBox: {
     xMm: 108,
-    yMm: 9,
+    yMm: 34,
     widthMm: 35,
     heightMm: 35,
   },
