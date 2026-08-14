@@ -30,17 +30,36 @@ jobs:
       - name: Verify outer Roll print-profile and imposition contract
         run: node --experimental-strip-types scripts/verify-outer-roll-print-layout.cjs
       - name: Verify outer Roll vector renderer contract
+        id: renderer_contract
+        continue-on-error: true
+        shell: bash
         run: |
-          rm -rf /tmp/cube-e-renderer-test
-          npx tsc scripts/verify-outer-roll-label-renderer.ts \
-            --target ES2022 \
-            --module commonjs \
-            --moduleResolution node \
-            --esModuleInterop \
-            --skipLibCheck \
-            --strict \
-            --outDir /tmp/cube-e-renderer-test
-          node /tmp/cube-e-renderer-test/scripts/verify-outer-roll-label-renderer.js
+          set -o pipefail
+          {
+            rm -rf /tmp/cube-e-renderer-test
+            npx tsc scripts/verify-outer-roll-label-renderer.ts \
+              --target ES2022 \
+              --module commonjs \
+              --moduleResolution node \
+              --esModuleInterop \
+              --skipLibCheck \
+              --strict \
+              --outDir /tmp/cube-e-renderer-test
+            node /tmp/cube-e-renderer-test/scripts/verify-outer-roll-label-renderer.js
+          } 2>&1 | tee /tmp/cube-e-renderer-contract.log
+      - name: Upload outer Roll renderer diagnostics
+        if: steps.renderer_contract.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: outer-roll-renderer-diagnostics
+          path: /tmp/cube-e-renderer-contract.log
+          if-no-files-found: error
+          retention-days: 3
+      - name: Stop after outer Roll renderer failure
+        if: steps.renderer_contract.outcome == 'failure'
+        run: |
+          echo "Outer Roll renderer contract failed. Diagnostic log was uploaded as outer-roll-renderer-diagnostics."
+          exit 1
       - name: Type check
         run: npm run typecheck
       - name: Build
