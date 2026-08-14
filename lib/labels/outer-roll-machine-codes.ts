@@ -1,4 +1,4 @@
-import bwipjs from "bwip-js";
+import bwipjs from "bwip-js/browser";
 
 export const OUTER_ROLL_MACHINE_CODE_RENDER_SCALE = 4;
 
