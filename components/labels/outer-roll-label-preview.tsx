@@ -13,6 +13,12 @@ type OuterRollLabelPreviewProps = {
   model: OuterRollLabelViewModel;
 };
 
+type TemplatePosition = {
+  xMm: number;
+  yMm: number;
+  widthMm: number;
+};
+
 function percentX(mm: number) {
   return `${(mm / OUTER_ROLL_LABEL_TEMPLATE.widthMm) * 100}%`;
 }
@@ -21,11 +27,17 @@ function percentY(mm: number) {
   return `${(mm / OUTER_ROLL_LABEL_TEMPLATE.heightMm) * 100}%`;
 }
 
-function boxStyle(box: { xMm: number; yMm: number; widthMm: number; heightMm: number }): CSSProperties {
+function positionStyle(position: TemplatePosition): CSSProperties {
   return {
-    left: percentX(box.xMm),
-    bottom: percentY(box.yMm),
-    width: percentX(box.widthMm),
+    left: percentX(position.xMm),
+    bottom: percentY(position.yMm),
+    width: percentX(position.widthMm),
+  };
+}
+
+function boxStyle(box: TemplatePosition & { heightMm: number }): CSSProperties {
+  return {
+    ...positionStyle(box),
     height: percentY(box.heightMm),
   };
 }
@@ -62,44 +74,47 @@ function VectorCode({ geometry, label }: { geometry: BwipVectorGeometry; label: 
 }
 
 export function OuterRollLabelPreview({ model }: OuterRollLabelPreviewProps) {
+  const template = OUTER_ROLL_LABEL_TEMPLATE;
   const barcode = buildOuterRollGtinBarcodeGeometry(
     model.gtin,
-    OUTER_ROLL_LABEL_TEMPLATE.barcodeBox.widthMm,
-    OUTER_ROLL_LABEL_TEMPLATE.barcodeBox.heightMm,
+    template.barcodeBox.widthMm,
+    template.barcodeBox.heightMm,
   );
   const qr = buildOuterRollQrVector(model.qrPayload);
+  const headerHeightMm = template.heightMm - template.headerDividerYMm;
 
   return (
     <div className={styles.frame} dir="ltr" aria-label={`معاينة ملصق ${model.rollSerial}`}>
-      <div className={styles.header}>
-        <div>
-          <span>PROTECTION GIANTS</span>
-          <strong>{model.productName}</strong>
-        </div>
-        <div className={styles.headerSide}>
-          <span>PPF / OUTER ROLL</span>
-          {model.productVersion ? <strong>{model.productVersion}</strong> : null}
-        </div>
-      </div>
+      <div
+        className={styles.header}
+        style={{ height: percentY(headerHeightMm) }}
+        aria-hidden="true"
+      />
+      <span className={styles.brandLabel} style={positionStyle(template.brandLabel)}>PROTECTION GIANTS</span>
+      <strong className={styles.productName} style={positionStyle(template.productName)}>{model.productName}</strong>
+      <span className={styles.sideLabel} style={positionStyle(template.sideLabel)}>PPF / OUTER ROLL</span>
+      {model.productVersion ? (
+        <strong className={styles.productVersion} style={positionStyle(template.productVersion)}>{model.productVersion}</strong>
+      ) : null}
 
-      <div className={`${styles.field} ${styles.sku}`}><span>SKU</span><strong>{model.sku}</strong></div>
-      <div className={`${styles.field} ${styles.size}`}><span>SIZE</span><strong>{model.widthMm} mm × {model.lengthM} m</strong></div>
-      <div className={`${styles.field} ${styles.thickness}`}><span>THICKNESS</span><strong>{model.thicknessMil} mil</strong></div>
-      <div className={`${styles.field} ${styles.lot}`}><span>LOT</span><strong>{model.lotNumber}</strong></div>
-      <div className={`${styles.field} ${styles.roll}`}><span>ROLL</span><strong>{model.rollSerial}</strong></div>
+      <div className={styles.field} style={positionStyle(template.fields.sku)}><span>SKU</span><strong>{model.sku}</strong></div>
+      <div className={styles.field} style={positionStyle(template.fields.size)}><span>SIZE</span><strong>{model.widthMm} mm × {model.lengthM} m</strong></div>
+      <div className={styles.field} style={positionStyle(template.fields.thickness)}><span>THICKNESS</span><strong>{model.thicknessMil} mil</strong></div>
+      <div className={styles.field} style={positionStyle(template.fields.lot)}><span>LOT</span><strong>{model.lotNumber}</strong></div>
+      <div className={styles.field} style={positionStyle(template.fields.roll)}><span>ROLL</span><strong>{model.rollSerial}</strong></div>
 
-      <div className={styles.barcode} style={boxStyle(OUTER_ROLL_LABEL_TEMPLATE.barcodeBox)}>
+      <div className={styles.barcode} style={boxStyle(template.barcodeBox)}>
         <VectorCode geometry={barcode.geometry} label={`GTIN ${barcode.payload}`} />
       </div>
-      <span className={styles.gtin}>GTIN {model.gtin}</span>
+      <span className={styles.gtin} style={positionStyle(template.gtinLabel)}>GTIN {model.gtin}</span>
 
-      <div className={styles.qrLabel}>ROLL QR</div>
-      <div className={styles.qr} style={boxStyle(OUTER_ROLL_LABEL_TEMPLATE.qrQuietBox)}>
+      <div className={styles.qrLabel} style={positionStyle(template.qrLabel)}>ROLL QR</div>
+      <div className={styles.qr} style={boxStyle(template.qrQuietBox)}>
         <div className={styles.qrInner}>
           <VectorCode geometry={qr.geometry} label={`Roll QR ${qr.payload}`} />
         </div>
       </div>
-      <span className={styles.scan}>SCAN ROLL</span>
+      <span className={styles.scan} style={positionStyle(template.scanLabel)}>SCAN ROLL</span>
     </div>
   );
 }
