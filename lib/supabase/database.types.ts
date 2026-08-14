@@ -1114,9 +1114,56 @@ export type Database = {
         Args: { p_entity_id?: string; p_party_type: string }
         Returns: string
       }
+      expand_transfer_send_lot: {
+        Args: { p_lot_id: string }
+        Returns: {
+          available_count: number
+          available_roll_ids: string[]
+          elsewhere_count: number
+          held_count: number
+          lot_id: string
+          lot_number: string
+          product_code: string
+          product_name: string
+          reserved_count: number
+          total_count: number
+        }[]
+      }
       generate_operational_transfer_code: {
         Args: { p_party_type: string }
         Returns: string
+      }
+      list_transfer_send_lots: {
+        Args: { p_limit?: number; p_offset?: number; p_search?: string }
+        Returns: {
+          available_count: number
+          elsewhere_count: number
+          held_count: number
+          lot_id: string
+          lot_number: string
+          product_code: string
+          product_name: string
+          reserved_count: number
+          total_count: number
+        }[]
+      }
+      list_transfer_send_rolls: {
+        Args: {
+          p_limit?: number
+          p_lot_id?: string
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: {
+          availability: string
+          erp_serial: string
+          lot_id: string
+          lot_number: string
+          product_code: string
+          product_name: string
+          roll_id: string
+          serial_number: string
+        }[]
       }
       reject_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
       resolve_public_roll_product_slug: {
@@ -1291,4 +1338,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

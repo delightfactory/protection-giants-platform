@@ -161,6 +161,7 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
   const [lotLoading, setLotLoading] = useState(false);
   const [pendingLot, setPendingLot] = useState<ExpandedLot | null>(null);
   const [recipientChangePending, setRecipientChangePending] = useState(false);
+  const [clearSelectionPending, setClearSelectionPending] = useState(false);
 
   const [manualSerial, setManualSerial] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -715,9 +716,7 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
             <section className={styles.selectionSummary}>
               <div className={styles.summaryHeader}>
                 <div><span>الاختيار الحالي</span><strong>{selectedCount.toLocaleString("en-US")} لفة</strong></div>
-                <button type="button" className="button button-ghost" onClick={() => {
-                  if (window.confirm("مسح كل اللفات المحددة من هذا التحويل؟")) clearSelection();
-                }}>مسح الكل</button>
+                <button type="button" className="button button-ghost" onClick={() => setClearSelectionPending(true)}>مسح الكل</button>
               </div>
               {lotSelections.size > 0 ? (
                 <div className={styles.selectedLots}>
@@ -832,6 +831,23 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
                 resetRecipient();
               }}>تغيير المستلم ومسح الاختيار</button>
               <button type="button" className="button button-ghost" onClick={() => setRecipientChangePending(false)}>الاحتفاظ بالمستلم</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {clearSelectionPending ? (
+        <div className={styles.decisionBackdrop} role="presentation">
+          <section className={styles.decisionSheet} role="dialog" aria-modal="true" aria-labelledby="clear-selection-title">
+            <p className={styles.stepLabel}>الاختيار الحالي</p>
+            <h2 id="clear-selection-title">مسح كل اللفات المحددة؟</h2>
+            <p>سيتم إلغاء الاختيار الحالي فقط. لن يتم إنشاء أو إلغاء أي تحويل في قاعدة البيانات.</p>
+            <div className={styles.decisionActions}>
+              <button type="button" className="button button-primary" onClick={() => {
+                clearSelection();
+                setClearSelectionPending(false);
+              }}>مسح {selectedCount.toLocaleString("en-US")} لفة</button>
+              <button type="button" className="button button-ghost" onClick={() => setClearSelectionPending(false)}>الاحتفاظ بالاختيار</button>
             </div>
           </section>
         </div>
