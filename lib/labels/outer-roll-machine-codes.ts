@@ -154,7 +154,7 @@ export function buildOuterRollGtinBarcodeGeometry(
   return { payload: gtin, symbology, geometry };
 }
 
-export function buildOuterRollQrGeometry(qrPayload: string): OuterRollQrVector {
+export function buildOuterRollQrVector(qrPayload: string): OuterRollQrVector {
   let url: URL;
   try {
     url = new URL(qrPayload);
@@ -178,4 +178,8 @@ export function buildOuterRollQrGeometry(qrPayload: string): OuterRollQrVector {
   }
 
   return { payload: qrPayload, geometry };
+}
+
+export function buildOuterRollQrGeometry(qrPayload: string): BwipVectorGeometry {
+  return buildOuterRollQrVector(qrPayload).geometry;
 }
