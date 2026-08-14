@@ -10,19 +10,25 @@ This repository is the single authoritative source for the current architecture,
 
 ## Canonical development context
 
-`docs/canonical-project-context.md` is the required orientation document for a new development or review session.
+`docs/canonical-project-context.md` is the required durable orientation document for a new development or review session.
 
-It exists to preserve confirmed project context across conversations and development handoffs, especially where older documents contain historically valid but later-superseded wording.
+When a later material cube closure or decision makes part of that snapshot stale, a dated canonical status/normative amendment may supersede only the affected wording until the base context is consolidated. The latest current amendment is:
 
-It does not replace normative sources. When a business rule is being implemented, precedence remains:
+`docs/post-cube-e-canonical-status-amendment.md`
 
-1. latest explicitly approved Product Decisions and normative amendments;
+It records the post-Cube-E status and the reconciled Transfer context that must be read before Cube F is designed.
+
+These documents exist to preserve confirmed project context across conversations and development handoffs, especially where older documents contain historically valid but later-superseded wording.
+
+They do not replace normative sources. When a business rule is being implemented, precedence remains:
+
+1. latest explicitly approved Product Decisions and normative/status amendments;
 2. current approved functional specifications and dependency roadmap;
 3. merged implementation contracts plus actual code/migrations/tests on `main`;
 4. confirmed business requirements not yet promoted into a normative document;
 5. legacy material only as historical evidence.
 
-The canonical context must record supersession/status explicitly rather than silently reconciling conflicting historical wording. It should be updated when a material business decision, dependency correction, or cube-closure state changes.
+Canonical context must record supersession/status explicitly rather than silently reconciling conflicting historical wording. It should be updated or amended when a material business decision, dependency correction, or cube-closure state changes.
 
 ## Legacy reference repository
 
