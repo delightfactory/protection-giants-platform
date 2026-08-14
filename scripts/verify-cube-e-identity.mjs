@@ -79,7 +79,7 @@ async function rpc(name, body, token) {
     method: "POST",
     headers: {
       apikey: anonKey,
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token ?? anonKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -95,7 +95,7 @@ function expectOne(result, label) {
   return result.body[0];
 }
 
-function productFixture(code, slug, gtin = null) {
+function productFixture(code, slug, gtin = null, publicationStatus = "draft") {
   return {
     code,
     gtin,
@@ -115,7 +115,7 @@ function productFixture(code, slug, gtin = null) {
     features: ["Identity verification"],
     warranty_coverage: "Test coverage.",
     care_instructions: "Test care.",
-    publication_status: "draft",
+    publication_status: publicationStatus,
   };
 }
 
@@ -193,7 +193,7 @@ const producedProduct = expectOne(
   await rest("products?select=id,gtin", {
     method: "POST",
     token: adminToken,
-    body: productFixture("PG-GTIN-PRODUCED", "pg-gtin-produced"),
+    body: productFixture("PG-GTIN-PRODUCED", "pg-gtin-produced", null, "published"),
   }),
   "Produced Product fixture creation",
 );
@@ -244,4 +244,41 @@ const lockedRead = expectOne(
 );
 assert(lockedRead.gtin === gtin12, `Produced Product GTIN drifted: ${JSON.stringify(lockedRead)}`);
 
-console.log("Cube E Product GTIN and anonymous Roll-boundary verification passed.");
+const roll = expectOne(
+  await rest(`rolls?production_order_id=eq.${encodeURIComponent(production.body)}&select=serial_number`, { token: adminToken }),
+  "Generated Roll readback",
+);
+
+const publicResolution = await rpc("resolve_public_roll_product_slug", { p_serial: roll.serial_number });
+assert(
+  publicResolution.response.ok && publicResolution.body === "pg-gtin-produced",
+  `Public Roll resolver did not return the expected Product slug: ${JSON.stringify(publicResolution.body)}`,
+);
+
+const unknownResolution = await rpc("resolve_public_roll_product_slug", {
+  p_serial: "PG-R-20260814-99999999-99-9999",
+});
+assert(
+  unknownResolution.response.ok && unknownResolution.body === null,
+  `Unknown Roll resolver response leaked or failed: ${JSON.stringify(unknownResolution.body)}`,
+);
+
+const malformedResolution = await rpc("resolve_public_roll_product_slug", { p_serial: "not-a-roll" });
+assert(
+  malformedResolution.response.ok && malformedResolution.body === null,
+  `Malformed Roll resolver response leaked or failed: ${JSON.stringify(malformedResolution.body)}`,
+);
+
+const voided = await rpc("void_production_order", {
+  p_order_id: production.body,
+  p_reason: "Cube E public resolver void-state verification",
+}, adminToken);
+assert(voided.response.ok, `Could not void resolver fixture Production Order: ${JSON.stringify(voided.body)}`);
+
+const voidedResolution = await rpc("resolve_public_roll_product_slug", { p_serial: roll.serial_number });
+assert(
+  voidedResolution.response.ok && voidedResolution.body === null,
+  `Voided Roll unexpectedly remained publicly resolvable: ${JSON.stringify(voidedResolution.body)}`,
+);
+
+console.log("Cube E Product GTIN, anonymous Roll boundary and public Roll resolver verification passed.");
