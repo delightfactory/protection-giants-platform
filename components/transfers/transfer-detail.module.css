@@ -1,0 +1,63 @@
+.page { display: grid; gap: var(--space-4); max-width: 980px; }
+.hero,
+.panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
+}
+.hero { padding: clamp(18px, 3vw, 28px); display: grid; gap: 18px; }
+.heroTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.number { margin: 0; font: 800 clamp(17px, 3vw, 24px)/1.3 Arial, sans-serif; direction: ltr; overflow-wrap: anywhere; }
+.counterparty { display: grid; gap: 3px; }
+.counterparty span { color: var(--text-tertiary); font-size: 11px; }
+.counterparty strong { font-size: 17px; }
+.meta { color: var(--text-secondary); font-size: 12px; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.metric { padding: 11px; border-radius: var(--radius-sm); background: rgba(255,255,255,.025); }
+.metric span { display: block; color: var(--text-tertiary); font-size: 10px; }
+.metric strong { display: block; margin-top: 4px; font-size: 18px; }
+.primaryArea { display: flex; gap: 8px; flex-wrap: wrap; }
+.primaryArea > * { min-height: 48px; }
+.panel { padding: clamp(16px, 2.5vw, 24px); }
+.panel h2 { margin: 0 0 12px; font-size: 17px; }
+.panelIntro { margin: -5px 0 14px; color: var(--text-secondary); font-size: 12px; }
+.lotList { display: grid; gap: 9px; }
+.lotCard { padding: 13px; border: 1px solid var(--line); border-radius: var(--radius-md); background: rgba(255,255,255,.018); }
+.lotTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.lotTop strong { display: block; font-size: 14px; }
+.lotTop code { color: var(--text-secondary); font: 700 11px/1.4 Arial, sans-serif; direction: ltr; }
+.lotMetrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; margin-top: 10px; }
+.lotMetrics span { padding: 7px; border-radius: 8px; background: rgba(255,255,255,.022); color: var(--text-secondary); font-size: 10px; text-align: center; }
+.timeline { display: grid; gap: 0; }
+.event { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding-bottom: 17px; }
+.event:last-child { padding-bottom: 0; }
+.eventDot { width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.event:not(:last-child)::before { content: ""; position: absolute; inset-inline-start: 4px; top: 16px; bottom: 1px; width: 1px; background: var(--line); }
+.event strong { display: block; font-size: 13px; }
+.event time { display: block; margin-top: 3px; color: var(--text-tertiary); font-size: 10px; }
+.event p { margin: 7px 0 0; color: var(--text-secondary); font-size: 11px; }
+.actionPanel { display: grid; gap: 12px; }
+.actionButtons { display: flex; gap: 8px; flex-wrap: wrap; }
+.danger { border-color: rgba(223,37,38,.4) !important; color: #ffb8b8 !important; }
+.backdrop { position: fixed; inset: 0; z-index: 90; display: grid; align-items: end; background: rgba(0,0,0,.68); backdrop-filter: blur(5px); }
+.sheet { width: min(100%, 620px); max-height: min(86dvh, 760px); margin-inline: auto; overflow: auto; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); border: 1px solid var(--line); border-bottom: 0; border-radius: 22px 22px 0 0; background: var(--surface-1); box-shadow: 0 -20px 60px rgba(0,0,0,.36); }
+.sheetHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.sheetHeader h2 { margin: 0; font-size: 19px; }
+.close { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--text-primary); font-size: 24px; }
+.sheet p { color: var(--text-secondary); font-size: 12px; }
+.sheet textarea { width: 100%; min-height: 100px; resize: vertical; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-0); color: var(--text-primary); font: inherit; }
+.sheetActions { position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; padding-top: 10px; background: linear-gradient(transparent, var(--surface-1) 20%); }
+.sheetActions button { min-height: 48px; }
+
+@media (max-width: 620px) {
+  .heroTop { display: grid; }
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .primaryArea { display: grid; }
+  .primaryArea > * { width: 100%; }
+  .lotMetrics { grid-template-columns: 1fr 1fr; }
+  .panel { border-radius: var(--radius-md); }
+  .actionButtons { display: grid; }
+  .actionButtons button, .actionButtons a { width: 100%; min-height: 48px; }
+}
