@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -14,33 +14,19 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - name: Checkout PR head
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-      - name: Refresh dependency lock
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Commit refreshed dependency lock
-        shell: bash
-        run: |
-          if git diff --quiet -- package-lock.json; then
-            echo "Dependency lock is already current."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: synchronize Cube G dependency lock"
-            git push origin HEAD:${{ github.event.pull_request.head.ref }}
-          fi
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
       - name: Verify contextual Roll QR contract
         run: node --experimental-strip-types scripts/verify-roll-qr-contract.mjs
+      - name: Verify Transfer Send client contracts
+        run: node --experimental-strip-types scripts/verify-transfer-send-client-contract.mjs
       - name: Verify outer Roll label planning contract
         run: node --experimental-strip-types scripts/verify-outer-roll-label-plan.cjs
       - name: Verify outer Roll label request contract
