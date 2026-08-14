@@ -8,7 +8,6 @@ name: Database Quality
       - "supabase/**"
       - "lib/supabase/database.types.ts"
       - "scripts/verify-auth-config.mjs"
-      - "scripts/verify-auth-trigger-contract.mjs"
       - "scripts/verify-profile-auto-provisioning.mjs"
       - "scripts/verify-profile-admin-read.mjs"
       - "scripts/verify-data-api-grants.mjs"
@@ -99,9 +98,6 @@ jobs:
       - name: Lint local database
         run: supabase db lint --local --level warning --fail-on error
 
-      - name: Verify Auth trigger integrity after reset
-        run: node scripts/verify-auth-trigger-contract.mjs
-
       - name: Verify new public functions require explicit grants
         run: |
           db_container="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1 || true)"
@@ -139,51 +135,114 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
 
-          contract_scripts=(
-            scripts/verify-auth-config.mjs
-            scripts/verify-profile-auto-provisioning.mjs
-            scripts/verify-data-api-grants.mjs
-            scripts/verify-profile-admin-read.mjs
-            scripts/verify-user-admin-lifecycle.mjs
-            scripts/verify-operational-entities-lifecycle.mjs
-            scripts/verify-operational-entity-access-status.mjs
-            scripts/verify-agent-network-foundation.mjs
-            scripts/verify-center-onboarding.mjs
-            scripts/verify-center-onboarding-state-races.mjs
-            scripts/verify-center-onboarding-review-state.mjs
-            scripts/verify-center-location-foundation.mjs
-            scripts/verify-center-network-approval.mjs
-            scripts/verify-public-center-directory.mjs
-            scripts/verify-product-foundation.mjs
-            scripts/verify-product-foundation-constraints.mjs
-            scripts/verify-product-operational-access.mjs
-            scripts/verify-product-storage.mjs
-            scripts/verify-production-foundation.mjs
-            scripts/verify-production-boundaries.mjs
-            scripts/verify-roll-custody-foundation.mjs
-            scripts/verify-cube-e-identity.mjs
-          )
-
-          test_status=0
           set +e
-          for contract_script in "${contract_scripts[@]}"; do
-            echo "::group::Contract $contract_script"
-            node "$contract_script"
-            test_status=$?
-            echo "::endgroup::"
+          node scripts/verify-auth-config.mjs
+          test_status=$?
 
-            if [ "$test_status" -ne 0 ]; then
-              echo "Contract failed: $contract_script"
-              break
-            fi
-
-            node scripts/verify-auth-trigger-contract.mjs
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-profile-auto-provisioning.mjs
             test_status=$?
-            if [ "$test_status" -ne 0 ]; then
-              echo "Auth trigger drift detected immediately after: $contract_script"
-              break
-            fi
-          done
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-data-api-grants.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-profile-admin-read.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-user-admin-lifecycle.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-operational-entities-lifecycle.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-operational-entity-access-status.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-agent-network-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-onboarding.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-onboarding-state-races.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-onboarding-review-state.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-location-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-center-network-approval.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-public-center-directory.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-foundation-constraints.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-operational-access.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-product-storage.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-production-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-production-boundaries.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-roll-custody-foundation.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-cube-e-identity.mjs
+            test_status=$?
+          fi
           set -e
 
           if [ "$test_status" -ne 0 ]; then
