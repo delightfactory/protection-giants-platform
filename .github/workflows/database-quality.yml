@@ -27,6 +27,8 @@ name: Database Quality
       - "scripts/verify-product-storage.mjs"
       - "scripts/verify-production-foundation.mjs"
       - "scripts/verify-production-boundaries.mjs"
+      - "scripts/verify-roll-custody-backfill.mjs"
+      - "scripts/verify-roll-custody-foundation.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -56,6 +58,15 @@ jobs:
 
       - name: Start fresh local Supabase stack
         run: supabase start
+
+      - name: Verify Roll custody historical backfill migration
+        run: |
+          supabase db reset --local --no-seed --version 20260813185614
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-roll-custody-backfill.mjs seed
+          supabase migration up --local
+          node scripts/verify-roll-custody-backfill.mjs verify
 
       - name: Rebuild database from migrations
         id: db_reset
@@ -114,7 +125,7 @@ jobs:
           drop function public.__ci_default_function_privilege_probe();
           SQL
 
-      - name: Verify Auth, Data API grants, RLS, Agent network, Center onboarding/location/approval, Product and Production contracts
+      - name: Verify Auth, Data API grants, RLS, Agent network, Center onboarding/location/approval, Product, Production and Roll custody contracts
         id: contract_tests
         continue-on-error: true
         shell: bash
@@ -219,6 +230,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-production-boundaries.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-roll-custody-foundation.mjs
             test_status=$?
           fi
           set -e
