@@ -1,32 +1,25 @@
 # Protection Giants — Post-Cube-E Canonical Status Amendment
 
 **Date:** 2026-08-14  
-**Status:** Approved status/context reconciliation before Cube F design  
+**Status:** Approved status/context reconciliation after Cube E and before Cube F implementation  
 **Applies to:** `delightfactory/protection-giants-platform`  
-**Baseline reviewed:** `main` at `59c3dad636680316bd6963088ce276ab241a23d7`
+**Current merged baseline before this documentation change:** `main` at `5d9d8dfcdd3c30748c6df4da3522a4435068f4d5`
 
 ## 1. Purpose and authority
 
-This document reconciles project status and Transfer-related context after Cube E was merged.
+This document preserves the current project status after Cube E and the authoritative context required for Cube F.
 
-It does not redesign the platform and does not create Cube F implementation details. Its purpose is to prevent future development from inheriting stale status or superseded wording from older documents.
+It prevents future development from inheriting stale status or superseded wording from older documents.
 
-Under the repository precedence policy, this is a later normative status/context amendment. Where an older document conflicts specifically on the post-Cube-E status or the clarified Cube E boundary, this amendment controls until the older document is updated.
+Under the repository precedence policy, later Product Decisions, the current dependency roadmap and the current cube specification control where older wording conflicts.
 
-The main sources re-reviewed before this amendment were:
+The current Cube F implementation contract is:
 
-- `docs/canonical-project-context.md`;
-- `docs/product-decisions.md`, including PD-014 and PD-021 through PD-032;
-- `docs/distribution-network-flow-spec.md`;
-- `docs/development-governance.md`;
-- `docs/gap-closure-roadmap.md`;
-- `docs/outer-roll-label-print-foundation-amendment.md`;
-- `docs/cube-e-outer-roll-label-print-foundation-spec.md`;
-- `docs/cube-e-pending-physical-print-validation.md`;
-- merged Cube D custody migrations/contracts;
-- merged PR #47 and its independent local validation/retest evidence;
-- confirmed project discussions retained as business context;
-- the legacy repository only as historical functional evidence, never as architecture authority.
+`docs/cube-f-roll-transfer-state-reservation-spec.md`
+
+The implementation-aware context review that preceded it is:
+
+`docs/cube-f-pre-design-context-review.md`
 
 ---
 
@@ -42,128 +35,114 @@ The following foundations are complete/merged:
 - Center Network Approval Foundation — Cube B;
 - Public Center Directory & Map — Cube C;
 - Roll Custody Foundation — Cube D;
-- Outer Roll Label & Print Foundation — Cube E.
+- Outer Roll Label & Print Foundation — Cube E software implementation.
 
 Cube E was merged through PR #47 with merge commit:
 
 `59c3dad636680316bd6963088ce276ab241a23d7`
 
-Cube E is **software-complete and merged** after:
+Cube E is software-complete and merged after PR/Database Quality, typecheck/build, GTIN/QR/planning/request/imposition/vector-renderer contracts and independent local validation/retest.
 
-- PR Quality passing;
-- Database Quality passing;
-- typecheck/build passing;
-- GTIN/QR/planning/request/imposition/vector-renderer contracts passing;
-- independent local-laptop validation;
-- correction and local end-to-end retest of the public Roll resolver.
+The physical print/cut/scan gate remains **mandatory but deferred because suitable equipment is not currently available**. It is tracked by:
 
-The physical print/cut/scan gate remains **mandatory but deferred because suitable equipment is not currently available**. It is tracked by `docs/cube-e-pending-physical-print-validation.md` and does not block later software cubes.
+`docs/cube-e-pending-physical-print-validation.md`
 
-Until that real-world test is completed, `150 × 100 mm` and printer/cutter/RIP parameters remain provisional and must not be described as production-frozen.
+That deferred physical gate does not block Cube F software development.
+
+Until the real-world test is completed, `150 × 100 mm` and printer/cutter/RIP parameters remain provisional and must not be described as production-frozen.
 
 ---
 
-## 3. Cube E boundary after the 2026-08-14 change
+## 3. Current Cube E boundary
 
-Older canonical wording described Cube E as a narrow operational scan label. That description is superseded by PD-030 through PD-032 and the Cube E normative amendment.
+Older wording that described Cube E as a narrow temporary scan label is superseded by PD-030 through PD-032 and the Cube E normative amendment.
 
-Current Cube E owns:
+Cube E now owns:
 
-- optional official Product GTIN and its lifecycle/validation rules;
-- one contextual Roll QR derived from the existing canonical Roll serial;
-- public exact Roll resolver that exposes only the eligible public Product experience;
-- the real V1 outer Roll label as two identical front/back copies;
+- optional official Product GTIN and lifecycle/validation rules;
+- one contextual Roll QR derived from the canonical Roll serial;
+- public exact Roll resolver exposing only eligible public Product content;
+- the V1 outer Roll label as two identical front/back copies;
 - deterministic vector-first PDF rendering;
 - bounded large-order planning/imposition/reprint primitives;
 - Admin label preflight/export;
 - voided-order protection.
 
-Cube E does **not** own:
+Cube E does not own Transfer state/receipt or Activation/Warranty identities/labels.
 
-- Transfer state, reservation or receipt;
-- Activation/Warranty identity;
-- customer Warranty QR copies;
-- bag/case, inner-Roll or separate ERP label package;
-- a generic label/template engine.
-
-The same Roll QR can later be parsed by authenticated workflows to identify the exact Roll, but possession of the QR never authorizes a Transfer, receipt, Roll Opening or Warranty action.
+The same Roll QR may later identify the exact Roll inside authenticated operational workflows, but possession of the QR never grants Transfer, receipt, Roll Opening or Warranty authority.
 
 ---
 
-## 4. Current next development cube
+## 4. Current next software cube
 
 The immediate next software cube is:
 
 **Cube F — Roll Transfer State & Reservation Engine**
 
-Cube F starts only after a fresh re-review of the current `main` implementation and an explicit Cube F specification. No implementation branch should be opened from an older pre-Cube-E base.
+Its specification is now defined in:
+
+`docs/cube-f-roll-transfer-state-reservation-spec.md`
+
+The specification freezes the bounded F design before any implementation branch is opened.
 
 Cube F depends on:
 
 - Cube D confirmed custody;
 - Operational Party identity;
-- the existing exact Transfer ID recipient resolver/privacy boundary;
-- current Product/Production/Roll eligibility rules.
+- exact Transfer ID recipient identity/privacy boundary;
+- current Product/Production/Roll eligibility rules;
+- existing Auth/Profile lifecycle model.
 
-Cube F does **not** depend on completing the deferred physical printer validation from Cube E, and its database/service state machine does not depend on camera scanning.
+Cube F does **not** depend on completing Cube E's deferred physical printer validation and does not depend on camera scanning.
 
-The scan-based sender experience belongs to Cube G and can reuse Cube E only after Cube F exists.
+The scan-based sender experience remains Cube G.
+
+Recipient receipt/partial receipt and the first confirmed custody transition remain Cube H.
 
 ---
 
-## 5. Transfer context that is already approved and must be preserved
+## 5. Transfer context that must remain preserved
 
 ### 5.1 Custody identity
 
 Custody and Transfers reference `operational_parties.id`, never Auth User ID or Profile ID as the holder identity.
 
-The current Cube D implementation uses:
+Current Cube D implementation uses:
 
 - `roll_custody_current` as the authoritative one-row-per-Roll confirmed custody projection;
 - `roll_custody_events` as immutable confirmed-custody history.
 
-Pending Transfer state must not redefine confirmed custody.
+Pending Transfer reservation must not redefine confirmed custody.
 
 ### 5.2 Reservation is not custody movement
 
-Creating a Transfer must:
+Creating a Transfer:
 
-- verify the sender is the confirmed current custodian;
-- reserve the selected eligible Rolls against conflicting Transfer use;
-- leave confirmed custody with the sender.
+- verifies sender is confirmed current custodian;
+- reserves selected eligible Rolls against conflicting Transfer use;
+- leaves confirmed custody with sender;
+- does not append a custody event.
 
-Confirmed custody changes only after receipt in the later receipt flow.
+Confirmed custody changes only later after receipt.
 
-This distinction is a core business invariant, not a UI convention.
+### 5.3 Recipient identity/privacy
 
-### 5.3 Recipient identity and privacy
+Recipient selection uses exact stable Transfer ID, not a global operational-party directory.
 
-The recipient is selected through its stable exact-match Transfer ID, not by exposing a global operational-party directory.
+Transfer ID is stable/shareable but is not secret, OTP, proof of custody, Roll identity, or Activation/Warranty identity.
 
-Transfer ID is:
+### 5.4 Entity identity is independent from user existence
 
-- stable and shareable;
-- not secret;
-- not OTP;
-- not proof of custody;
-- not Roll identity;
-- not Activation/Warranty identity.
+A Center can exist, have an Operational Party and Transfer ID, and be selected as a pending Transfer recipient before its first user account exists.
 
-The existing exact resolver returns only minimal recipient-verification data and only for a valid active recipient.
+Transfer creation therefore must not require the recipient Center to already have a user.
 
-### 5.4 Active entity, not account existence
-
-An operational entity is distinct from its users.
-
-A Center can exist, have an Operational Party and Transfer ID, and be selected as a pending Transfer recipient even before its first user account exists. This is why Center Onboarding was moved earlier into the Network Foundation.
-
-Therefore Cube F must not make “recipient already has a user account” a requirement for Transfer creation.
-
-Receipt/acceptance later requires an authenticated authorized user representing the recipient entity.
+Receipt later requires an authenticated authorized user representing the recipient entity.
 
 ### 5.5 Management hierarchy is not a Transfer route matrix
 
-The normal management hierarchy remains:
+The management hierarchy remains:
 
 ```text
 Protection Giants / Company
@@ -173,9 +152,9 @@ Protection Giants / Company
     └── Installation Center (direct to Agent)
 ```
 
-This hierarchy controls management scope and ordinary visibility. It does not force physical Roll movement to follow parent-child order.
+It controls management scope/ordinary visibility, not every physical movement path.
 
-The Transfer model must remain capable of legitimate direct, return and peer movements such as:
+Approved model remains capable of direct/return/peer flows such as:
 
 - Company → Agent;
 - Company → Center;
@@ -185,152 +164,147 @@ The Transfer model must remain capable of legitimate direct, return and peer mov
 - Dealer → Center;
 - Center → Center;
 - Center → Dealer return;
-- Dealer → Company return;
+- Dealer → Company return.
 
-subject to current custody, recipient active state and Transfer rules.
+### 5.6 Center approval/location are unrelated to Transfer authority
 
-Do not add an ancestry-only route matrix merely because the organizational hierarchy exists.
+Protection Giants network approval and Center location/public-directory state do not grant or block Transfer authority.
 
-### 5.6 Center network approval is unrelated to Transfer authority
-
-Center operational status, geographic location and Protection Giants network approval are separate concepts.
-
-Network approval is a trust/public designation. It is not:
-
-- proof of custody;
-- permission to receive/send a Roll;
-- a Transfer acceptance bypass;
-- a Roll Opening/Warranty Activation gate.
-
-An active operational Center may participate in custody/Transfer flows regardless of its approved/unapproved public trust badge state.
+An otherwise active Center participates according to custody and Transfer rules regardless of its public trust-badge state.
 
 ### 5.7 Production eligibility
 
-A Roll whose parent Production Order is voided remains historically present but is not eligible for Transfer or later operational execution.
+A Roll under a voided Production Order remains historical but is not operationally eligible for Transfer.
 
-Transfer creation must fail closed for voided Production Orders.
+Cube F additionally blocks Production Order void while an active Transfer reservation exists; it does not auto-cancel that Transfer.
 
-### 5.8 Idempotency and concurrency are required
+### 5.8 Idempotency/concurrency/lifecycle races are database responsibilities
 
 Transfer creation must be safe against:
 
 - browser double-submit;
 - network retry;
-- two concurrent attempts to reserve the same Roll;
+- stale request-key reuse with changed payload;
+- two concurrent attempts to reserve one Roll;
 - stale custody reads;
-- conflicting Transfer creation.
+- concurrent Production void;
+- concurrent actor/recipient suspension.
 
-The state change must be enforced atomically at the database/domain boundary rather than relying on UI checks.
+Critical validation is repeated atomically under appropriate database locks. UI checks are never the final guard.
 
-### 5.9 No automatic expiry in first release
+### 5.9 No automatic expiry
 
-The approved Transfer foundation does not require an automatic pending-Transfer expiry timer in the first release.
+No first-release cron/timer silently expires pending Transfers or releases reservations.
 
-Do not introduce background expiry, cron cleanup or timeout semantics unless a later explicit business decision requires them.
+### 5.10 Pre-receipt termination
 
-### 5.10 Partial receipt belongs to the later receipt cube
+Before receipt:
 
-Partial receipt is approved for the overall Transfer lifecycle:
+- sender may cancel;
+- recipient may reject;
+- reservation is released;
+- custody remains unchanged.
 
-- received Rolls move custody individually;
-- unresolved Rolls do not move custody;
-- unresolved Rolls remain reserved while their physical status is unresolved.
+A narrow audited Admin recovery cancellation exists only for the suspended-party recovery condition defined by PD-036 and the Cube F spec. It is not party impersonation.
 
-However the recipient receipt/inbox/partial-receipt UX and actual confirmed custody transition belong to Cube H, not Cube F.
+### 5.11 Partial receipt remains Cube H
 
-Cube F must create a state/data contract that can support that later behavior without implementing Cube H prematurely.
+Partial receipt is approved for the overall lifecycle, but recipient inbox/receipt, per-item receipt state, discrepancy resolution and actual custody transitions remain Cube H.
 
-### 5.11 Sender cancellation and whole-transfer rejection before receipt
-
-The approved lifecycle allows:
-
-- sender cancellation before any receipt;
-- whole-transfer rejection before any receipt;
-- release of reservation when such a pre-receipt terminal action succeeds.
-
-Cube F owns the state-machine rules and race protection for these pre-receipt transitions. Cube H later owns the recipient-facing receipt workflow and partial-receipt resolution experience.
+Cube H must atomically update `roll_custody_current` and append the next immutable `roll_custody_events` entry for each confirmed received Roll.
 
 ---
 
 ## 6. Important implementation reality inherited from Cube D
 
-The current custody projection intentionally has **no `reserved_transfer_id` column**. Earlier specs used that only as a conceptual example.
+The current custody projection intentionally has **no `reserved_transfer_id` column**.
 
-Therefore Cube F must not assume reservation storage already exists or mutate Cube D's schema casually to match an old conceptual sketch.
+Earlier specs used that only as a conceptual example.
 
-Reservation representation must be designed from the actual current schema and Cube F invariants, while preserving Cube D's meaning:
+Cube F therefore keeps:
 
 - `roll_custody_current` = confirmed custody only;
-- `roll_custody_events` = immutable confirmed-custody events only.
+- `roll_custody_events` = immutable confirmed-custody events only;
+- pending reservation = separate Cube F current-state projection.
 
-Likewise, Cube D intentionally did not implement later custody-transition mutations. When Cube H later becomes the first confirmed custody-changing path, current-custody update and new immutable custody event must occur atomically with locking/concurrency protection.
-
-Cube F should prepare a compatible Transfer contract but must not move confirmed custody early merely to simplify its implementation.
-
----
-
-## 7. Approved sender selection modes — later Cube G
-
-The overall Transfer experience already approves these sender input modes:
-
-- exact recipient Transfer ID;
-- Scan Rolls for small/mixed movements;
-- Select Rolls for known subsets;
-- Select Lot for trusted bulk movements.
-
-Trusted whole-Lot transfer does not require scanning every Roll individually. The system still expands the Lot into individual Roll items.
-
-If only part of a Lot is held/eligible, the later UI must explicitly show total/available/elsewhere and must not represent the operation as a complete-Lot move.
-
-These are Cube G UX responsibilities. Cube F should expose a bounded service contract that can accept an explicit set of Roll IDs/items after selection, rather than implementing camera/Lot-selection UI itself.
+Cube F must not move confirmed custody early merely to simplify Transfer implementation.
 
 ---
 
-## 8. Superseded or stale wording to ignore during Cube F preparation
+## 7. Current F/G/H boundary
 
-The following older wording must not drive Cube F design:
+### Cube F
 
-- “Approved Center” as a prerequisite for Transfer, Roll Opening or Warranty Activation;
-- hierarchy-only physical Transfer routing;
+Owns backend Transfer identity/state, immutable membership, active reservation, idempotency, concurrency, pre-receipt cancellation/rejection, narrow suspended-party Admin recovery, RLS/read boundaries and Production-void coordination.
+
+### Cube G
+
+Owns sender user experience:
+
+- exact recipient Transfer ID entry/scan;
+- recipient verification card;
+- Scan Rolls;
+- Select Rolls;
+- Select Lot;
+- partial-held Lot clarity;
+- review/count confirmation;
+- mobile camera flow;
+- interrupted-submit recovery.
+
+### Cube H
+
+Owns:
+
+- recipient pending-transfer inbox/detail;
+- receipt/partial receipt;
+- discrepancy resolution;
+- first confirmed custody-changing transaction;
+- receipt-time scan verification where required;
+- hardening of all pre-receipt terminal actions once receipt state exists.
+
+---
+
+## 8. Superseded wording to ignore
+
+Do not allow these older ideas to re-enter implementation:
+
+- Approved Center as Transfer/Activation permission;
+- hierarchy-only Transfer routes;
 - Cube E as merely a temporary scan sticker;
-- the broader Production Label Package as a prerequisite for Transfer state;
-- conceptual `reserved_transfer_id` as if it were already implemented in Cube D;
+- full Production Label Package as prerequisite for Transfer state;
+- conceptual `reserved_transfer_id` as if already implemented in Cube D;
+- direct custody movement at Send time;
+- global recipient directory;
+- mandatory individual scan for every Roll in trusted whole-Lot movement;
 - any legacy-repository schema/state machine as current architecture authority.
 
-The legacy repository remains useful only to identify historical functional expectations that may need to be checked against current approved rules.
+---
+
+## 9. Product Decisions added for Cube F
+
+Current Cube F-specific decisions are recorded in `docs/product-decisions.md`:
+
+- PD-033 — Admin represents only singleton Company for ordinary Transfer party actions; no generic party impersonation;
+- PD-034 — active Transfer reservation blocks Production Order void;
+- PD-035 — pending Transfers do not auto-expire in first release;
+- PD-036 — suspended-party pending Transfers have a narrow audited Admin recovery cancellation path.
+
+These complement the earlier Transfer decisions PD-022 through PD-025.
 
 ---
 
-## 9. Deliberately unresolved before Cube F specification
+## 10. Gate before Cube F implementation branch
 
-This status amendment does **not** silently decide:
+After this specification documentation is merged:
 
-- final Transfer table names/column layout;
-- exact Transfer status vocabulary;
-- whether reservation is represented by Transfer-item uniqueness, a dedicated projection, or another minimal database constraint model;
-- exact idempotency-key shape;
-- exact event table shape and event vocabulary;
-- UI layout for sending/receiving Transfers;
-- camera scanner details;
-- recipient inbox/detail design;
-- partial-receipt resolution states beyond the already approved business behavior;
-- claims, Activation or Warranty interactions beyond existing eligibility boundaries.
+1. fetch latest `main` again;
+2. re-read this status amendment, Product Decisions, current roadmap and `docs/cube-f-roll-transfer-state-reservation-spec.md`;
+3. verify no newer merge changes relevant schema/contracts;
+4. create a fresh Cube F implementation branch from that exact `main`;
+5. implement only the frozen F boundary;
+6. add permanent Database Quality coverage, including concurrency and 10,000-Roll boundaries;
+7. perform implementation-integrity review;
+8. perform fresh dependency/scope review;
+9. merge only after CI and both reviews pass.
 
-Those choices must be made in the Cube F specification from the actual current schema, with the smallest design that fully satisfies the approved lifecycle.
-
----
-
-## 10. Gate before opening Cube F implementation branch
-
-Before Cube F implementation begins:
-
-1. inspect latest `main` and verify no newer merge supersedes this baseline;
-2. re-read this amendment, Product Decisions, Distribution Network spec and current Custody implementation;
-3. inspect the actual Operational Party/Transfer ID resolver implementation and active-state semantics;
-4. inspect existing database grants/RLS/default-function-grant contracts;
-5. define Cube F schema/state invariants and explicit exclusions;
-6. define concurrency/idempotency failure cases before coding;
-7. document the Cube F implementation specification;
-8. only then create a clean Cube F feature branch from latest `main`.
-
-No Transfer implementation is authorized by this document alone; it authorizes only the next **design/specification** step after this reconciliation is merged.
+No Cube G/H/Activation/Warranty functionality should be pulled into the Cube F implementation for convenience.

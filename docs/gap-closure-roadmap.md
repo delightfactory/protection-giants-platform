@@ -1,24 +1,28 @@
 # Protection Giants — Dependency-Ordered Gap Closure Roadmap
 
-**Status:** Approved sequencing baseline — 2026-08-13; Cube E boundary amended 2026-08-14  
-**Applies after:** merged Agent & Network Foundation and subsequent completed Center/Custody cubes  
+**Status:** Approved sequencing baseline — 2026-08-13; Cube E completed in software and Cube F promoted 2026-08-14  
+**Applies after:** merged Agent & Network Foundation, Center A/B/C, Cube D Custody and merged Cube E software foundation  
 **Purpose:** close the remaining operational gaps in small complete cubes, with every cube starting only after its real prerequisites exist.
 
 ## 1. Authority and correction
 
-This roadmap is the sequencing authority for the remaining gaps, subject to later approved Product Decisions and normative amendments.
+This roadmap is the sequencing authority for the remaining gaps, subject to later approved Product Decisions and normative/status amendments.
 
-It was produced after re-reading:
+It was produced and subsequently reconciled after re-reading:
 
 - `docs/development-governance.md`;
 - `docs/product-decisions.md`;
 - `docs/distribution-network-flow-spec.md`;
 - `docs/center-location-approval-activation-amendment.md`;
-- `docs/center-location-approval-impact-review.md`;
+- `docs/post-cube-e-canonical-status-amendment.md`;
+- `docs/cube-f-pre-design-context-review.md`;
 - the merged Agent & Network Foundation;
-- the already-closed Product and Production foundations.
+- the closed Product, Production and Cube D foundations;
+- the merged Cube E software implementation.
 
-The 2026-08-14 `docs/outer-roll-label-print-foundation-amendment.md` and PD-030 through PD-032 refine the original Cube E boundary after the physical outer-label requirements and historical client output were re-confirmed.
+The 2026-08-14 `docs/outer-roll-label-print-foundation-amendment.md` and PD-030 through PD-032 refined the original Cube E boundary after the physical outer-label requirements and historical client output were re-confirmed.
+
+The 2026-08-14 Cube F specification and PD-033 through PD-035 now refine the Transfer state/reservation boundary.
 
 Where older wording says simply **Production Labels → Roll Custody & Transfers**, this document supersedes that ordering.
 
@@ -27,7 +31,7 @@ The old order was too coarse because it treated every physical label as one depe
 - **current Roll custody does not depend on a label**;
 - **Transfer state/reservation does not depend on a label**;
 - **scan-based Transfer UX does depend on a machine-readable physical Roll identity**;
-- the first real outer Roll label can carry that identity and establish the reusable print foundation without pulling unresolved Activation/Warranty labels forward;
+- Cube E already provides the first real outer Roll label plus reusable print/scan identity primitives;
 - Activation/Warranty labels remain behind their own future identifier/lifecycle decisions.
 
 ---
@@ -55,7 +59,7 @@ A larger capability may contain several small cubes. The individual cubes stay s
 
 Already provides canonical SKU, stable physical specification, Product assets/content boundaries and the Product warranty-policy source.
 
-Cube E adds the now-approved optional official Product GTIN field without changing the one-SKU/one-Product-spec foundation.
+Cube E added the approved optional official Product GTIN without changing the one-SKU/one-Product-spec foundation.
 
 ## Production Order / Lot / Roll Foundation
 
@@ -190,7 +194,7 @@ Pending Transfer, reservation, receipt, scan UX, labels or Activation.
 
 ## Cube E — Outer Roll Label & Print Foundation
 
-**Status:** Current implementation cube — approved 2026-08-14 boundary.
+**Status:** Software complete / merged. Real printer/cutter + physical barcode/QR validation remains mandatory but deferred and separately tracked because suitable equipment is not currently available.
 
 ### Depends on
 
@@ -207,7 +211,7 @@ Custody or Transfer implementation.
 
 Provide the first real production-grade physical Roll label and the professional deterministic print foundation required by later Production labels and scan workflows.
 
-Cube E is **not** the complete future Production Label package and must not invent unresolved Activation/Warranty identifiers.
+Cube E is **not** the complete future Production Label package and does not invent unresolved Activation/Warranty identifiers.
 
 ### Identity contract
 
@@ -246,8 +250,7 @@ A normal phone-camera scan of the Roll QR reaches only the public Product-inform
 - professional imposition/chunk planning for large Production Orders;
 - bounded Admin print/export path;
 - voided-order protection;
-- automated payload/data/output tests;
-- mandatory real print/cut + barcode/QR scan validation before physical closure.
+- automated payload/data/output tests.
 
 ### Does not own
 
@@ -261,57 +264,80 @@ A normal phone-camera scan of the Roll QR reaches only the public Product-inform
 - generic template engine;
 - shipping/accounting/ERP workflow.
 
-### Print-profile boundary
+### Physical-validation boundary
 
-The following must be learned from the actual printer/cutter/RIP workflow rather than guessed:
+The following remain provisional until the real printer/cutter/RIP workflow is available:
 
+- final physical dimensions;
 - media width;
 - edge margins and inter-label gaps;
 - bleed;
 - cut-contour/spot-color naming;
 - registration marks;
 - RIP-specific PDF requirements;
-- color profile.
+- color profile;
+- final physical barcode/QR scan acceptance.
 
-They are isolated as a small print profile so physical validation can freeze them without redesigning Product/Roll identity.
-
-### Done when
-
-A real generated Roll can produce two deterministic print-ready outer labels; the Product GTIN barcode scans correctly; the contextual Roll QR opens the public Product experience in a normal camera and resolves to the exact Roll in the internal parser; large orders are automatically imposed/chunked without manual label editing; reprints are stable; voided orders are blocked; CI plus real print/scan acceptance and double review pass.
+This deferred gate does not block Cube F software development because F does not depend on printed scan execution.
 
 ---
 
 ## Cube F — Roll Transfer State & Reservation Engine
 
+**Status:** Current design/specification cube. Implementation starts only after `docs/cube-f-roll-transfer-state-reservation-spec.md` is reviewed and merged.
+
 ### Depends on
 
 - **Cube D — Roll Custody Foundation**;
 - Operational Party / Transfer ID foundation;
-- exact active-recipient resolver;
+- exact active-recipient identity boundary;
 - Roll/Production eligibility rules.
 
 ### Important non-dependency
 
 **Cube F does not depend on Cube E.**
 
-The database/service Transfer state machine can be built and tested using canonical Roll IDs. The physical scan label becomes a dependency when the real camera/scan UX is implemented in Cube G.
+The database/service Transfer state machine is built using canonical Roll IDs. The physical scan label becomes a dependency when the real camera/scan UX is implemented in Cube G.
 
 ### Owns
 
-- Transfer header and Roll items;
+- Transfer header and immutable Roll membership items;
+- stable business Transfer number;
 - idempotent creation;
+- Admin-as-Company acting rule without generic impersonation;
 - sender must be confirmed current custodian;
-- active recipient != sender;
-- atomic no-conflicting-reservation rule;
+- exact active recipient != sender;
+- one active reservation per Roll;
 - generated/non-voided Production Order check;
-- reservation while custody remains with sender;
-- immutable Transfer/custody events;
-- rejection/cancellation rules before receipt;
-- race/concurrency protection.
+- active-reservation guard against Production Order void;
+- reservation while confirmed custody remains with sender;
+- immutable Transfer events only;
+- sender cancellation before receipt;
+- recipient rejection before receipt;
+- reservation release on cancellation/rejection;
+- race/concurrency protection;
+- narrow RLS/read privacy contract;
+- no automatic expiry.
+
+### Does not own
+
+- camera/scan sender UI;
+- recipient inbox/receipt;
+- partial receipt;
+- confirmed custody movement;
+- new custody event generation;
+- discrepancy resolution;
+- shipping/accounting/Activation/Warranty workflows.
+
+### Critical custody rule
+
+Cube F does **not** append `roll_custody_events`, because creating/cancelling/rejecting a pending Transfer does not change confirmed custody.
+
+The first later path that actually changes custody is Cube H receipt, which must atomically update `roll_custody_current` and append the next immutable custody event.
 
 ### Done when
 
-The Transfer state machine cannot double-reserve, double-transfer or move confirmed custody before recipient receipt.
+The Transfer state engine cannot double-reserve or move confirmed custody before recipient receipt; cancellation/rejection release reservations safely; Production void cannot race into an active reservation; authorization/privacy/idempotency/concurrency and the 10,000-Roll boundary are permanently regression-tested.
 
 ---
 
@@ -361,15 +387,18 @@ Sender can create a valid pending Transfer through every approved input mode wit
 - partial receipt;
 - custody moves only for confirmed received Rolls;
 - unresolved Roll remains reserved and sender remains confirmed custodian;
-- whole-transfer rejection before any receipt;
-- sender cancellation before any receipt;
+- whole-transfer rejection before any receipt where still valid;
+- sender cancellation before any receipt where still valid;
 - first-release unresolved-item resolution path;
+- atomic `roll_custody_current` update + new immutable `roll_custody_events` sequence for each confirmed received Roll;
 - audit/timeline;
 - mobile failure/connectivity states.
 
 ### Macro gate
 
 Only after **D + E + F + G + H** are closed is **Roll Custody & Transfers** considered Done.
+
+Cube E's deferred physical printer validation remains tracked independently; it does not invalidate the software dependency chain into F/G/H, but physical scan acceptance must be completed before production operation relies on printed labels.
 
 A Transfer implementation without recipient receipt/partial-receipt behavior or without the approved scan path is not complete.
 
@@ -450,25 +479,24 @@ This roadmap deliberately does not pre-build those later cubes.
 # 9. Dependency graph
 
 ```text
-COMPLETED
+COMPLETED SOFTWARE FOUNDATIONS
 Product / Production Rolls ───────────────┐
 Network / Operational Parties ───────┐    │
 Center Foundation A/B/C ────────┐    │    │
 Cube D Custody ──────────────────┼────┘    │
-                                │         │
-CURRENT                          │         │
-E Outer Roll Label + Print Foundation ← Product/Rolls
-                                │
-ROLL TRANSFERS                   │
-D Custody Foundation            │
-  ↓                              │
-F Transfer State/Reservation     │
-                                 │
-              E + F              │
-                ↓                │
+Cube E Outer Roll Label/Print ───┘         │
+                                           │
+CURRENT                                    │
+F Transfer State / Reservation ◄───────────┘
+                │
+                │ + Cube E scan identity
+                ↓
 G Send UX: Transfer ID + Scan/Select/Lot
                 ↓
 H Receipt / Partial Receipt → confirmed custody changes
+
+DEFERRED PHYSICAL GATE
+Cube E real printer/cutter + physical barcode/QR validation
 
 REMAINING PRODUCTION PRINTING
 E print primitives
@@ -484,7 +512,7 @@ Activation sticker + vehicle/card/invoice Warranty QR strategy
 The important dependency is:
 
 - D → F;
-- E is independent of D/F;
+- E is independent of F at state-engine level;
 - E + F → G;
 - G + F → H;
 - E print primitives → I.
@@ -495,20 +523,30 @@ This is the reason the unresolved full label package is not placed in front of c
 
 # 10. Immediate next development step
 
-The immediate code cube is:
+The immediate next software cube is:
 
-**Cube E — Outer Roll Label & Print Foundation**
+**Cube F — Roll Transfer State & Reservation Engine**
 
-Why:
+Its specification is:
 
-- Product, Production, Center Foundation and Cube D are already complete;
-- the outer carton front/back label is now confirmed as a real business output, not a throw-away scan sticker;
-- the Product-level GTIN gap is now explicit and bounded;
-- one contextual Roll QR can support public Product discovery now and authenticated operational scanning later without creating a second Roll identity;
-- the print foundation can be proven now from immutable Product/Production/Lot/Roll data without inventing Activation/Warranty state;
-- Cube F remains independently implementable after E and does not require reopening the print cube.
+`docs/cube-f-roll-transfer-state-reservation-spec.md`
 
-Cube E starts from current `main` on its own clean feature branch and remains separate from Transfer state/reservation.
+Why now:
+
+- Product, Production, Agent/Network, Center A/B/C, Cube D and Cube E software foundations already exist;
+- current custody is authoritative and stable;
+- Operational Party and exact Transfer ID recipient resolution already exist;
+- F can create safe pending reservation state without camera UI or physical printer dependence;
+- F closes the state/concurrency foundation needed before any real sender UX;
+- keeping F separate prevents scan UI and receipt/custody mutation from being mixed into one risky change.
+
+Before F implementation:
+
+1. review/merge the Cube F specification and Product Decisions;
+2. re-fetch latest `main`;
+3. create a fresh implementation branch;
+4. implement only the frozen F boundary;
+5. complete permanent database regression coverage and double review before merge.
 
 ---
 
@@ -518,7 +556,7 @@ Before merge:
 
 ### Review 1 — implementation integrity
 
-Review schema/migrations, invariants, atomicity, RLS/grants, server/RPC path, UI/mobile behavior, failure states, auditability and affected regressions.
+Review schema/migrations, invariants, atomicity, RLS/grants, server/RPC path, UI/mobile behavior where owned, failure states, auditability and affected regressions.
 
 For print cubes, also review physical geometry, machine-readable payload correctness, deterministic reprint, bounded generation and real print/scan acceptance where applicable.
 
