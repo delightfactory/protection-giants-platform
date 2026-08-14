@@ -29,6 +29,7 @@ const adminDesktopItems: NavItem[] = [
   { href: "/operations/centers", label: "المراكز", icon: "centers" },
   { href: "/operations/products", label: "المنتجات", icon: "products" },
   { href: "/operations/production-orders", label: "الإنتاج", icon: "production" },
+  { href: "/operations/rolls", label: "العهدة", icon: "production" },
 ];
 
 const agentItems: NavItem[] = [
@@ -36,17 +37,20 @@ const agentItems: NavItem[] = [
   { href: "/operations/dealers", label: "الموزعون", icon: "dealers" },
   { href: "/operations/centers", label: "المراكز", icon: "centers" },
   { href: "/operations/products", label: "المنتجات", icon: "products" },
+  { href: "/operations/rolls", label: "العهدة", icon: "production" },
 ];
 
 const dealerItems: NavItem[] = [
   { href: "/operations", label: "الرئيسية", icon: "home" },
   { href: "/operations/centers", label: "المراكز", icon: "centers" },
   { href: "/operations/products", label: "المنتجات", icon: "products" },
+  { href: "/operations/rolls", label: "العهدة", icon: "production" },
 ];
 
 const centerItems: NavItem[] = [
   { href: "/operations", label: "الرئيسية", icon: "home" },
   { href: "/operations/products", label: "المنتجات", icon: "products" },
+  { href: "/operations/rolls", label: "العهدة", icon: "production" },
 ];
 
 function itemsForRole(role: OperationalRole, variant: NavVariant) {

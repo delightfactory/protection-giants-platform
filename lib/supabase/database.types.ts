@@ -709,6 +709,84 @@ export type Database = {
           },
         ]
       }
+      roll_custody_current: {
+        Row: {
+          confirmed_at: string
+          created_at: string
+          custodian_party_id: string
+          roll_id: string
+        }
+        Insert: {
+          confirmed_at: string
+          created_at?: string
+          custodian_party_id: string
+          roll_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          created_at?: string
+          custodian_party_id?: string
+          roll_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_custody_current_custodian_party_id_fkey"
+            columns: ["custodian_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_custody_current_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: true
+            referencedRelation: "rolls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roll_custody_events: {
+        Row: {
+          confirmed_at: string
+          custodian_party_id: string
+          custody_sequence: number
+          id: string
+          recorded_at: string
+          roll_id: string
+        }
+        Insert: {
+          confirmed_at: string
+          custodian_party_id: string
+          custody_sequence: number
+          id?: string
+          recorded_at?: string
+          roll_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          custodian_party_id?: string
+          custody_sequence?: number
+          id?: string
+          recorded_at?: string
+          roll_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_custody_events_custodian_party_id_fkey"
+            columns: ["custodian_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_custody_events_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: false
+            referencedRelation: "rolls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rolls: {
         Row: {
           created_at: string
