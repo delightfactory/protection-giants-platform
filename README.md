@@ -9,8 +9,10 @@ The platform is developed incrementally in small, complete, testable building bl
 Start every development/review session with:
 - `docs/canonical-project-context.md` — current project context, decision precedence, superseded wording and implementation status;
 - `docs/product-decisions.md` — approved business decisions;
+- `docs/outer-roll-label-print-foundation-amendment.md` — approved 2026-08-14 normative amendment for the current Cube E label/QR/GTIN/print direction;
+- `docs/cube-e-outer-roll-label-print-foundation-spec.md` — current Cube E implementation specification;
 - `docs/development-governance.md` — mandatory engineering/closure rules;
-- `docs/gap-closure-roadmap.md` — dependency boundaries for the remaining cubes, with current status checked against the canonical context;
+- `docs/gap-closure-roadmap.md` — dependency boundaries for the remaining cubes, with current status checked against the canonical context and later normative amendments;
 - the applicable current spec/amendment for the cube being changed;
 - `CONTRIBUTING.md`.
 

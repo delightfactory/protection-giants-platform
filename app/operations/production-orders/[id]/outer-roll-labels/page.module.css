@@ -1,0 +1,239 @@
+.readiness,
+.selector,
+.previewSection,
+.outputSection {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.readiness > div:first-child,
+.sectionHeading > div {
+  display: grid;
+  gap: 6px;
+}
+
+.readiness h2,
+.sectionHeading h2 {
+  margin: 0;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+}
+
+.readiness p,
+.note {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.readiness dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.readiness dl > div,
+.outputFacts > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.readiness dt,
+.outputFacts span {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.readiness dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sectionHeading > strong,
+.sectionHeading > span {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.selectionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.selectionCard {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.selectionCard > span:first-child {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.selectionCard > strong {
+  font-size: 1rem;
+}
+
+.selectionCard > small {
+  color: var(--text-secondary);
+}
+
+.activeCard {
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--text);
+}
+
+.lotLinks {
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.lotLinks a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+
+.lotLinks small {
+  color: var(--text-secondary);
+}
+
+.activeLot {
+  box-shadow: inset 0 0 0 1px var(--text);
+}
+
+.selectionCard label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.selectionCard input {
+  min-height: 44px;
+  width: 100%;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.previewSection {
+  justify-items: start;
+}
+
+.previewSection .sectionHeading {
+  width: 100%;
+}
+
+.outputFacts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.outputFacts strong {
+  font-size: 1.1rem;
+}
+
+.chunkList {
+  display: grid;
+  gap: 10px;
+}
+
+.chunkCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.chunkCard > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.chunkCard span,
+.chunkCard small {
+  color: var(--text-secondary);
+}
+
+.chunkCard small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+  .selectionGrid,
+  .outputFacts {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHeading,
+  .chunkCard {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .chunkCard :global(.button) {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .readiness,
+  .selector,
+  .previewSection,
+  .outputSection {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .readiness dl {
+    grid-template-columns: 1fr;
+  }
+}

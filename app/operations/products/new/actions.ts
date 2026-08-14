@@ -21,6 +21,7 @@ export async function createProduct(formData: FormData) {
     .from("products")
     .insert({
       code: input.code,
+      gtin: input.gtin,
       name: input.name,
       slug: input.slug,
       product_type: input.productType,

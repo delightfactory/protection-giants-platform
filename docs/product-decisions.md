@@ -179,3 +179,34 @@ A Center must be operationally active and have a valid current geographic locati
 If an approved Center's saved physical location changes, the current Protection Giants network approval resets to unapproved and the event is audited. Admin or the responsible Agent may re-approve the Center after reviewing the new location.
 
 This prevents an approval granted to one physical premises from silently following a Center to a different map location.
+
+### PD-030 — Product GTIN is distinct from SKU and physical Roll identity
+**Status:** Approved — 2026-08-14
+
+A Product/SKU may store one optional official GTIN used to identify the trade item generally and to render its conventional Product barcode. GTIN is not the Product SKU, Roll serial, ERP serial, Transfer ID, Activation code, or Warranty token.
+
+The platform must never invent or allocate a GS1 GTIN. It only stores an officially assigned value. The Product may exist before a GTIN is available, but normal outer Roll-label generation requires a valid GTIN at print preflight.
+
+A GTIN may be assigned once to an already-produced Product when the field was previously empty. After a non-null GTIN is assigned to a Product with generated operational production, normal editing must not change or clear it; a materially different trade item should follow the existing new-Product/new-SKU rule.
+
+### PD-031 — One contextual Roll QR serves public discovery and operational identification
+**Status:** Approved — 2026-08-14
+
+The outer Roll label uses one QR derived deterministically from the existing canonical Roll serial through a stable public resolver URL. No separate random Roll QR identifier is created merely for printing.
+
+A normal phone-camera scan uses that URL only to reach the public Product information experience associated with the Roll and must not expose custody, Transfer history, ERP serial, internal IDs, or operational permissions.
+
+The same QR may be parsed inside later authenticated workflows such as Transfer, Receipt, or Roll Opening to identify the exact physical Roll. Each workflow still applies its own authorization, custody, reservation, and lifecycle rules. Possession of the QR or a photo of it never grants operational authority.
+
+Because this contextual Roll QR already provides the public Product-information path, the V1 outer label does not need a second Marketing QR.
+
+### PD-032 — Cube E owns the real outer Roll label and reusable print foundation
+**Status:** Approved — 2026-08-14
+
+Cube E is no longer a temporary scan-only sticker. It owns the first real outer carton Roll label, printed as two identical front/back copies per Roll, plus the professional deterministic print/imposition foundation needed to generate and reprint it at production scale.
+
+The historical `15 × 10 cm` outer-label size is the first physical validation target, not a frozen final printer specification. Final dimensions, media margins/gaps, bleed, cut contour, registration marks, RIP requirements, and color profile are frozen only after real print/cut and scan validation.
+
+Cube E must avoid report-style PDFs with uncontrolled blank space and must support automatically planned bounded output for Production Orders containing thousands of Rolls without manual repositioning or editing of individual labels.
+
+The remaining Production-owned labels — such as bag/case, inner Roll, and separate ERP labels — remain later Cube I work and must reuse Cube E print primitives rather than create a second print engine. Activation/Warranty labels remain excluded until their own identifier/lifecycle decisions are approved.

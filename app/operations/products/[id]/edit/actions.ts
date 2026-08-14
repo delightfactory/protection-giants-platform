@@ -60,6 +60,7 @@ export async function updateProduct(formData: FormData) {
     .from("products")
     .update({
       code: input.code,
+      gtin: input.gtin,
       name: input.name,
       slug: input.slug,
       product_type: input.productType,
@@ -85,6 +86,9 @@ export async function updateProduct(formData: FormData) {
     .maybeSingle();
 
   if (error?.code === "23505") redirect(`${productEditPath(productId)}?error=duplicate`);
+  if (error?.code === "23514" && error.message.includes("Produced Product GTIN is locked")) {
+    redirect(`${productEditPath(productId)}?error=${encodeURIComponent("تم تثبيت GTIN لهذا المنتج بعد دخوله الإنتاج. لا يمكن تغييره أو حذفه؛ استخدم Product/SKU جديدًا إذا كانت السلعة التجارية مختلفة.")}`);
+  }
   if (error?.code === "23514" && error.message.includes("Production identity/specification is locked")) {
     redirect(`${productEditPath(productId)}?error=${encodeURIComponent("هذا الـSKU دخل إنتاجًا فعليًا، لذلك تم تثبيت الكود والمواصفات الفيزيائية لحماية تتبع اللفات. إذا كانت المواصفة الجديدة مختلفة فأنشئ SKU جديدًا بدل تعديل المنتج الحالي.")}`);
   }

@@ -3,6 +3,7 @@ import { FormGrid, FormSection } from "@/components/ui/form-layout";
 
 type ProductCoreFieldValues = {
   code: string;
+  gtin: string | null;
   name: string;
   slug: string;
   productType: string;
@@ -44,6 +45,22 @@ export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
               pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
               defaultValue={values?.code}
               required
+            />
+          </FormField>
+
+          <FormField label="GTIN / الباركود العالمي" hint="اختياري. أدخل فقط رقم GS1 الرسمي المخصص للمنتج؛ المنصة لا تنشئ GTIN من تلقاء نفسها." optional>
+            <input
+              name="gtin"
+              type="text"
+              inputMode="numeric"
+              minLength={8}
+              maxLength={14}
+              pattern="[0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14}"
+              dir="ltr"
+              spellCheck={false}
+              autoComplete="off"
+              defaultValue={values?.gtin ?? ""}
+              placeholder="4006381333931"
             />
           </FormField>
 

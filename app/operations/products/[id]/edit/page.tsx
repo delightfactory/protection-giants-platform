@@ -21,7 +21,7 @@ type ProductEditPageProps = {
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const errorMessages: Record<string, string> = {
-  duplicate: "يوجد منتج آخر بنفس الـSKU أو رابط المنتج.",
+  duplicate: "يوجد منتج آخر بنفس الـSKU أو رابط المنتج أو GTIN.",
   failed: "تعذر حفظ التعديلات. حاول مرة أخرى.",
 };
 
@@ -44,7 +44,7 @@ export default async function ProductEditPage({ params, searchParams }: ProductE
     supabase
       .from("products")
       .select(
-        "id, code, name, slug, product_type, category, version_name, reference_price, currency_code, width_mm, length_m, thickness_mil, weight_kg, origin_country, default_warranty_months, marketing_description, technical_description, features, warranty_coverage, care_instructions, publication_status",
+        "id, code, gtin, name, slug, product_type, category, version_name, reference_price, currency_code, width_mm, length_m, thickness_mil, weight_kg, origin_country, default_warranty_months, marketing_description, technical_description, features, warranty_coverage, care_instructions, publication_status",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -86,6 +86,7 @@ export default async function ProductEditPage({ params, searchParams }: ProductE
           <ProductCoreFields
             values={{
               code: product.code,
+              gtin: product.gtin,
               name: product.name,
               slug: product.slug,
               productType: product.product_type,

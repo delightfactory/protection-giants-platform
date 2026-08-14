@@ -582,6 +582,7 @@ export type Database = {
           currency_code: string | null
           default_warranty_months: number
           features: string[]
+          gtin: string | null
           id: string
           length_m: number | null
           marketing_description: string | null
@@ -607,6 +608,7 @@ export type Database = {
           currency_code?: string | null
           default_warranty_months: number
           features?: string[]
+          gtin?: string | null
           id?: string
           length_m?: number | null
           marketing_description?: string | null
@@ -632,6 +634,7 @@ export type Database = {
           currency_code?: string | null
           default_warranty_months?: number
           features?: string[]
+          gtin?: string | null
           id?: string
           length_m?: number | null
           marketing_description?: string | null
@@ -920,6 +923,10 @@ export type Database = {
         Args: { p_party_type: string }
         Returns: string
       }
+      resolve_public_roll_product_slug: {
+        Args: { p_serial: string }
+        Returns: string
+      }
       resolve_transfer_recipient: {
         Args: { p_transfer_code: string }
         Returns: {
@@ -1088,4 +1095,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
