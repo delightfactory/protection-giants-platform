@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const {
   OUTER_ROLL_LABEL_HEIGHT_MM,
   OUTER_ROLL_LABEL_WIDTH_MM,
+  OUTER_ROLL_MASTER_PAGE_PROFILE,
   OuterRollPrintLayoutError,
   planOuterRollPrintLayout,
 } = require("../lib/labels/outer-roll-print-layout.ts");
@@ -34,6 +35,12 @@ function expectError(code, callback) {
 
 assert.equal(OUTER_ROLL_LABEL_WIDTH_MM, 150);
 assert.equal(OUTER_ROLL_LABEL_HEIGHT_MM, 100);
+assert.equal(OUTER_ROLL_MASTER_PAGE_PROFILE.mediaWidthMm, OUTER_ROLL_LABEL_WIDTH_MM);
+assert.equal(OUTER_ROLL_MASTER_PAGE_PROFILE.mediaHeightMm, OUTER_ROLL_LABEL_HEIGHT_MM);
+assert.equal(OUTER_ROLL_MASTER_PAGE_PROFILE.marginTopMm, 0);
+assert.equal(OUTER_ROLL_MASTER_PAGE_PROFILE.marginRightMm, 0);
+assert.equal(OUTER_ROLL_MASTER_PAGE_PROFILE.marginBottomMm, 0);
+assert.equal(OUTER_ROLL_MASTER_PAGE_PROFILE.marginLeftMm, 0);
 
 const fourCellProfile = {
   id: "synthetic-ci-2x2",
@@ -69,36 +76,25 @@ assert.deepEqual(
   [[3, 1], [3, 2]],
 );
 
-const singleCellProfile = {
-  id: "synthetic-ci-single",
-  mediaWidthMm: 150,
-  mediaHeightMm: 100,
-  marginTopMm: 0,
-  marginRightMm: 0,
-  marginBottomMm: 0,
-  marginLeftMm: 0,
-  gapXMm: 0,
-  gapYMm: 0,
-};
-const singleLayout = planOuterRollPrintLayout(models, singleCellProfile);
+const singleLayout = planOuterRollPrintLayout(models, OUTER_ROLL_MASTER_PAGE_PROFILE);
 assert.equal(singleLayout.cellsPerPage, 1);
 assert.equal(singleLayout.pageCount, 6);
 assert.deepEqual(
   singleLayout.pages.map((page) => [page.placements[0].model.rollIndex, page.placements[0].copyNumber]),
   [[1, 1], [1, 2], [2, 1], [2, 2], [3, 1], [3, 2]],
-  "Single-label media must preserve copy adjacency across consecutive pages.",
+  "Master pages must preserve copy adjacency across consecutive pages.",
 );
 
 expectError("profile-too-small", () => planOuterRollPrintLayout([model(1)], {
-  ...singleCellProfile,
+  ...OUTER_ROLL_MASTER_PAGE_PROFILE,
   id: "too-small",
   mediaWidthMm: 149,
 }));
 expectError("invalid-profile", () => planOuterRollPrintLayout([model(1)], {
-  ...singleCellProfile,
+  ...OUTER_ROLL_MASTER_PAGE_PROFILE,
   id: "negative-gap",
   gapXMm: -1,
 }));
 expectError("empty-print-selection", () => planOuterRollPrintLayout([], fourCellProfile));
 
-console.log("Outer Roll explicit print-profile and deterministic imposition verification passed.");
+console.log("Outer Roll master-page profile and deterministic imposition verification passed.");
