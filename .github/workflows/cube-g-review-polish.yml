@@ -1,0 +1,62 @@
+name: Cube G Review Polish
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Apply reviewed interaction fixes
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = "components/transfers/transfer-send-flow.tsx";
+          let source = fs.readFileSync(path, "utf8");
+
+          source = source.replace(
+            `  const selectedCount = selectedIds.size;\n\n  const verifyRecipient`,
+            `  const selectedCount = selectedIds.size;\n  const decisionOpen = Boolean(pendingLot || recipientChangePending || clearSelectionPending);\n\n  useEffect(() => {\n    if (!decisionOpen) return;\n\n    const previousBodyOverflow = document.body.style.overflow;\n    document.body.style.overflow = \"hidden\";\n\n    function handleEscape(event: KeyboardEvent) {\n      if (event.key !== \"Escape\") return;\n      setPendingLot(null);\n      setRecipientChangePending(false);\n      setClearSelectionPending(false);\n    }\n\n    window.addEventListener(\"keydown\", handleEscape);\n    return () => {\n      document.body.style.overflow = previousBodyOverflow;\n      window.removeEventListener(\"keydown\", handleEscape);\n    };\n  }, [decisionOpen]);\n\n  const verifyRecipient`,
+          );
+
+          source = source.replace(
+            `      setRecipientInput(normalized);\n      return true;\n    } finally {\n      setRecipientLoading(false);\n    }`,
+            `      setRecipientInput(normalized);\n      return true;\n    } catch {\n      setFeedback({ tone: \"error\", text: \"تعذر الاتصال للتحقق من الجهة. تحقق من الشبكة ثم أعد المحاولة.\" });\n      return false;\n    } finally {\n      setRecipientLoading(false);\n    }`,
+          );
+
+          source = source.replace(
+            `        setStage(\"recipient\");\n        setRecipient(null);\n      }\n    } finally {\n      setSubmitLoading(false);\n    }`,
+            `        setStage(\"recipient\");\n        setRecipient(null);\n      }\n    } catch {\n      setFeedback({\n        tone: \"error\",\n        text: \"انقطع الاتصال قبل تأكيد نتيجة الإرسال. احتفظنا بنفس الطلب والاختيار؛ أعد المحاولة بنفس البيانات للتحقق بأمان.\",\n      });\n    } finally {\n      setSubmitLoading(false);\n    }`,
+          );
+
+          source = source.replaceAll(`>1<span>المستلم</span></span>`, `><span>المستلم</span></span>`);
+          source = source.replaceAll(`>2<span>اللفات</span></span>`, `><span>اللفات</span></span>`);
+          source = source.replaceAll(`>3<span>المراجعة</span></span>`, `><span>المراجعة</span></span>`);
+
+          source = source.replace(
+            `<ModeButton active={mode === \"scan\"} title=\"Scan Rolls\" description=\"لفات أمامك أو تشكيلة مختلطة\" onClick={() => setMode(\"scan\")} />\n              <ModeButton active={mode === \"rolls\"} title=\"Select Rolls\" description=\"اختيار معلوم من العهدة\" onClick={() => setMode(\"rolls\")} />\n              <ModeButton active={mode === \"lots\"} title=\"Select Lot\" description=\"حركة كمية من Lot واحد\" onClick={() => setMode(\"lots\")} />`,
+            `<ModeButton active={mode === \"scan\"} title=\"مسح اللفات\" description=\"QR · لفات أمامك أو تشكيلة مختلطة\" onClick={() => setMode(\"scan\")} />\n              <ModeButton active={mode === \"rolls\"} title=\"اختيار اللفات\" description=\"اختيار معلوم من العهدة الحالية\" onClick={() => setMode(\"rolls\")} />\n              <ModeButton active={mode === \"lots\"} title=\"اختيار Lot\" description=\"حركة كمية من Lot واحد\" onClick={() => setMode(\"lots\")} />`,
+          );
+
+          fs.writeFileSync(path, source);
+          NODE
+
+          if git diff --quiet -- components/transfers/transfer-send-flow.tsx; then
+            echo "Review polish is already current."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add components/transfers/transfer-send-flow.tsx
+            git commit -m "fix: polish Cube G interrupted and modal UX"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
