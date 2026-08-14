@@ -40,6 +40,9 @@ $$;
 revoke all on function private.is_valid_gtin(text)
   from public, anon, authenticated, service_role;
 
+grant execute on function private.is_valid_gtin(text)
+  to authenticated, service_role;
+
 alter table public.products
   add constraint products_gtin_valid
     check (
