@@ -23,6 +23,17 @@ export type BwipVectorGeometry = {
   polygons: readonly BwipVectorPolygon[];
 };
 
+export type OuterRollGtinBarcodeVector = {
+  payload: string;
+  symbology: OuterRollGtinSymbology;
+  geometry: BwipVectorGeometry;
+};
+
+export type OuterRollQrVector = {
+  payload: string;
+  geometry: BwipVectorGeometry;
+};
+
 export class OuterRollMachineCodeError extends Error {
   constructor(message: string) {
     super(message);
@@ -125,7 +136,7 @@ export function buildOuterRollGtinBarcodeGeometry(
   gtin: string,
   targetWidthMm = 80,
   targetHeightMm = 18,
-): { symbology: OuterRollGtinSymbology; geometry: BwipVectorGeometry } {
+): OuterRollGtinBarcodeVector {
   const symbology = selectOuterRollGtinSymbology(gtin);
   const geometry = renderVector({
     bcid: symbology,
@@ -140,10 +151,10 @@ export function buildOuterRollGtinBarcodeGeometry(
     throw new OuterRollMachineCodeError("Product GTIN barcode produced no vector marks.");
   }
 
-  return { symbology, geometry };
+  return { payload: gtin, symbology, geometry };
 }
 
-export function buildOuterRollQrGeometry(qrPayload: string): BwipVectorGeometry {
+export function buildOuterRollQrGeometry(qrPayload: string): OuterRollQrVector {
   let url: URL;
   try {
     url = new URL(qrPayload);
@@ -166,5 +177,5 @@ export function buildOuterRollQrGeometry(qrPayload: string): BwipVectorGeometry 
     throw new OuterRollMachineCodeError("Roll QR produced no vector modules.");
   }
 
-  return geometry;
+  return { payload: qrPayload, geometry };
 }
