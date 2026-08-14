@@ -15,6 +15,18 @@ export type OuterRollPrintProfile = {
   gapYMm: number;
 };
 
+export const OUTER_ROLL_MASTER_PAGE_PROFILE: OuterRollPrintProfile = {
+  id: "outer-roll-label-v1-master-pages",
+  mediaWidthMm: OUTER_ROLL_LABEL_WIDTH_MM,
+  mediaHeightMm: OUTER_ROLL_LABEL_HEIGHT_MM,
+  marginTopMm: 0,
+  marginRightMm: 0,
+  marginBottomMm: 0,
+  marginLeftMm: 0,
+  gapXMm: 0,
+  gapYMm: 0,
+};
+
 export type OuterRollLabelPlacement = {
   model: OuterRollLabelViewModel;
   copyNumber: 1 | 2;
