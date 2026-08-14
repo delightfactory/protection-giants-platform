@@ -69,9 +69,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 
     const layout = planOuterRollPrintLayout(chunk.items, OUTER_ROLL_MASTER_PAGE_PROFILE);
     const pdf = await renderOuterRollPrintPdf(layout);
+    const responseBody = new Uint8Array(pdf).buffer;
     const filename = `PG-OUTER-ROLL-${source.order.orderNumber}-part-${chunkNumber}-of-${plan.chunks.length}.pdf`;
 
-    return new Response(pdf, {
+    return new Response(responseBody, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
