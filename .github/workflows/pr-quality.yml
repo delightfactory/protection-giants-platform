@@ -45,7 +45,7 @@ jobs:
               --skipLibCheck \
               --strict \
               --outDir /tmp/cube-e-renderer-test
-            node /tmp/cube-e-renderer-test/scripts/verify-outer-roll-label-renderer.js
+            NODE_PATH="$PWD/node_modules" node /tmp/cube-e-renderer-test/scripts/verify-outer-roll-label-renderer.js
           } 2>&1 | tee /tmp/cube-e-renderer-contract.log
       - name: Upload outer Roll renderer diagnostics
         if: steps.renderer_contract.outcome == 'failure'
