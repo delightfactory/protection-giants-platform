@@ -377,11 +377,12 @@ Status snapshot 2026-08-14:
 
 - PR #43 merged into `main`;
 - merge commit: `0d1dfa3c84f4cbec5ff17e8a4804c4acbc6200aa`;
-- independent Codex review found no P0/P1, no Domain Model/RLS redesign need, and two P2 closure gaps in permanent regression coverage;
-- Cube D closure requires permanent Database Quality execution of its custody contract, a real pre-migration backfill acceptance test, Dealer/Center isolation coverage, suspended profile/entity coverage, and service-role Data API denial coverage;
-- those items are test/CI closure work only and must not expand Cube D into Transfers or change its domain architecture.
+- independent Codex review found no P0/P1 and no Domain Model/RLS redesign need; it identified two P2 closure gaps in permanent regression coverage;
+- closure patch PR #45 added permanent Database Quality execution of the custody contract, a real pre-migration backfill acceptance test, Agent/Dealer/Center isolation coverage, suspended profile/entity coverage, service-role Data API denial coverage, and explicit duplicate-current/duplicate-sequence constraint checks;
+- PR #45 merged successfully to `main` as `b9872ddfdbcccd2b76a0b228226abc92a5aa5d33` after PR Quality and Database Quality passed on its final head;
+- the closure patch did not change the Cube D schema/RLS architecture and did not add Transfer, receipt, scan, label, Activation or Warranty behavior.
 
-Once those acceptance protections are present on `main` and green, Cube D is considered closed. A later cube must not reopen it merely for convenience; reopen only for a real regression or newly approved business-rule change.
+**Cube D is closed.** A later cube must not reopen it merely for convenience; reopen only for a real regression or newly approved business-rule change.
 
 ---
 
@@ -562,8 +563,8 @@ Status snapshot 2026-08-14:
 - Cube A Center Location: complete/merged;
 - Cube B Center Network Approval: complete/merged;
 - Cube C Public Center Directory & Map: complete/merged;
-- Cube D Roll Custody: implementation merged; independent review found only test/CI closure gaps and no architectural blocker;
-- next implementation must wait until the Cube D closure patch is green and merged.
+- Cube D Roll Custody: complete/closed; independent review found only test/CI closure gaps, and closure PR #45 merged the accepted permanent protections after green CI;
+- the roadmap may proceed from updated `main` without reopening Cube D architecture.
 
 Note: `gap-closure-roadmap.md` still contains an old “immediate next step = Cube A” section because it was authored before A/B/C/D were completed. Use its dependency graph and cube definitions, but do not use that stale status sentence as current progress.
 
