@@ -78,7 +78,7 @@ export function selectOuterRollGtinSymbology(gtin: string): OuterRollGtinSymbolo
 }
 
 type RenderOptions = Parameters<typeof bwipjs.render>[0];
-type DrawingContext = Parameters<typeof bwipjs.render>[1];
+type DrawingContext = Parameters<typeof bwipjs.render<BwipVectorGeometry>>[1];
 
 function renderVector(options: RenderOptions): BwipVectorGeometry {
   let width = 0;
