@@ -1,3 +1,4 @@
+import "./verify-auth-trigger-contract.mjs";
 import { readFile } from "node:fs/promises";
 
 const apiUrl = process.env.API_URL;
