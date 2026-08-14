@@ -26,7 +26,7 @@
 .readiness p,
 .note {
   margin: 0;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   line-height: 1.75;
 }
 
@@ -44,12 +44,12 @@
   min-width: 0;
   padding: 12px;
   border-radius: 14px;
-  background: var(--surface-muted);
+  background: var(--surface-2);
 }
 
 .readiness dt,
 .outputFacts span {
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   font-size: 0.8rem;
 }
 
@@ -68,7 +68,7 @@
 
 .sectionHeading > strong,
 .sectionHeading > span {
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -86,13 +86,13 @@
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: var(--surface-muted);
+  background: var(--surface-2);
   color: inherit;
   text-decoration: none;
 }
 
 .selectionCard > span:first-child {
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -103,12 +103,12 @@
 }
 
 .selectionCard > small {
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
 .activeCard {
-  border-color: var(--foreground);
-  box-shadow: inset 0 0 0 1px var(--foreground);
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--text);
 }
 
 .lotLinks {
@@ -131,11 +131,11 @@
 }
 
 .lotLinks small {
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
 .activeLot {
-  box-shadow: inset 0 0 0 1px var(--foreground);
+  box-shadow: inset 0 0 0 1px var(--text);
 }
 
 .selectionCard label {
@@ -152,7 +152,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
-  color: var(--foreground);
+  color: var(--text);
   font: inherit;
 }
 
@@ -197,7 +197,7 @@
 
 .chunkCard span,
 .chunkCard small {
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
 .chunkCard small {
