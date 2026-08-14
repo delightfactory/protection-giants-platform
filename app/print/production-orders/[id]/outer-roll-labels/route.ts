@@ -3,9 +3,14 @@ import {
   OuterRollLabelPlanError,
   buildOuterRollLabelPlan,
 } from "@/lib/labels/outer-roll-label-plan";
-import { renderOuterRollPrintPdf } from "@/lib/labels/outer-roll-label-pdf";
+import {
+  OuterRollLabelPdfError,
+  renderOuterRollPrintPdf,
+} from "@/lib/labels/outer-roll-label-pdf";
+import { OuterRollMachineCodeError } from "@/lib/labels/outer-roll-machine-codes";
 import {
   OUTER_ROLL_MASTER_PAGE_PROFILE,
+  OuterRollPrintLayoutError,
   planOuterRollPrintLayout,
 } from "@/lib/labels/outer-roll-print-layout";
 import { loadOuterRollLabelSource } from "@/lib/labels/outer-roll-label-source.server";
@@ -90,6 +95,13 @@ export async function GET(request: Request, { params }: RouteContext) {
     }
     if (error instanceof OuterRollLabelPlanError) {
       return textResponse("تم إيقاف إصدار الملصقات لأن بيانات الأمر أو الهوية لا تجتاز Preflight.", 409);
+    }
+    if (
+      error instanceof OuterRollLabelPdfError
+      || error instanceof OuterRollMachineCodeError
+      || error instanceof OuterRollPrintLayoutError
+    ) {
+      return textResponse("تعذر إنشاء ملف الطباعة لأن محتوى الملصق أو هندسته لا يجتاز تحقق الإخراج. راجع بيانات المنتج قبل إعادة المحاولة.", 409);
     }
     if (error instanceof Error && error.message.includes("NEXT_PUBLIC_SITE_URL")) {
       return textResponse("عنوان الموقع العام غير مضبوط، لذلك لا يمكن إنشاء Roll QR.", 503);
