@@ -38,6 +38,7 @@ function fixture(overrides = {}) {
       status: "generated",
       orderNumber: "PG-PO-20260814-00000001",
       productionDate: "2026-08-14",
+      totalRolls: 3,
       productCodeSnapshot: "AI-PRO-75",
       productNameSnapshot: "AI Pro",
       productVersionSnapshot: "7.5 mil",
@@ -46,8 +47,8 @@ function fixture(overrides = {}) {
       thicknessMilSnapshot: 7.5,
     },
     lots: [
-      { id: lot2Id, productionOrderId: orderId, lotNumber: "PG-L-20260814-00000001-02", lotSequence: 2 },
-      { id: lot1Id, productionOrderId: orderId, lotNumber: "PG-L-20260814-00000001-01", lotSequence: 1 },
+      { id: lot2Id, productionOrderId: orderId, lotNumber: "PG-L-20260814-00000001-02", lotSequence: 2, rollCount: 1 },
+      { id: lot1Id, productionOrderId: orderId, lotNumber: "PG-L-20260814-00000001-01", lotSequence: 1, rollCount: 2 },
     ],
     rolls: [
       roll(3, lot2Id, 2, 1),
@@ -115,20 +116,40 @@ expectPlanError("invalid-public-origin", () => buildOuterRollLabelPlan(fixture({
 expectPlanError("invalid-range", () => buildOuterRollLabelPlan(fixture({
   selection: { mode: "roll-range", fromSerial: serial(2, 1), toSerial: serial(1, 1) },
 })));
-expectPlanError("duplicate-roll", () => buildOuterRollLabelPlan(fixture({
-  rolls: [...fixture().rolls, { ...fixture().rolls[0], id: "55555555-5555-4555-8555-555555555555" }],
+expectPlanError("source-incomplete", () => buildOuterRollLabelPlan(fixture({ rolls: fixture().rolls.slice(0, 2) })));
+expectPlanError("source-incomplete", () => buildOuterRollLabelPlan(fixture({
+  lots: [
+    { ...fixture().lots[0], rollCount: 2 },
+    fixture().lots[1],
+  ],
 })));
+expectPlanError("duplicate-roll", () => {
+  const source = fixture();
+  buildOuterRollLabelPlan({
+    ...source,
+    rolls: [source.rolls[0], source.rolls[1], { ...source.rolls[2], id: source.rolls[1].id }],
+  });
+});
 
 const tenThousandRolls = Array.from({ length: 10_000 }, (_, index) => {
   const rollIndex = index + 1;
   return roll(rollIndex, lot1Id, 1, rollIndex);
 }).reverse();
-const largePlan = buildOuterRollLabelPlan(fixture({
-  lots: [{ id: lot1Id, productionOrderId: orderId, lotNumber: "PG-L-20260814-00000001-01", lotSequence: 1 }],
+const largeSource = fixture();
+const largePlan = buildOuterRollLabelPlan({
+  ...largeSource,
+  order: { ...largeSource.order, totalRolls: 10_000 },
+  lots: [{
+    id: lot1Id,
+    productionOrderId: orderId,
+    lotNumber: "PG-L-20260814-00000001-01",
+    lotSequence: 1,
+    rollCount: 10_000,
+  }],
   rolls: tenThousandRolls,
   selection: { mode: "order" },
   rollChunkSize: undefined,
-}));
+});
 
 assert.equal(largePlan.rollChunkSize, OUTER_ROLL_LABEL_DEFAULT_ROLL_CHUNK_SIZE);
 assert.equal(largePlan.rollCount, 10_000);
@@ -145,4 +166,4 @@ for (let index = 1; index <= 10_000; index += 1) {
   assert.equal(plannedSerials[index - 1], serial(1, index), `Missing or reordered Roll at position ${index}.`);
 }
 
-console.log("Outer Roll label view-model, selection and chunk planning verification passed.");
+console.log("Outer Roll label view-model, source completeness, selection and chunk planning verification passed.");
