@@ -36,6 +36,7 @@ name: Database Quality
       - "scripts/verify-transfer-send-read-contracts.mjs"
       - "scripts/verify-transfer-receipt-contracts.mjs"
       - "scripts/verify-transfer-receipt-read-contracts.mjs"
+      - "scripts/verify-transfer-receipt-recovery-reads.mjs"
       - "scripts/verify-transfer-receipt-scale.mjs"
       - ".github/workflows/database-quality.yml"
 
@@ -278,6 +279,11 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-transfer-receipt-read-contracts.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-transfer-receipt-recovery-reads.mjs
             test_status=$?
           fi
 
