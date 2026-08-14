@@ -34,6 +34,9 @@ name: Database Quality
       - "scripts/verify-roll-transfer-races-scale.mjs"
       - "scripts/verify-roll-transfer-lifecycle-coverage.mjs"
       - "scripts/verify-transfer-send-read-contracts.mjs"
+      - "scripts/verify-transfer-receipt-contracts.mjs"
+      - "scripts/verify-transfer-receipt-read-contracts.mjs"
+      - "scripts/verify-transfer-receipt-scale.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -42,7 +45,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -130,7 +133,7 @@ jobs:
           drop function public.__ci_default_function_privilege_probe();
           SQL
 
-      - name: Verify database contracts through Cube G Transfer Send reads
+      - name: Verify database contracts through Cube H Transfer receipt
         id: contract_tests
         continue-on-error: true
         shell: bash
@@ -265,6 +268,21 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-transfer-send-read-contracts.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-transfer-receipt-contracts.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-transfer-receipt-read-contracts.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-transfer-receipt-scale.mjs
             test_status=$?
           fi
           set -e
