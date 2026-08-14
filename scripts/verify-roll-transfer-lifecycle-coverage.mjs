@@ -84,6 +84,7 @@ async function createUser({ email, role, countryAgentId = null, dealerId = null 
   });
   assert(result.response.ok && result.body?.id,
     `Could not create ${role} user: ${result.response.status} ${JSON.stringify(result.body)}`);
+  return result.body;
 }
 
 async function signIn(email) {
@@ -153,7 +154,7 @@ const dealer = one(await rest("dealers?select=id,status,country_agent_id", admin
     country_agent_id: agent.id,
   },
 }), "Create lifecycle Dealer");
-await createUser({ email: dealerEmail, role: "dealer", dealerId: dealer.id });
+const dealerUser = await createUser({ email: dealerEmail, role: "dealer", dealerId: dealer.id });
 const dealerToken = await signIn(dealerEmail);
 
 const companyParty = one(
@@ -318,6 +319,59 @@ const dealerReactivate = await rest(`dealers?id=eq.${dealer.id}&select=id,status
 });
 assert(dealerReactivate.response.ok && dealerReactivate.body?.[0]?.status === "active",
   "Could not reactivate Dealer after rejection race.");
+
+// The Transfer actor Profile is independently locked from the Dealer entity.
+// A concurrent Profile suspension either follows a completed rejection, or the
+// rejection observes the suspended Profile and is denied without releasing the
+// pending reservation. This proves F-14 on both lifecycle layers.
+const profileRaceOrder = await createOrder("CUBE-F-PROFILE-REJECT-RACE");
+const profileRaceRoll = await firstRoll(profileRaceOrder);
+const profileRaceTransfer = await createCompanyTransfer(dealerParty.transfer_code, [profileRaceRoll.id]);
+const [profileRejectRace, profileSuspendRace] = await Promise.all([
+  rpc("reject_roll_transfer", { p_transfer_id: profileRaceTransfer }, dealerToken),
+  request(`/rest/v1/profiles?id=eq.${encodeURIComponent(dealerUser.id)}&select=id,status`, {
+    method: "PATCH",
+    key: serviceRoleKey,
+    token: serviceRoleKey,
+    prefer: true,
+    body: { status: "suspended" },
+  }),
+]);
+assert(profileSuspendRace.response.ok && profileSuspendRace.body?.[0]?.status === "suspended",
+  `Profile suspension race failed: ${JSON.stringify(profileSuspendRace.body)}`);
+if (profileRejectRace.response.ok) {
+  assert(reservationCount(profileRaceRoll.id) === 0,
+    "Successful pre-suspension rejection did not release reservation.");
+} else {
+  assert(profileRejectRace.body?.message === "PG_TRANSFER_ACTOR_INACTIVE",
+    `Profile race failed for unexpected reason: ${JSON.stringify(profileRejectRace.body)}`);
+  assert(reservationCount(profileRaceRoll.id) === 1,
+    "Rejected post-suspension action silently released reservation.");
+  await expectRpcError("admin_cancel_pending_roll_transfer", {
+    p_transfer_id: profileRaceTransfer,
+    p_reason: "Profile-only suspension is not party recovery",
+  }, adminToken, "PG_TRANSFER_ADMIN_RECOVERY_NOT_ALLOWED");
+}
+
+const profileReactivate = await request(
+  `/rest/v1/profiles?id=eq.${encodeURIComponent(dealerUser.id)}&select=id,status`,
+  {
+    method: "PATCH",
+    key: serviceRoleKey,
+    token: serviceRoleKey,
+    prefer: true,
+    body: { status: "active" },
+  },
+);
+assert(profileReactivate.response.ok && profileReactivate.body?.[0]?.status === "active",
+  `Could not reactivate Dealer Profile: ${JSON.stringify(profileReactivate.body)}`);
+if (!profileRejectRace.response.ok) {
+  const profileCleanup = await rpc("reject_roll_transfer", { p_transfer_id: profileRaceTransfer }, dealerToken);
+  assert(profileCleanup.response.ok,
+    `Could not resolve Profile-race Transfer after reactivation: ${JSON.stringify(profileCleanup.body)}`);
+  assert(reservationCount(profileRaceRoll.id) === 0,
+    "Profile-race cleanup did not release reservation.");
+}
 
 // Admin recovery and party reactivation also serialize on the same lifecycle
 // row. Recovery can commit only while the Dealer is still suspended; if
