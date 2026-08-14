@@ -24,6 +24,7 @@ export async function GET(request: Request, { params }: PublicRollResolverContex
   const serial = normalizeRollSerial(rawSerial);
   if (!serial) return notFoundResponse();
 
+  // Deliberately use the narrow public RPC; direct Roll-table Data API reads stay denied.
   const supabase = await createSupabaseServerClient();
   const { data: productSlug, error } = await supabase.rpc(
     "resolve_public_roll_product_slug",
