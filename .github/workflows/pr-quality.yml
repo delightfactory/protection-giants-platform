@@ -39,8 +39,8 @@ jobs:
             rm -rf /tmp/cube-e-renderer-test
             npx tsc scripts/verify-outer-roll-label-renderer.ts \
               --target ES2022 \
-              --module commonjs \
-              --moduleResolution node \
+              --module NodeNext \
+              --moduleResolution NodeNext \
               --esModuleInterop \
               --skipLibCheck \
               --strict \
