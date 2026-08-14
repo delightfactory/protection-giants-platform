@@ -23,39 +23,20 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           path = Path('.github/workflows/database-quality.yml')
           text = path.read_text()
-
           path_anchor = '      - "scripts/verify-roll-transfer-races-scale.mjs"\n'
           path_insert = path_anchor + '      - "scripts/verify-roll-transfer-lifecycle-coverage.mjs"\n'
           if 'verify-roll-transfer-lifecycle-coverage.mjs"' not in text:
               if path_anchor not in text:
                   raise SystemExit('Cube F path anchor not found')
               text = text.replace(path_anchor, path_insert, 1)
-
-          run_anchor = '''          if [ "$test_status" -eq 0 ]; then
-            node scripts/verify-roll-transfer-races-scale.mjs
-            test_status=$?
-          fi
-          set -e
-'''
-          run_insert = '''          if [ "$test_status" -eq 0 ]; then
-            node scripts/verify-roll-transfer-races-scale.mjs
-            test_status=$?
-          fi
-
-          if [ "$test_status" -eq 0 ]; then
-            node scripts/verify-roll-transfer-lifecycle-coverage.mjs
-            test_status=$?
-          fi
-          set -e
-'''
+          run_anchor = '          if [ "$test_status" -eq 0 ]; then\n            node scripts/verify-roll-transfer-races-scale.mjs\n            test_status=$?\n          fi\n          set -e\n'
+          run_insert = '          if [ "$test_status" -eq 0 ]; then\n            node scripts/verify-roll-transfer-races-scale.mjs\n            test_status=$?\n          fi\n\n          if [ "$test_status" -eq 0 ]; then\n            node scripts/verify-roll-transfer-lifecycle-coverage.mjs\n            test_status=$?\n          fi\n          set -e\n'
           if 'node scripts/verify-roll-transfer-lifecycle-coverage.mjs' not in text:
               if run_anchor not in text:
                   raise SystemExit('Cube F execution anchor not found')
               text = text.replace(run_anchor, run_insert, 1)
-
           path.write_text(text)
           PY
 
