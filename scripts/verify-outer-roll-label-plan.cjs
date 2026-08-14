@@ -112,6 +112,9 @@ expectPlanError("order-not-generated", () => buildOuterRollLabelPlan(fixture({
   order: { ...fixture().order, status: "voided" },
 })));
 expectPlanError("missing-gtin", () => buildOuterRollLabelPlan(fixture({ product: { id: productId, gtin: null } })));
+expectPlanError("invalid-gtin", () => buildOuterRollLabelPlan(fixture({
+  product: { id: productId, gtin: "4006381333932" },
+})));
 expectPlanError("invalid-public-origin", () => buildOuterRollLabelPlan(fixture({ publicSiteOrigin: "http://platform.example" })));
 expectPlanError("invalid-range", () => buildOuterRollLabelPlan(fixture({
   selection: { mode: "roll-range", fromSerial: serial(2, 1), toSerial: serial(1, 1) },
@@ -166,4 +169,4 @@ for (let index = 1; index <= 10_000; index += 1) {
   assert.equal(plannedSerials[index - 1], serial(1, index), `Missing or reordered Roll at position ${index}.`);
 }
 
-console.log("Outer Roll label view-model, source completeness, selection and chunk planning verification passed.");
+console.log("Outer Roll label view-model, GTIN preflight, source completeness, selection and chunk planning verification passed.");
