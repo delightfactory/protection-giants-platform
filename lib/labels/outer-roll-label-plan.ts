@@ -137,10 +137,27 @@ function normalizePublicOrigin(value: string): string {
   }
 }
 
+function isValidCanonicalGtin(gtin: string): boolean {
+  if (!/^\d+$/.test(gtin) || !supportedGtinLengths.has(gtin.length)) return false;
+
+  const digits = Array.from(gtin, Number);
+  const checkDigit = digits.pop();
+  if (checkDigit === undefined) return false;
+
+  let sum = 0;
+  let weight = 3;
+  for (let index = digits.length - 1; index >= 0; index -= 1) {
+    sum += digits[index] * weight;
+    weight = weight === 3 ? 1 : 3;
+  }
+
+  return ((10 - (sum % 10)) % 10) === checkDigit;
+}
+
 function assertGtin(gtin: string | null): string {
   if (!gtin) return fail("missing-gtin", "Product GTIN is required before outer Roll labels can be planned.");
-  if (!/^\d+$/.test(gtin) || !supportedGtinLengths.has(gtin.length)) {
-    return fail("invalid-gtin", "Product GTIN must be a canonical 8, 12, 13 or 14 digit value.");
+  if (!isValidCanonicalGtin(gtin)) {
+    return fail("invalid-gtin", "Product GTIN must be a valid 8, 12, 13 or 14 digit GTIN with a correct check digit.");
   }
   return gtin;
 }
