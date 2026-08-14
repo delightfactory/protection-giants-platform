@@ -269,7 +269,7 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
 
     const { data, error } = await supabase.rpc("list_transfer_send_rolls", {
       p_search: serial,
-      p_lot_id: null,
+      p_lot_id: undefined,
       p_limit: 5,
       p_offset: 0,
     });
@@ -309,8 +309,8 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
     setRollLoading(true);
     try {
       const { data, error } = await supabase.rpc("list_transfer_send_rolls", {
-        p_search: search.trim() || null,
-        p_lot_id: null,
+        p_search: search.trim() || undefined,
+        p_lot_id: undefined,
         p_limit: PAGE_SIZE + 1,
         p_offset: page * PAGE_SIZE,
       });
@@ -331,7 +331,7 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
     setLotLoading(true);
     try {
       const { data, error } = await supabase.rpc("list_transfer_send_lots", {
-        p_search: search.trim() || null,
+        p_search: search.trim() || undefined,
         p_limit: PAGE_SIZE + 1,
         p_offset: page * PAGE_SIZE,
       });
