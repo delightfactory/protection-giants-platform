@@ -25,6 +25,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Verify contextual Roll QR contract
         run: node --experimental-strip-types scripts/verify-roll-qr-contract.mjs
+      - name: Verify outer Roll label planning contract
+        run: node --experimental-strip-types scripts/verify-outer-roll-label-plan.cjs
       - name: Type check
         run: npm run typecheck
       - name: Build
