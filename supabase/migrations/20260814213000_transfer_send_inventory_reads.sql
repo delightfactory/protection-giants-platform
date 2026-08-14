@@ -59,17 +59,17 @@ begin
     po.product_code_snapshot,
     po.product_name_snapshot,
     case when reservation.roll_id is null then 'available' else 'reserved' end::text
-  from public.rolls r
+  from public.roll_custody_current custody
+  join public.rolls r
+    on r.id = custody.roll_id
   join public.production_orders po
     on po.id = r.production_order_id
   join public.production_lots pl
     on pl.id = r.production_lot_id
-  join public.roll_custody_current custody
-    on custody.roll_id = r.id
   left join public.roll_transfer_reservations reservation
     on reservation.roll_id = r.id
-  where po.status = 'generated'
-    and custody.custodian_party_id = v_sender_party_id
+  where custody.custodian_party_id = v_sender_party_id
+    and po.status = 'generated'
     and (p_lot_id is null or pl.id = p_lot_id)
     and (
       v_search is null
@@ -139,7 +139,23 @@ begin
   end if;
 
   return query
-  with lot_counts as (
+  with sender_lots as materialized (
+    select distinct r.production_lot_id as lot_id
+    from public.roll_custody_current custody
+    join public.rolls r
+      on r.id = custody.roll_id
+    join public.production_orders po
+      on po.id = r.production_order_id
+    join public.production_lots pl
+      on pl.id = r.production_lot_id
+    where custody.custodian_party_id = v_sender_party_id
+      and po.status = 'generated'
+      and (
+        v_search is null
+        or pl.lot_number like v_search || '%'
+        or upper(po.product_code_snapshot) like v_search || '%'
+      )
+  ), lot_counts as (
     select
       pl.id as lot_id,
       pl.lot_number,
@@ -153,7 +169,9 @@ begin
         where custody.custodian_party_id = v_sender_party_id
           and reservation.roll_id is not null
       )::integer as reserved_count
-    from public.production_lots pl
+    from sender_lots sender_lot
+    join public.production_lots pl
+      on pl.id = sender_lot.lot_id
     join public.production_orders po
       on po.id = pl.production_order_id
     join public.rolls r
@@ -162,12 +180,6 @@ begin
       on custody.roll_id = r.id
     left join public.roll_transfer_reservations reservation
       on reservation.roll_id = r.id
-    where po.status = 'generated'
-      and (
-        v_search is null
-        or pl.lot_number like v_search || '%'
-        or upper(po.product_code_snapshot) like v_search || '%'
-      )
     group by pl.id, pl.lot_number, po.product_code_snapshot, po.product_name_snapshot
   )
   select
@@ -181,7 +193,6 @@ begin
     counts.reserved_count,
     (counts.total_count - counts.held_count)::integer
   from lot_counts counts
-  where counts.held_count > 0
   order by counts.lot_number desc, counts.lot_id
   limit p_limit
   offset p_offset;
