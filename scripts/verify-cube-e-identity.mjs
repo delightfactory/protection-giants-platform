@@ -37,8 +37,6 @@ async function createAdmin() {
         pg_provisioning: {
           version: "operational-v1",
           role: "admin",
-          dealer_id: null,
-          installation_center_id: null,
         },
       },
       user_metadata: { display_name: "مسؤول اختبار Cube E" },
