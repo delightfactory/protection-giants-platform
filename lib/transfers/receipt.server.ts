@@ -10,13 +10,26 @@ import type {
 type RpcResult = { data: unknown; error: { message?: string } | null };
 type RpcInvoker = (name: string, args?: Record<string, unknown>) => Promise<RpcResult>;
 
-async function rpc(name: string, args: Record<string, unknown>): Promise<RpcResult> {
+async function rpc(name: string, args: Record<string, unknown> = {}): Promise<RpcResult> {
   const supabase = await createSupabaseServerClient();
   return (supabase.rpc as unknown as RpcInvoker)(name, args);
 }
 
 function rows<T>(data: unknown): T[] {
   return Array.isArray(data) ? data as T[] : [];
+}
+
+export async function getTransferAttentionCounts(): Promise<{
+  incomingActionCount: number;
+  outgoingActionCount: number;
+}> {
+  const { data, error } = await rpc("get_roll_transfer_attention_counts");
+  if (error) throw new Error(error.message ?? "PG_TRANSFER_ATTENTION_COUNT_FAILED");
+  const row = rows<{ incoming_action_count: number; outgoing_action_count: number }>(data)[0];
+  return {
+    incomingActionCount: Number(row?.incoming_action_count ?? 0),
+    outgoingActionCount: Number(row?.outgoing_action_count ?? 0),
+  };
 }
 
 export async function listTransfers(input: {
