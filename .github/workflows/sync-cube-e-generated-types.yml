@@ -27,13 +27,11 @@ jobs:
           version: 2.105.0
           github-token: ${{ github.token }}
 
-      - name: Start local Supabase
+      - name: Start local Supabase from migrations
         run: supabase start
 
-      - name: Rebuild schema and generate canonical public types
-        run: |
-          supabase db reset --local --no-seed
-          supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
+      - name: Generate canonical public types
+        run: supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
 
       - name: Commit generated types if changed
         run: |
