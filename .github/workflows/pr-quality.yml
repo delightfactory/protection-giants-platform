@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -14,8 +14,10 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - name: Checkout
+      - name: Checkout PR head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -23,13 +25,18 @@ jobs:
           cache: npm
       - name: Refresh dependency lock
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Upload refreshed dependency lock
-        uses: actions/upload-artifact@v4
-        with:
-          name: cube-g-package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 3
+      - name: Commit refreshed dependency lock
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "Dependency lock is already current."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore: synchronize Cube G dependency lock"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
       - name: Verify contextual Roll QR contract
@@ -76,4 +83,4 @@ jobs:
       - name: Build
         run: npm run build
       - name: Verify build does not rewrite tracked configuration
-        run: git diff --exit-code -- tsconfig.json next-env.d.ts
+        run: git diff --exit-code -- package-lock.json tsconfig.json next-env.d.ts
