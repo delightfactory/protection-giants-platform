@@ -145,7 +145,6 @@ const dealer = one(await rest("dealers?select=id,status,country_agent_id", admin
   },
 }), "Create race Dealer");
 await createUser({ email: dealerEmail, role: "dealer", dealerId: dealer.id });
-const dealerToken = await signIn(dealerEmail);
 
 const companyParty = one(await rest("operational_parties?party_type=eq.company&select=id,transfer_code", adminToken), "Read Company Party");
 const agentParty = one(await rest(`operational_parties?country_agent_id=eq.${agent.id}&select=id,transfer_code`, adminToken), "Read Agent Party");
@@ -197,6 +196,16 @@ async function orderRolls(orderId) {
   );
   assert(result.response.ok, `Could not read order Rolls: ${JSON.stringify(result.body)}`);
   return result.body;
+}
+
+function orderRollIdsSql(orderId) {
+  const output = querySql(`
+select id::text
+from public.rolls
+where production_order_id = ${sqlUuid(orderId)}
+order by serial_number;
+`);
+  return output ? output.split("\n").filter(Boolean) : [];
 }
 
 function assignAgentCustody(rollId) {
@@ -349,12 +358,12 @@ const reactivateAgent = await rest(`country_agents?id=eq.${agent.id}&select=id,s
 assert(reactivateAgent.response.ok && reactivateAgent.body?.[0]?.status === "active", "Could not restore Agent after lifecycle tests.");
 
 // Approved scale boundary: one set-based Transfer may contain 10,000 Rolls.
-// 10,001 is rejected before mutation, and an order-insensitive retry must map
-// back to the one immutable Transfer without duplicating membership/history.
+// Fixture IDs are read directly from local Postgres so the verification itself
+// is not capped by PostgREST max-row configuration. The Transfer RPC remains a
+// real Data API call with the full 10,000-Roll payload.
 const scaleOrderId = await createOrder(10000, "CUBE-F-SCALE-10000");
-const scaleRolls = await orderRolls(scaleOrderId);
-assert(scaleRolls.length === 10000, `Scale fixture expected 10,000 Rolls, got ${scaleRolls.length}.`);
-const scaleRollIds = scaleRolls.map((roll) => roll.id);
+const scaleRollIds = orderRollIdsSql(scaleOrderId);
+assert(scaleRollIds.length === 10000, `Scale fixture expected 10,000 Rolls, got ${scaleRollIds.length}.`);
 
 const tooLarge = await rpc("create_roll_transfer", {
   p_request_id: randomUUID(),
@@ -400,7 +409,12 @@ const scaleCancel = await rpc("cancel_roll_transfer", { p_transfer_id: scaleTran
 assert(scaleCancel.response.ok, `Could not cancel 10,000 Roll Transfer: ${JSON.stringify(scaleCancel.body)}`);
 assert(Number(querySql(`select count(*) from public.roll_transfer_reservations where transfer_id = ${sqlUuid(scaleTransferId)};`)) === 0,
   "10,000 Roll cancellation did not release every reservation.");
-assert(Number(querySql(`select count(*) from public.roll_custody_current rc where rc.roll_id = any(array[${scaleRollIds.map(sqlUuid).join(",")}]) and rc.custodian_party_id = ${sqlUuid(companyParty.id)};`)) === 10000,
-  "10,000 Roll Transfer path changed confirmed custody.");
+assert(Number(querySql(`
+select count(*)
+from public.roll_custody_current rc
+join public.rolls r on r.id = rc.roll_id
+where r.production_order_id = ${sqlUuid(scaleOrderId)}
+  and rc.custodian_party_id = ${sqlUuid(companyParty.id)};
+`)) === 10000, "10,000 Roll Transfer path changed confirmed custody.");
 
 console.log("Cube F Roll Transfer concurrency and 10,000-Roll scale verification passed.");
