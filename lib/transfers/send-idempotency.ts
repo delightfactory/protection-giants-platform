@@ -1,5 +1,3 @@
-import { normalizeTransferId } from "./transfer-id";
-
 export const transferSendSessionKey = "pg.transfer-send.pending.v1";
 
 type PendingTransferSend = {
@@ -8,8 +6,8 @@ type PendingTransferSend = {
 };
 
 export async function buildTransferSendFingerprint(recipientTransferId: string, rollIds: Iterable<string>): Promise<string> {
-  const recipient = normalizeTransferId(recipientTransferId);
-  if (!recipient) throw new Error("A valid recipient Transfer ID is required.");
+  const recipient = recipientTransferId.trim().toUpperCase();
+  if (!recipient) throw new Error("A recipient Transfer ID is required for request fingerprinting.");
 
   const sortedRollIds = [...new Set(rollIds)].sort();
   const source = `${recipient}|${sortedRollIds.join(",")}`;
