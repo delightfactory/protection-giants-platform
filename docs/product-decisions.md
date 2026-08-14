@@ -214,9 +214,9 @@ The remaining Production-owned labels — such as bag/case, inner Roll, and sepa
 ### PD-033 — Protection Giants Admin acts only as the Company party in Transfer mutations
 **Status:** Approved — 2026-08-14
 
-For Roll Transfer actions, an active Protection Giants Admin represents the singleton Company Operational Party. This allows Company-held production Rolls to be sent and allows returns to the Company without adding a separate Company-user role.
+For ordinary Roll Transfer party actions, an active Protection Giants Admin represents the singleton Company Operational Party. This allows Company-held production Rolls to be sent and allows returns to the Company without adding a separate Company-user role.
 
-This is intentionally narrow: Admin does not receive a general ability to impersonate an Agent, Dealer, or Center as the acting sender/recipient party. Ordinary operational parties act only through users bound to their own active entity.
+This is intentionally narrow: Admin does not receive a general ability to impersonate an Agent, Dealer, or Center as the acting sender/recipient party. Ordinary operational parties act only through users bound to their own active entity. A separately defined administrative recovery action may resolve a stuck pending reservation without acting as either business party; that exception is governed by PD-036.
 
 ### PD-034 — Active Transfer reservation blocks Production Order void
 **Status:** Approved — 2026-08-14
@@ -233,3 +233,12 @@ When confirmed receipt/custody movement is implemented later, the Production-voi
 The first release does not automatically expire pending Roll Transfers or release reservations on a timer. Cancellation, rejection, receipt, or later explicit resolution changes the Transfer state.
 
 Automatic timeout/cron expiry is deferred until a real operational requirement demonstrates that it is needed.
+
+### PD-036 — Suspended-party pending Transfers have a narrow audited Admin recovery path
+**Status:** Approved — 2026-08-14
+
+Suspending an operational party does not automatically cancel its pending Transfers or silently release Roll reservations. Physical movement intent must remain explicit and auditable.
+
+To avoid an unrecoverable reservation when an involved business party becomes operationally inactive, an active Protection Giants Admin may perform a dedicated administrative recovery cancellation of a still-pending Transfer only when the defined suspended-party recovery condition is present. The action requires an audit reason, releases the pending reservation, and does not change confirmed custody.
+
+This recovery action is not sender/recipient impersonation and must not become a general Admin ability to send, reject, receive, or otherwise act as an arbitrary Agent, Dealer, or Center.
