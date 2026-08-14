@@ -5,6 +5,10 @@
 alter table public.products
   add column gtin text;
 
+grant update (gtin)
+on table public.products
+to authenticated;
+
 create function private.is_valid_gtin(p_value text)
 returns boolean
 language plpgsql
