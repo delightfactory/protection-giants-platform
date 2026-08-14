@@ -52,12 +52,20 @@ export type TransferActionResult =
   | { ok: true; transferId: string }
   | { ok: false; code: string };
 
-function validateIds(transferId: string, rollIds?: string[]): string | null {
+type RollValidationMode = "receipt" | "resolution";
+
+function validateIds(
+  transferId: string,
+  rollIds?: string[],
+  mode: RollValidationMode = "receipt",
+): string | null {
   if (!uuidPattern.test(transferId ?? "")) return "PG_TRANSFER_NOT_FOUND";
   if (!rollIds) return null;
-  if (rollIds.length < 1 || rollIds.length > 10000) return "PG_TRANSFER_RECEIPT_ROLL_COUNT_INVALID";
-  if (rollIds.some((rollId) => !uuidPattern.test(rollId))) return "PG_TRANSFER_RECEIPT_ROLL_NOT_IN_TRANSFER";
-  if (new Set(rollIds).size !== rollIds.length) return "PG_TRANSFER_RECEIPT_ROLL_ID_DUPLICATE";
+
+  const prefix = mode === "receipt" ? "PG_TRANSFER_RECEIPT" : "PG_TRANSFER_RESOLUTION";
+  if (rollIds.length < 1 || rollIds.length > 10000) return `${prefix}_ROLL_COUNT_INVALID`;
+  if (rollIds.some((rollId) => !uuidPattern.test(rollId))) return `${prefix}_ROLL_NOT_IN_TRANSFER`;
+  if (new Set(rollIds).size !== rollIds.length) return `${prefix}_ROLL_ID_DUPLICATE`;
   return null;
 }
 
@@ -74,9 +82,6 @@ function revalidateTransfer(transferId: string): void {
 
 async function invoke(name: string, args: Record<string, unknown>): Promise<RpcResult> {
   const supabase = await createSupabaseServerClient();
-  // The generated schema type is updated by Database Quality after the new
-  // migrations are accepted. Runtime RPC names/arguments are still validated
-  // by PostgREST and the database contract tests before this action is ready.
   return (supabase.rpc as unknown as RpcInvoker)(name, args);
 }
 
@@ -85,8 +90,8 @@ export async function receiveTransferItems(input: {
   transferId: string;
   rollIds: string[];
 }): Promise<TransferActionResult> {
-  const rollIds = Array.isArray(input.rollIds) ? [...new Set(input.rollIds)] : [];
-  const idError = validateIds(input.transferId, rollIds);
+  const rollIds = Array.isArray(input.rollIds) ? input.rollIds : [];
+  const idError = validateIds(input.transferId, rollIds, "receipt");
   if (idError) return { ok: false, code: idError };
   if (!uuidPattern.test(input.requestId ?? "")) return { ok: false, code: "PG_TRANSFER_RECEIPT_REQUEST_ID_REQUIRED" };
 
@@ -129,9 +134,9 @@ async function releaseItems(input: {
   reason: string;
   admin: boolean;
 }): Promise<TransferActionResult> {
-  const rollIds = Array.isArray(input.rollIds) ? [...new Set(input.rollIds)] : [];
-  const idError = validateIds(input.transferId, rollIds);
-  if (idError) return { ok: false, code: idError.replace("RECEIPT", "RESOLUTION") };
+  const rollIds = Array.isArray(input.rollIds) ? input.rollIds : [];
+  const idError = validateIds(input.transferId, rollIds, "resolution");
+  if (idError) return { ok: false, code: idError };
   if (!uuidPattern.test(input.requestId ?? "")) return { ok: false, code: "PG_TRANSFER_RESOLUTION_REQUEST_ID_REQUIRED" };
   const reason = (input.reason ?? "").trim();
   if (reason.length < 5 || reason.length > 500) return { ok: false, code: "PG_TRANSFER_RESOLUTION_REASON_INVALID" };
