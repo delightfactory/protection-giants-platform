@@ -85,7 +85,7 @@ This is a database-enforced invariant, not an application/UI convention.
 Recipient:
 
 - is resolved by exact stable Transfer ID;
-- must currently be operationally active when the Transfer is created;
+- must currently be operationally active when a new Transfer is created;
 - may be Company, Agent, Dealer or Center;
 - must not equal sender.
 
@@ -146,11 +146,22 @@ However, because pending Transfers do not auto-expire, the platform also must no
 
 Cube F therefore includes one narrow audited Admin recovery action described in section 11. It is not party impersonation and never moves custody.
 
+### F-14 — lifecycle authorization is transactionally revalidated
+
+A state-changing RPC must not rely only on an earlier application-layer `requireOperationalProfile()` check.
+
+The database mutation must lock/revalidate the caller Profile and, for Agent/Dealer/Center actors, the bound operational entity before committing the action. This serializes the Transfer action against concurrent profile/entity suspension/reactivation.
+
+Result:
+
+- if the Transfer mutation establishes its lifecycle lock first, it completes while the actor is still active and the later suspension waits;
+- if suspension establishes its update lock first, the Transfer mutation later observes the inactive state and fails.
+
+No Transfer mutation may commit from a stale active-state read.
+
 ---
 
 ## 4. Acting-party rule
-
-Cube F needs one explicit rule that did not previously exist because Cube D was read-only.
 
 ### 4.1 Ordinary operational users
 
@@ -175,6 +186,14 @@ Admin acting as Company is **not** a generic impersonation mechanism.
 Cube F must not allow Admin to choose an arbitrary Agent, Dealer or Center as sender/recipient actor on behalf of that party.
 
 The separate administrative recovery action in section 11 is an audited support action, not an acting-party substitution.
+
+### 4.4 Mutation lifecycle lock
+
+Every ordinary Transfer mutation must obtain an appropriate row lock on the caller's Profile and, where applicable, the bound Agent/Dealer/Center row before final authorization.
+
+Admin ordinary Transfer actions lock/revalidate the Admin Profile; the singleton Company has no invented lifecycle-status row.
+
+The implementation may encapsulate this in a narrow private helper, but the helper must return only the caller's own acting party and must not become a party-browsing or impersonation API.
 
 ---
 
@@ -362,13 +381,21 @@ Cube G may still use smaller UX batches where appropriate.
 
 ### 7.2 Idempotency
 
-Use the proven project pattern:
+Use a caller-supplied UUID request key and transaction-scoped advisory lock for that key.
 
-- caller supplies one UUID request key;
-- acquire transaction-scoped advisory lock for that request key;
-- `roll_transfers.request_id` is unique;
-- if the same authenticated profile safely retries the same request ID, return the existing Transfer ID;
-- if another profile attempts to reuse that request ID, reject.
+`roll_transfers.request_id` is globally unique.
+
+A retry may return the already-created Transfer only when all are true:
+
+- same authenticated Profile owns the existing request;
+- normalized recipient Transfer ID resolves to the same immutable recipient party used by the original Transfer;
+- supplied Roll set exactly matches the original immutable Transfer membership, order-insensitively.
+
+If the request ID exists but recipient or Roll membership differs, reject it as an idempotency-key reuse conflict.
+
+This prevents an old/stale browser request key from silently returning an unrelated Transfer.
+
+For a matching retry of an already-created Transfer, current recipient/custody/reservation state is not reinterpreted as a new creation attempt; the RPC returns the existing Transfer identity after the payload-equivalence check.
 
 Idempotency protects retry/double-submit.
 
@@ -378,24 +405,27 @@ It does **not** replace per-Roll reservation concurrency protection.
 
 Inside one database transaction/RPC:
 
-1. authenticate and validate the active Profile;
-2. derive acting sender party using the rule in section 4;
-3. resolve and lock the exact recipient entity/party and verify current active state;
-4. reject recipient = sender;
-5. validate all Roll IDs exist and are unique;
-6. identify all affected Production Orders;
-7. lock affected Production Order rows in deterministic order and verify each remains `generated`;
-8. lock selected `roll_custody_current` rows in deterministic Roll-ID order;
-9. verify every selected Roll is currently held by sender;
-10. verify no selected Roll already has an active reservation;
-11. allocate Transfer number;
-12. insert Transfer header;
-13. insert immutable Transfer items;
-14. insert one reservation row per item;
-15. append `created` Transfer event as sequence 1;
-16. commit.
+1. validate basic input shape and normalize recipient Transfer ID;
+2. authenticate caller;
+3. lock/revalidate caller Profile and bound operational entity, then derive acting sender party;
+4. acquire the request-id advisory transaction lock;
+5. if `request_id` already exists, enforce the exact actor + recipient + Roll-set equivalence contract from section 7.2 and return/reject without creating new state;
+6. resolve the exact recipient party, lock/revalidate its current entity lifecycle state, and require active recipient;
+7. reject recipient = sender;
+8. validate all Roll IDs exist and are unique;
+9. identify all affected Production Orders;
+10. lock affected Production Order rows in deterministic order and verify each remains `generated`;
+11. lock selected `roll_custody_current` rows in deterministic Roll-ID order;
+12. verify every selected Roll is currently held by sender;
+13. verify no selected Roll already has an active reservation;
+14. allocate Transfer number;
+15. insert Transfer header;
+16. insert immutable Transfer items;
+17. insert one reservation row per item;
+18. append `created` Transfer event as sequence 1;
+19. commit.
 
-Any failure rolls back the entire Transfer.
+Any failure rolls back the entire new Transfer.
 
 There is no partially created Transfer.
 
@@ -464,13 +494,13 @@ Introduce controlled mutation, conceptually:
 
 Rules:
 
-1. require authenticated active operational profile;
-2. derive acting party using section 4;
+1. authenticate caller;
+2. lock/revalidate caller Profile/entity and derive acting party;
 3. lock Transfer header `FOR UPDATE`;
 4. actor party must equal `sender_party_id`;
 5. Transfer must be `pending`;
 6. repeated cancellation of the same already-cancelled Transfer by its sender may return success idempotently only when the terminal event is the sender cancellation path;
-7. rejected/other future non-cancellable states fail;
+7. rejected/administratively-cancelled/other future non-cancellable states fail;
 8. update header to `cancelled` and set `closed_at`;
 9. delete all active reservation rows belonging to that Transfer;
 10. append immutable `cancelled` event;
@@ -488,8 +518,8 @@ Introduce controlled mutation, conceptually:
 
 Rules:
 
-1. require authenticated active operational profile;
-2. derive acting party using section 4;
+1. authenticate caller;
+2. lock/revalidate caller Profile/entity and derive acting party;
 3. lock Transfer header `FOR UPDATE`;
 4. actor party must equal `recipient_party_id`;
 5. Transfer must be `pending`;
@@ -514,20 +544,23 @@ Purpose: prevent a pending reservation from becoming operationally unrecoverable
 
 Rules:
 
-1. require active Admin profile;
+1. authenticate caller and lock/revalidate active Admin Profile;
 2. require trimmed reason between 5 and 500 characters;
 3. lock Transfer header `FOR UPDATE`;
 4. Transfer must still be `pending`;
-5. at least one non-Company sender/recipient Operational Party must currently be operationally inactive/suspended;
-6. if both business parties are active, Admin recovery is rejected and the normal sender/recipient lifecycle must be used;
-7. update header to `cancelled` and set `closed_at`;
-8. delete all active reservations for the Transfer;
-9. append `administrative_cancelled` event with Admin profile, `actor_party_id = null`, and mandatory reason;
-10. do not modify confirmed custody or custody history.
+5. lock/revalidate the relevant sender/recipient entity lifecycle rows;
+6. at least one non-Company sender/recipient Operational Party must currently be operationally inactive/suspended;
+7. if both business parties are active, Admin recovery is rejected and the normal sender/recipient lifecycle must be used;
+8. update header to `cancelled` and set `closed_at`;
+9. delete all active reservations for the Transfer;
+10. append `administrative_cancelled` event with Admin profile, `actor_party_id = null`, and mandatory reason;
+11. do not modify confirmed custody or custody history.
 
 This path is deliberately not available as a normal Transfer convenience and must not be exposed as “send/reject as another party”.
 
 If future operational evidence proves a broader dispute-resolution authority is needed, that belongs to a later explicit Product Decision rather than silently broadening this recovery RPC.
+
+Cube H must re-review this administrative recovery function together with ordinary cancellation/rejection once any receipt state exists, so no pre-receipt terminal action can invalidate already-confirmed receipt.
 
 ---
 
@@ -544,7 +577,7 @@ Cube F permits only:
 
 No other transition is part of Cube F.
 
-Cube H later extends this table for receipt and partial receipt.
+Cube H later extends this table for receipt and partial receipt and must harden these pre-receipt functions against any received state.
 
 ---
 
@@ -637,6 +670,7 @@ Database/service errors should be stable enough for later Arabic mobile UX to ma
 Cube F must distinguish at minimum:
 
 - unauthenticated/inactive actor;
+- actor lifecycle changed during mutation attempt;
 - invalid recipient Transfer ID;
 - recipient suspended/inactive;
 - sender = recipient;
@@ -647,6 +681,7 @@ Cube F must distinguish at minimum:
 - Roll not currently held by sender;
 - Roll already reserved by another Transfer;
 - request ID belongs to another actor;
+- request ID was reused with a different recipient or Roll set;
 - Transfer not found;
 - actor is not sender for cancellation;
 - actor is not recipient for rejection;
@@ -676,6 +711,8 @@ Required indexes should support:
 Do not add speculative analytics/index families beyond demonstrated query paths.
 
 The creation RPC must remain set-based for Roll validation/insertion. Do not loop through thousands of Rolls one network/database round trip at a time.
+
+The idempotent Roll-set equivalence check must also be set-based/order-insensitive; do not compare 10,000 items through application-side per-row requests.
 
 ---
 
@@ -752,6 +789,8 @@ Cube F deliberately does not prebuild those receipt tables/states.
 
 Cube H may extend the Transfer status vocabulary and item state while preserving Cube F Transfer identity/membership/history.
 
+Cube H must also revisit sender cancellation, recipient rejection and Admin recovery so they remain strictly pre-receipt transitions under the new receipt state.
+
 ---
 
 ## 21. Explicit non-goals
@@ -800,14 +839,15 @@ Test at minimum:
 
 The matrix proves hierarchy is not used as a route matrix.
 
-### Identity/authorization
+### Identity/authorization/lifecycle locking
 
 - Admin acts only as Company for ordinary party mutations;
 - ordinary users act only as their bound party;
 - cross-party sender spoofing fails;
 - exact active recipient required;
-- suspended recipient fails at creation;
-- active child remains governed by its own active state despite suspended parent, consistent with current lifecycle.
+- suspended recipient fails at new creation;
+- active child remains governed by its own active state despite suspended parent;
+- concurrent actor/entity suspension versus create/cancel/reject produces a serialized valid outcome and never commits from a stale active-state read.
 
 ### Custody/reservation
 
@@ -823,9 +863,12 @@ The matrix proves hierarchy is not used as a route matrix.
 
 ### Idempotency
 
-- same actor + same request ID returns same Transfer;
+- same actor + same request ID + same recipient + same Roll set returns same Transfer;
+- reordered but identical Roll set is accepted as the same retry;
 - request retry creates no duplicate items/reservations/events;
-- different actor cannot reuse request ID.
+- different actor cannot reuse request ID;
+- same actor cannot reuse request ID for different recipient;
+- same actor cannot reuse request ID for a different Roll set.
 
 ### Cancellation/rejection
 
@@ -845,7 +888,8 @@ The matrix proves hierarchy is not used as a route matrix.
 - active Admin can recovery-cancel a pending Transfer only when the recovery condition is met;
 - reason is mandatory and audited;
 - both-active-party Transfer cannot be recovery-cancelled by Admin;
-- recovery records `administrative_cancelled`, no acting party impersonation, releases reservation and leaves custody unchanged.
+- recovery records `administrative_cancelled`, no acting party impersonation, releases reservation and leaves custody unchanged;
+- recovery lifecycle-state check is serialized against concurrent reactivation.
 
 ### Production void coordination
 
@@ -868,7 +912,8 @@ The matrix proves hierarchy is not used as a route matrix.
 
 - 10,000 Roll creation request succeeds within the project CI/runtime limits when all Rolls are eligible;
 - 10,001 is rejected before mutation;
-- set-based creation produces exactly 10,000 items + reservations without partial state.
+- set-based creation produces exactly 10,000 items + reservations without partial state;
+- 10,000-Roll matching idempotent retry is correctly recognized without duplicate state.
 
 Generated public Supabase TypeScript types must match the rebuilt schema exactly.
 
@@ -894,7 +939,8 @@ Cube F is Done only when all are true:
 - active reservation is separate from confirmed custody;
 - Admin → Company acting rule is enforced without generic impersonation;
 - exact active recipient rule is enforced;
-- Transfer creation is atomic and idempotent;
+- caller/recipient lifecycle state is transactionally revalidated under appropriate locking;
+- Transfer creation is atomic and payload-safe idempotent;
 - per-Roll reservation collision is database-enforced;
 - no Transfer creation can race into a voided Production Order;
 - active reservation blocks Production Order void;
@@ -905,7 +951,7 @@ Cube F is Done only when all are true:
 - Transfer identity/items/events are immutable as specified;
 - RLS/read privacy is correct;
 - direct mutation paths remain closed;
-- 10,000-Roll boundary is verified;
+- 10,000-Roll creation and matching-retry boundaries are verified;
 - permanent Database Quality coverage passes;
 - TypeScript/build/types pass;
 - implementation-integrity review passes;
@@ -928,10 +974,11 @@ Unless a new Product Decision explicitly changes them, Cube F implementation sho
 5. Admin acts only as singleton Company in ordinary Transfer party actions;
 6. creation RPC accepts exact recipient Transfer ID + explicit Roll ID set;
 7. one Transfer may contain 1–10,000 Rolls;
-8. request UUID provides safe creation idempotency;
+8. request UUID provides safe idempotency only when actor, recipient and complete Roll set match the original request;
 9. sender cancellation and recipient rejection are pre-receipt terminal actions;
 10. no automatic expiry;
 11. active reservation blocks Production Order void;
 12. no confirmed custody movement occurs in Cube F;
 13. a separate narrow Admin recovery cancellation exists only for suspended-party recovery, requires a reason, and is never party impersonation;
-14. no sender/recipient UI is introduced until its owning later cube.
+14. all state-changing authorization is revalidated under transactionally compatible lifecycle locks;
+15. no sender/recipient UI is introduced until its owning later cube.
