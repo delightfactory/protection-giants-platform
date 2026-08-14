@@ -3,12 +3,10 @@ import {
   OuterRollLabelPlanError,
   buildOuterRollLabelPlan,
 } from "@/lib/labels/outer-roll-label-plan";
+import { renderOuterRollPrintPdf } from "@/lib/labels/outer-roll-label-pdf";
 import {
-  renderOuterRollPrintPdf,
-} from "@/lib/labels/outer-roll-label-pdf";
-import {
+  OUTER_ROLL_MASTER_PAGE_PROFILE,
   planOuterRollPrintLayout,
-  type OuterRollPrintProfile,
 } from "@/lib/labels/outer-roll-print-layout";
 import { loadOuterRollLabelSource } from "@/lib/labels/outer-roll-label-source.server";
 import {
@@ -19,18 +17,6 @@ import {
 import { getPublicSiteOrigin } from "@/lib/public-site";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const masterPageProfile: OuterRollPrintProfile = {
-  id: "outer-roll-label-v1-master-pages",
-  mediaWidthMm: 150,
-  mediaHeightMm: 100,
-  marginTopMm: 0,
-  marginRightMm: 0,
-  marginBottomMm: 0,
-  marginLeftMm: 0,
-  gapXMm: 0,
-  gapYMm: 0,
-};
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -81,7 +67,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     const chunk = plan.chunks[chunkNumber - 1];
     if (!chunk) return textResponse("جزء الطباعة المطلوب غير موجود.", 404);
 
-    const layout = planOuterRollPrintLayout(chunk.items, masterPageProfile);
+    const layout = planOuterRollPrintLayout(chunk.items, OUTER_ROLL_MASTER_PAGE_PROFILE);
     const pdf = await renderOuterRollPrintPdf(layout);
     const filename = `PG-OUTER-ROLL-${source.order.orderNumber}-part-${chunkNumber}-of-${plan.chunks.length}.pdf`;
 
