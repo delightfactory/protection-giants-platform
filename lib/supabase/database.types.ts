@@ -790,6 +790,188 @@ export type Database = {
           },
         ]
       }
+      roll_transfer_events: {
+        Row: {
+          actor_party_id: string | null
+          actor_profile_id: string
+          event_sequence: number
+          event_type: string
+          id: string
+          occurred_at: string
+          reason: string | null
+          transfer_id: string
+        }
+        Insert: {
+          actor_party_id?: string | null
+          actor_profile_id: string
+          event_sequence: number
+          event_type: string
+          id?: string
+          occurred_at?: string
+          reason?: string | null
+          transfer_id: string
+        }
+        Update: {
+          actor_party_id?: string | null
+          actor_profile_id?: string
+          event_sequence?: number
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          reason?: string | null
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_transfer_events_actor_party_id_fkey"
+            columns: ["actor_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_transfer_events_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_transfer_events_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "roll_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roll_transfer_items: {
+        Row: {
+          created_at: string
+          roll_id: string
+          transfer_id: string
+        }
+        Insert: {
+          created_at?: string
+          roll_id: string
+          transfer_id: string
+        }
+        Update: {
+          created_at?: string
+          roll_id?: string
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_transfer_items_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: false
+            referencedRelation: "rolls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_transfer_items_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "roll_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roll_transfer_reservations: {
+        Row: {
+          reserved_at: string
+          roll_id: string
+          transfer_id: string
+        }
+        Insert: {
+          reserved_at?: string
+          roll_id: string
+          transfer_id: string
+        }
+        Update: {
+          reserved_at?: string
+          roll_id?: string
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_transfer_reservations_item_fkey"
+            columns: ["transfer_id", "roll_id"]
+            isOneToOne: false
+            referencedRelation: "roll_transfer_items"
+            referencedColumns: ["transfer_id", "roll_id"]
+          },
+          {
+            foreignKeyName: "roll_transfer_reservations_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: true
+            referencedRelation: "rolls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roll_transfers: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          created_by_profile_id: string
+          id: string
+          recipient_party_id: string
+          request_id: string
+          roll_count: number
+          sender_party_id: string
+          status: string
+          transfer_number: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          created_by_profile_id: string
+          id?: string
+          recipient_party_id: string
+          request_id: string
+          roll_count: number
+          sender_party_id: string
+          status: string
+          transfer_number: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          created_by_profile_id?: string
+          id?: string
+          recipient_party_id?: string
+          request_id?: string
+          roll_count?: number
+          sender_party_id?: string
+          status?: string
+          transfer_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_transfers_created_by_profile_id_fkey"
+            columns: ["created_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_transfers_recipient_party_id_fkey"
+            columns: ["recipient_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_transfers_sender_party_id_fkey"
+            columns: ["sender_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rolls: {
         Row: {
           created_at: string
@@ -883,6 +1065,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_cancel_pending_roll_transfer: {
+        Args: { p_reason: string; p_transfer_id: string }
+        Returns: string
+      }
       admin_update_center_location: {
         Args: { p_center_id: string; p_latitude: number; p_longitude: number }
         Returns: {
@@ -904,6 +1090,7 @@ export type Database = {
           installation_center_id: string
         }[]
       }
+      cancel_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
       create_production_order: {
         Args: {
           p_lots: Json
@@ -915,6 +1102,14 @@ export type Database = {
         }
         Returns: string
       }
+      create_roll_transfer: {
+        Args: {
+          p_recipient_transfer_code: string
+          p_request_id: string
+          p_roll_ids: string[]
+        }
+        Returns: string
+      }
       ensure_operational_party: {
         Args: { p_entity_id?: string; p_party_type: string }
         Returns: string
@@ -923,6 +1118,7 @@ export type Database = {
         Args: { p_party_type: string }
         Returns: string
       }
+      reject_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
       resolve_public_roll_product_slug: {
         Args: { p_serial: string }
         Returns: string
@@ -1095,3 +1291,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
