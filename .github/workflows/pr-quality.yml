@@ -27,6 +27,20 @@ jobs:
         run: node --experimental-strip-types scripts/verify-roll-qr-contract.mjs
       - name: Verify outer Roll label planning contract
         run: node --experimental-strip-types scripts/verify-outer-roll-label-plan.cjs
+      - name: Verify outer Roll print-profile and imposition contract
+        run: node --experimental-strip-types scripts/verify-outer-roll-print-layout.cjs
+      - name: Verify outer Roll vector renderer contract
+        run: |
+          rm -rf /tmp/cube-e-renderer-test
+          npx tsc scripts/verify-outer-roll-label-renderer.ts \
+            --target ES2022 \
+            --module commonjs \
+            --moduleResolution node \
+            --esModuleInterop \
+            --skipLibCheck \
+            --strict \
+            --outDir /tmp/cube-e-renderer-test
+          node /tmp/cube-e-renderer-test/scripts/verify-outer-roll-label-renderer.js
       - name: Type check
         run: npm run typecheck
       - name: Build
