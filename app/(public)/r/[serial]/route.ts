@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeRollSerial } from "@/lib/rolls/roll-qr";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -24,42 +24,15 @@ export async function GET(request: Request, { params }: PublicRollResolverContex
   const serial = normalizeRollSerial(rawSerial);
   if (!serial) return notFoundResponse();
 
-  const admin = createSupabaseAdminClient();
-  const { data: roll, error: rollError } = await admin
-    .from("rolls")
-    .select("product_id, production_order_id")
-    .eq("serial_number", serial)
-    .maybeSingle();
+  const supabase = await createSupabaseServerClient();
+  const { data: productSlug, error } = await supabase.rpc(
+    "resolve_public_roll_product_slug",
+    { p_serial: serial },
+  );
 
-  if (rollError) throw rollError;
-  if (!roll) return notFoundResponse();
+  if (error) throw error;
+  if (!productSlug) return notFoundResponse();
 
-  const [{ data: productionOrder, error: orderError }, { data: product, error: productError }] = await Promise.all([
-    admin
-      .from("production_orders")
-      .select("status")
-      .eq("id", roll.production_order_id)
-      .maybeSingle(),
-    admin
-      .from("products")
-      .select("slug, status, publication_status")
-      .eq("id", roll.product_id)
-      .maybeSingle(),
-  ]);
-
-  if (orderError) throw orderError;
-  if (productError) throw productError;
-
-  if (
-    !productionOrder
-    || productionOrder.status !== "generated"
-    || !product
-    || product.status !== "active"
-    || product.publication_status !== "published"
-  ) {
-    return notFoundResponse();
-  }
-
-  const target = new URL(`/products/${encodeURIComponent(product.slug)}`, request.url);
+  const target = new URL(`/products/${encodeURIComponent(productSlug)}`, request.url);
   return NextResponse.redirect(target, 307);
 }
