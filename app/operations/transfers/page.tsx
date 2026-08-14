@@ -6,7 +6,7 @@ import { TransferIdQr } from "@/components/transfers/transfer-id-qr";
 import surfaces from "@/components/transfers/transfer-surfaces.module.css";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { getCurrentTransferParty } from "@/lib/transfers/current-party.server";
-import { listTransfers } from "@/lib/transfers/receipt.server";
+import { getTransferAttentionCounts, listTransfers } from "@/lib/transfers/receipt.server";
 import { transferPartyTypeLabel } from "@/lib/transfers/transfer-id";
 
 const PAGE_SIZE = 30;
@@ -51,9 +51,8 @@ export default async function TransfersPage({
   const search = validSearch(first(params.q));
   const page = validPage(first(params.page));
 
-  const [incomingActive, outgoingActive, rows] = await Promise.all([
-    listTransfers({ direction: "incoming", scope: "active", limit: 100, offset: 0 }),
-    listTransfers({ direction: "outgoing", scope: "active", limit: 100, offset: 0 }),
+  const [attentionCounts, rows] = await Promise.all([
+    getTransferAttentionCounts(),
     listTransfers({
       direction,
       scope,
@@ -109,8 +108,8 @@ export default async function TransfersPage({
         search={search}
         page={page}
         pageSize={PAGE_SIZE}
-        incomingActionCount={incomingActive.filter((row) => row.needs_action).length}
-        outgoingActionCount={outgoingActive.filter((row) => row.needs_action).length}
+        incomingActionCount={attentionCounts.incomingActionCount}
+        outgoingActionCount={attentionCounts.outgoingActionCount}
         isAdmin={isAdmin}
       />
     </>
