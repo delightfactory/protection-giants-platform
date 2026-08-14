@@ -52,9 +52,7 @@ The deferred real printer/cutter validation from Cube E does not block Cube F.
 
 ## 3. Governing business invariants
 
-The following rules are mandatory.
-
-### F-01 — one confirmed custodian remains authoritative
+### F-01 — confirmed custody remains authoritative
 
 `roll_custody_current` remains the only authoritative current confirmed physical custodian projection.
 
@@ -140,6 +138,14 @@ Knowing a Transfer ID does not authorize movement.
 
 Authorization still requires a valid active acting profile/party and confirmed sender custody.
 
+### F-13 — lifecycle suspension must not create an unrecoverable reservation
+
+Entity/profile suspension must not silently release a pending Transfer because that would rewrite physical movement intent without an explicit Transfer action.
+
+However, because pending Transfers do not auto-expire, the platform also must not allow a reservation to become permanently unrecoverable when an operational party is suspended.
+
+Cube F therefore includes one narrow audited Admin recovery action described in section 11. It is not party impersonation and never moves custody.
+
 ---
 
 ## 4. Acting-party rule
@@ -154,7 +160,7 @@ The existing role/entity invariant remains authoritative.
 
 ### 4.2 Protection Giants Admin
 
-An active `admin` profile acts as the singleton **Company Operational Party** for Transfer actions.
+An active `admin` profile acts as the singleton **Company Operational Party** for ordinary Transfer party actions.
 
 This rule exists because:
 
@@ -168,7 +174,7 @@ Admin acting as Company is **not** a generic impersonation mechanism.
 
 Cube F must not allow Admin to choose an arbitrary Agent, Dealer or Center as sender/recipient actor on behalf of that party.
 
-Normal party ownership and acceptance boundaries remain intact.
+The separate administrative recovery action in section 11 is an audited support action, not an acting-party substitution.
 
 ---
 
@@ -233,8 +239,10 @@ Cube F introduces only:
 Meaning:
 
 - `pending` — reservation is active and confirmed custody remains with sender;
-- `cancelled` — sender terminated the Transfer before receipt; reservation released;
+- `cancelled` — Transfer was terminated before receipt by the sender or by the explicit audited Admin recovery path; reservation released;
 - `rejected` — recipient terminated the Transfer before receipt; reservation released.
+
+The event type records whether a cancellation was ordinary sender cancellation or administrative recovery.
 
 Cube H may later extend the vocabulary for receipt/partial-receipt states. Cube F must not invent those future states now.
 
@@ -274,7 +282,7 @@ Lifecycle:
 
 - inserted atomically when Transfer is created;
 - remains while Transfer is `pending`;
-- deleted atomically on valid `cancelled` or `rejected` transition;
+- deleted atomically on valid sender cancellation, recipient rejection, or audited Admin recovery cancellation;
 - later Cube H will consume/release reservation item-by-item during receipt/resolution.
 
 This table is a current-state projection, not audit history.
@@ -290,7 +298,8 @@ Target fields:
 - `event_sequence integer not null check (event_sequence > 0)`
 - `event_type text not null`
 - `actor_profile_id uuid not null references profiles(id) on delete restrict`
-- `actor_party_id uuid not null references operational_parties(id) on delete restrict`
+- `actor_party_id uuid null references operational_parties(id) on delete restrict`
+- `reason text null`
 - `occurred_at timestamptz not null default now()`
 
 Unique:
@@ -302,8 +311,14 @@ Cube F event types:
 - `created`
 - `cancelled`
 - `rejected`
+- `administrative_cancelled`
 
-No generic JSON payload is introduced because Cube F does not currently need arbitrary event metadata.
+Rules:
+
+- `created`, `cancelled`, `rejected` record the actual acting Operational Party in `actor_party_id` and do not require a reason;
+- `administrative_cancelled` records the Admin profile, keeps `actor_party_id = null` to avoid pretending the Admin acted as either business party, and requires a trimmed reason of 5–500 characters.
+
+No generic JSON payload is introduced.
 
 Transfer events are append-only and reject UPDATE/DELETE.
 
@@ -318,7 +333,7 @@ Reasons:
 1. confirmed custody and pending movement are different business facts;
 2. Cube D's current-custody meaning remains stable;
 3. one-row-per-Roll reservation naturally provides the concurrency invariant;
-4. release on cancellation/rejection is a simple projection deletion while Transfer history remains preserved;
+4. release is a simple projection deletion while Transfer history remains preserved;
 5. Cube H can later consume reservations without rewriting custody semantics.
 
 This is the smallest model that satisfies the approved behavior.
@@ -454,14 +469,14 @@ Rules:
 3. lock Transfer header `FOR UPDATE`;
 4. actor party must equal `sender_party_id`;
 5. Transfer must be `pending`;
-6. repeated cancellation of the same already-cancelled Transfer by its sender may return success idempotently;
+6. repeated cancellation of the same already-cancelled Transfer by its sender may return success idempotently only when the terminal event is the sender cancellation path;
 7. rejected/other future non-cancellable states fail;
 8. update header to `cancelled` and set `closed_at`;
 9. delete all active reservation rows belonging to that Transfer;
 10. append immutable `cancelled` event;
 11. leave `roll_custody_current` and `roll_custody_events` unchanged.
 
-No cancellation reason is required in Cube F because no approved business requirement currently needs one.
+No cancellation reason is required for normal sender cancellation.
 
 ---
 
@@ -489,7 +504,34 @@ A Center with no user cannot perform this action until onboarding creates an aut
 
 ---
 
-## 11. State transition table
+## 11. Administrative recovery cancellation
+
+Introduce one narrow support mutation, conceptually:
+
+`public.admin_cancel_pending_roll_transfer(p_transfer_id uuid, p_reason text) returns uuid`
+
+Purpose: prevent a pending reservation from becoming operationally unrecoverable after lifecycle suspension, without introducing automatic expiry or Admin impersonation.
+
+Rules:
+
+1. require active Admin profile;
+2. require trimmed reason between 5 and 500 characters;
+3. lock Transfer header `FOR UPDATE`;
+4. Transfer must still be `pending`;
+5. at least one non-Company sender/recipient Operational Party must currently be operationally inactive/suspended;
+6. if both business parties are active, Admin recovery is rejected and the normal sender/recipient lifecycle must be used;
+7. update header to `cancelled` and set `closed_at`;
+8. delete all active reservations for the Transfer;
+9. append `administrative_cancelled` event with Admin profile, `actor_party_id = null`, and mandatory reason;
+10. do not modify confirmed custody or custody history.
+
+This path is deliberately not available as a normal Transfer convenience and must not be exposed as “send/reject as another party”.
+
+If future operational evidence proves a broader dispute-resolution authority is needed, that belongs to a later explicit Product Decision rather than silently broadening this recovery RPC.
+
+---
+
+## 12. State transition table
 
 Cube F permits only:
 
@@ -498,6 +540,7 @@ Cube F permits only:
 | none | create | sender | pending | create | unchanged |
 | pending | cancel | sender | cancelled | release | unchanged |
 | pending | reject | recipient | rejected | release | unchanged |
+| pending | administrative recovery cancel | Admin, only under recovery condition | cancelled | release | unchanged |
 
 No other transition is part of Cube F.
 
@@ -505,9 +548,9 @@ Cube H later extends this table for receipt and partial receipt.
 
 ---
 
-## 12. Authorization and RLS contract
+## 13. Authorization and RLS contract
 
-### 12.1 Mutations
+### 13.1 Mutations
 
 Critical state mutation is RPC-only.
 
@@ -522,27 +565,27 @@ Do not grant ordinary browser/client roles direct INSERT/UPDATE/DELETE on:
 
 New public RPCs receive only the explicit `EXECUTE` grants required by the existing Database Quality default-function-grant policy.
 
-### 12.2 Transfer header read visibility
+### 13.2 Transfer header read visibility
 
 Authenticated read visibility:
 
 - active Admin: all Transfers for administrative/support audit;
 - active Agent/Dealer/Center: Transfers where its own Operational Party is sender or recipient.
 
-Admin global read does not mean Admin may act as arbitrary parties; mutation acting-party rule remains Company-only.
+Admin global read does not mean Admin may act as arbitrary parties; ordinary mutation acting-party rule remains Company-only and administrative recovery is separately constrained/audited.
 
-### 12.3 Transfer item read visibility
+### 13.3 Transfer item read visibility
 
 A caller may read Transfer items only when it can read the parent Transfer.
 
-### 12.4 Transfer event read visibility
+### 13.4 Transfer event read visibility
 
 Same as parent Transfer:
 
 - Admin all;
 - sender/recipient parties their own Transfer timeline.
 
-### 12.5 Reservation projection visibility
+### 13.5 Reservation projection visibility
 
 `roll_transfer_reservations` is an internal current-state projection and is not exposed as a general client table.
 
@@ -552,7 +595,7 @@ Do not expose global reservation browsing.
 
 ---
 
-## 13. Active-state semantics
+## 14. Active-state semantics
 
 Cube F preserves current non-cascading operational lifecycle.
 
@@ -567,9 +610,11 @@ Do not add a rule that a Dealer/Center becomes Transfer-inactive only because an
 
 That would contradict the current lifecycle model and requires a separate Product Decision if ever desired.
 
+A party suspension does not automatically cancel an already-pending Transfer. Normal or administrative recovery must explicitly resolve it.
+
 ---
 
-## 14. Exact recipient privacy boundary
+## 15. Exact recipient privacy boundary
 
 Cube F reuses the stable Transfer ID model.
 
@@ -585,7 +630,7 @@ No fuzzy search or global party directory is added.
 
 ---
 
-## 15. Error/failure taxonomy
+## 16. Error/failure taxonomy
 
 Database/service errors should be stable enough for later Arabic mobile UX to map them to clear messages.
 
@@ -606,13 +651,15 @@ Cube F must distinguish at minimum:
 - actor is not sender for cancellation;
 - actor is not recipient for rejection;
 - invalid current Transfer state;
-- Production Order cannot be voided while active Transfer reservation exists.
+- Production Order cannot be voided while active Transfer reservation exists;
+- invalid/too-short administrative recovery reason;
+- Admin recovery not allowed while both business parties are operationally active.
 
 The implementation may use PostgreSQL SQLSTATE plus stable message/code conventions, but must not force the future UI to parse arbitrary internal exception text.
 
 ---
 
-## 16. Performance and bounded scale
+## 17. Performance and bounded scale
 
 Cube F is designed for the already-approved production ceiling of 10,000 Rolls per order.
 
@@ -632,7 +679,7 @@ The creation RPC must remain set-based for Roll validation/insertion. Do not loo
 
 ---
 
-## 17. Audit and immutability
+## 18. Audit and immutability
 
 ### Transfer header
 
@@ -655,6 +702,8 @@ Membership is immutable after creation.
 
 Append-only; UPDATE/DELETE rejected.
 
+Administrative recovery reason is part of immutable audit evidence.
+
 ### Reservation projection
 
 Mutable only through controlled Transfer lifecycle functions because it represents current pending state, not history.
@@ -665,7 +714,7 @@ Cube F never mutates or appends confirmed custody history because no receipt has
 
 ---
 
-## 18. Relationship with Cube G
+## 19. Relationship with Cube G
 
 Cube G consumes Cube F; it does not redesign it.
 
@@ -681,13 +730,13 @@ Cube G will own:
 - sender mobile flow;
 - interrupted-submit retry UX.
 
-Cube F should expose a clean create contract accepting an explicit final set of Roll IDs after Cube G has performed its selection UX.
+Cube F exposes a clean create contract accepting an explicit final set of Roll IDs after Cube G has performed its selection UX.
 
 The state engine does not care whether those IDs came from camera, manual subset selection or Lot expansion.
 
 ---
 
-## 19. Relationship with Cube H
+## 20. Relationship with Cube H
 
 Cube H owns the first real confirmed custody transition.
 
@@ -705,7 +754,7 @@ Cube H may extend the Transfer status vocabulary and item state while preserving
 
 ---
 
-## 20. Explicit non-goals
+## 21. Explicit non-goals
 
 Cube F does not implement:
 
@@ -726,17 +775,18 @@ Cube F does not implement:
 - generic workflow engine;
 - Activation/Warranty state;
 - claims;
-- changes to Product/Roll identifiers.
+- changes to Product/Roll identifiers;
+- broad Admin impersonation or general dispute-resolution workflow.
 
 ---
 
-## 21. Database Quality contract
+## 22. Database Quality contract
 
 Cube F is incomplete until Database Quality permanently verifies the new contracts.
 
-At minimum test:
-
 ### Creation happy paths
+
+Test at minimum:
 
 - Company/Admin → Agent;
 - Company/Admin → Center;
@@ -748,15 +798,15 @@ At minimum test:
 - Center → Dealer;
 - Dealer → Company.
 
-The test matrix proves hierarchy is not used as a route matrix.
+The matrix proves hierarchy is not used as a route matrix.
 
 ### Identity/authorization
 
-- Admin acts only as Company for mutations;
+- Admin acts only as Company for ordinary party mutations;
 - ordinary users act only as their bound party;
 - cross-party sender spoofing fails;
 - exact active recipient required;
-- suspended recipient fails;
+- suspended recipient fails at creation;
 - active child remains governed by its own active state despite suspended parent, consistent with current lifecycle.
 
 ### Custody/reservation
@@ -789,10 +839,18 @@ The test matrix proves hierarchy is not used as a route matrix.
 - invalid terminal transition fails;
 - same valid terminal action safely retries idempotently.
 
+### Administrative recovery
+
+- suspending a party does not silently release reservation;
+- active Admin can recovery-cancel a pending Transfer only when the recovery condition is met;
+- reason is mandatory and audited;
+- both-active-party Transfer cannot be recovery-cancelled by Admin;
+- recovery records `administrative_cancelled`, no acting party impersonation, releases reservation and leaves custody unchanged.
+
 ### Production void coordination
 
 - active reservation blocks Production Order void;
-- after pending Transfer cancellation/rejection releases reservation, void may proceed if no other downstream rule blocks it;
+- after pending Transfer resolution releases reservation, void may proceed if no other downstream rule blocks it;
 - concurrent Transfer-create vs void produces one valid outcome, never `voided + active reservation`.
 
 ### RLS/Data API
@@ -800,7 +858,7 @@ The test matrix proves hierarchy is not used as a route matrix.
 - Admin read all Transfers;
 - sender/recipient read own Transfers/items/events;
 - unrelated operational party cannot read them;
-- suspended actor loses operational read/action access;
+- suspended actor loses ordinary operational read/action access;
 - reservation projection cannot be globally browsed;
 - no direct client mutations;
 - service-role Data API remains denied except explicit existing contracts;
@@ -816,17 +874,19 @@ Generated public Supabase TypeScript types must match the rebuilt schema exactly
 
 ---
 
-## 22. Application/service integration
+## 23. Application/service integration
 
 Cube F may add a small server-side TypeScript service wrapper for the RPC contracts if needed by tests/future callers.
 
 It must not add a sender UI before Cube G.
 
-No placeholder Transfer navigation/button should be exposed to operational users until the real sender workflow exists.
+The administrative recovery action also does not justify a broad Transfer-management UI in Cube F. If implementation requires an Admin-only support surface to make the recovery path genuinely operable, it must be minimal, explicit, and limited to viewing a pending Transfer and performing the audited recovery cancellation; no sender/recipient workflow should leak in.
+
+No placeholder Transfer navigation/button should be exposed to ordinary operational users until the real sender workflow exists.
 
 ---
 
-## 23. Definition of Done
+## 24. Definition of Done
 
 Cube F is Done only when all are true:
 
@@ -840,7 +900,8 @@ Cube F is Done only when all are true:
 - active reservation blocks Production Order void;
 - sender cancellation works atomically;
 - recipient rejection works atomically;
-- cancellation/rejection release reservations and never move custody;
+- lifecycle suspension cannot create an unrecoverable reservation because the narrow audited Admin recovery path works;
+- cancellation/rejection/recovery release reservations and never move custody;
 - Transfer identity/items/events are immutable as specified;
 - RLS/read privacy is correct;
 - direct mutation paths remain closed;
@@ -856,7 +917,7 @@ Only after Cube F is merged should Cube G start from fresh `main`.
 
 ---
 
-## 24. Frozen decisions for implementation
+## 25. Frozen decisions for implementation
 
 Unless a new Product Decision explicitly changes them, Cube F implementation should use these decisions:
 
@@ -864,7 +925,7 @@ Unless a new Product Decision explicitly changes them, Cube F implementation sho
 2. business Transfer number `PG-T-YYYYMMDD-NNNNNNNN`;
 3. Cube F statuses only `pending | cancelled | rejected`;
 4. one active reservation row per Roll;
-5. Admin acts only as singleton Company in Transfer mutations;
+5. Admin acts only as singleton Company in ordinary Transfer party actions;
 6. creation RPC accepts exact recipient Transfer ID + explicit Roll ID set;
 7. one Transfer may contain 1–10,000 Rolls;
 8. request UUID provides safe creation idempotency;
@@ -872,4 +933,5 @@ Unless a new Product Decision explicitly changes them, Cube F implementation sho
 10. no automatic expiry;
 11. active reservation blocks Production Order void;
 12. no confirmed custody movement occurs in Cube F;
-13. no sender/recipient UI is introduced until its owning later cube.
+13. a separate narrow Admin recovery cancellation exists only for suspended-party recovery, requires a reason, and is never party impersonation;
+14. no sender/recipient UI is introduced until its owning later cube.
