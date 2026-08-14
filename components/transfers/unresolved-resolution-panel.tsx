@@ -43,7 +43,10 @@ export function UnresolvedResolutionPanel({
   adminMode: boolean;
 }) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
-  const rpc = supabase.rpc as unknown as RpcInvoker;
+  const rpc = useMemo(
+    () => (supabase.rpc as unknown as RpcInvoker).bind(supabase),
+    [supabase],
+  );
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [rows, setRows] = useState<TransferItem[]>([]);
