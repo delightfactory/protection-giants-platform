@@ -1,0 +1,38 @@
+name: Cube G Finalize Client
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Apply typed optional RPC arguments
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = "components/transfers/transfer-send-flow.tsx";
+          let source = fs.readFileSync(path, "utf8");
+          source = source.replaceAll("p_lot_id: null", "p_lot_id: undefined");
+          source = source.replaceAll("p_search: search.trim() || null", "p_search: search.trim() || undefined");
+          fs.writeFileSync(path, source);
+          NODE
+          if git diff --quiet -- components/transfers/transfer-send-flow.tsx; then
+            echo "Typed RPC arguments are already current."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add components/transfers/transfer-send-flow.tsx
+            git commit -m "fix: align Cube G RPC calls with generated types"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
