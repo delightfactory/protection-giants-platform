@@ -60,7 +60,7 @@ export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
               spellCheck={false}
               autoComplete="off"
               defaultValue={values?.gtin ?? ""}
-              placeholder="0088427428759"
+              placeholder="4006381333931"
             />
           </FormField>
 
