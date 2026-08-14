@@ -168,6 +168,27 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
   const [success, setSuccess] = useState<SuccessState | null>(null);
 
   const selectedCount = selectedIds.size;
+  const decisionOpen = Boolean(pendingLot || recipientChangePending || clearSelectionPending);
+
+  useEffect(() => {
+    if (!decisionOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setPendingLot(null);
+      setRecipientChangePending(false);
+      setClearSelectionPending(false);
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [decisionOpen]);
 
   const verifyRecipient = useCallback(async (rawValue: string): Promise<boolean> => {
     const normalized = normalizeTransferId(rawValue);
@@ -203,6 +224,9 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
       });
       setRecipientInput(normalized);
       return true;
+    } catch {
+      setFeedback({ tone: "error", text: "تعذر الاتصال للتحقق من الجهة. تحقق من الشبكة ثم أعد المحاولة." });
+      return false;
     } finally {
       setRecipientLoading(false);
     }
@@ -466,6 +490,11 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
         setStage("recipient");
         setRecipient(null);
       }
+    } catch {
+      setFeedback({
+        tone: "error",
+        text: "انقطع الاتصال قبل تأكيد نتيجة الإرسال. احتفظنا بنفس الطلب والاختيار؛ أعد المحاولة بنفس البيانات للتحقق بأمان.",
+      });
     } finally {
       setSubmitLoading(false);
     }
@@ -504,11 +533,11 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
   return (
     <div className={styles.flow}>
       <div className={styles.progress} aria-label="تقدم إرسال التحويل">
-        <span data-current={stage === "recipient" ? "true" : "false"} data-done={stage !== "recipient" ? "true" : "false"}>1<span>المستلم</span></span>
+        <span data-current={stage === "recipient" ? "true" : "false"} data-done={stage !== "recipient" ? "true" : "false"}><span>المستلم</span></span>
         <i />
-        <span data-current={stage === "select" ? "true" : "false"} data-done={stage === "review" ? "true" : "false"}>2<span>اللفات</span></span>
+        <span data-current={stage === "select" ? "true" : "false"} data-done={stage === "review" ? "true" : "false"}><span>اللفات</span></span>
         <i />
-        <span data-current={stage === "review" ? "true" : "false"}>3<span>المراجعة</span></span>
+        <span data-current={stage === "review" ? "true" : "false"}><span>المراجعة</span></span>
       </div>
 
       {feedback ? <FeedbackBanner tone={feedback.tone}>{feedback.text}</FeedbackBanner> : null}
@@ -588,9 +617,9 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
             </div>
 
             <div className={styles.modeGrid}>
-              <ModeButton active={mode === "scan"} title="Scan Rolls" description="لفات أمامك أو تشكيلة مختلطة" onClick={() => setMode("scan")} />
-              <ModeButton active={mode === "rolls"} title="Select Rolls" description="اختيار معلوم من العهدة" onClick={() => setMode("rolls")} />
-              <ModeButton active={mode === "lots"} title="Select Lot" description="حركة كمية من Lot واحد" onClick={() => setMode("lots")} />
+              <ModeButton active={mode === "scan"} title="مسح اللفات" description="QR · لفات أمامك أو تشكيلة مختلطة" onClick={() => setMode("scan")} />
+              <ModeButton active={mode === "rolls"} title="اختيار اللفات" description="اختيار معلوم من العهدة الحالية" onClick={() => setMode("rolls")} />
+              <ModeButton active={mode === "lots"} title="اختيار Lot" description="حركة كمية من Lot واحد" onClick={() => setMode("lots")} />
             </div>
 
             {mode === "scan" ? (
