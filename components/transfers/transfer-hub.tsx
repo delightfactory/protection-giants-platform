@@ -126,12 +126,20 @@ export function TransferHub({
             <p>{search ? "راجع رقم التحويل أو غيّر نطاق العرض." : "ستظهر التحويلات هنا عندما توجد حركة مطابقة."}</p>
           </div>
         ) : rows.map((row) => {
+          const auditView = direction === "all";
           const counterpartyType = direction === "incoming" ? row.sender_party_type : row.recipient_party_type;
           const counterpartyName = direction === "incoming" ? row.sender_name : row.recipient_name;
-          const remaining = row.pending_count;
-          const taskLabel = direction === "incoming" && row.needs_action
-            ? row.status === "partially_received" ? "استكمال الاستلام" : "مراجعة واستلام"
-            : row.needs_action ? "مراجعة المتبقي" : "فتح التفاصيل";
+          const partyHeading = auditView
+            ? `${row.sender_name} ← ${row.recipient_name}`
+            : counterpartyName;
+          const partySubheading = auditView
+            ? `${transferPartyTypeLabel(row.sender_party_type)} ← ${transferPartyTypeLabel(row.recipient_party_type)}`
+            : transferPartyTypeLabel(counterpartyType);
+          const taskLabel = auditView
+            ? "فتح التفاصيل"
+            : direction === "incoming" && row.needs_action
+              ? row.status === "partially_received" ? "استكمال الاستلام" : "مراجعة واستلام"
+              : row.needs_action ? "مراجعة المتبقي" : "فتح التفاصيل";
 
           return (
             <Link
@@ -142,9 +150,9 @@ export function TransferHub({
             >
               <div className={styles.cardTop}>
                 <div className={styles.counterparty}>
-                  <span>{direction === "incoming" ? "من" : direction === "outgoing" ? "إلى" : "الأطراف"}</span>
-                  <strong>{counterpartyName}</strong>
-                  <span>{transferPartyTypeLabel(counterpartyType)}</span>
+                  <span>{direction === "incoming" ? "من" : direction === "outgoing" ? "إلى" : "من ← إلى"}</span>
+                  <strong>{partyHeading}</strong>
+                  <span>{partySubheading}</span>
                 </div>
                 <StatusBadge tone={statusTone(row.status)}>{transferStatusLabel(row.status)}</StatusBadge>
               </div>
@@ -152,18 +160,9 @@ export function TransferHub({
               <div className={styles.number}>{row.transfer_number}</div>
 
               <div className={styles.metrics}>
-                <div className={styles.metric}>
-                  <span>إجمالي</span>
-                  <strong>{row.roll_count}</strong>
-                </div>
-                <div className={styles.metric}>
-                  <span>مستلم</span>
-                  <strong>{row.received_count}</strong>
-                </div>
-                <div className={styles.metric}>
-                  <span>متبقي</span>
-                  <strong>{remaining}</strong>
-                </div>
+                <div className={styles.metric}><span>إجمالي</span><strong>{row.roll_count}</strong></div>
+                <div className={styles.metric}><span>مستلم</span><strong>{row.received_count}</strong></div>
+                <div className={styles.metric}><span>متبقي</span><strong>{row.pending_count}</strong></div>
               </div>
 
               <div className={styles.cardBottom}>
