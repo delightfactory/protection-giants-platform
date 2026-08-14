@@ -47,8 +47,15 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
     if (!open) return;
 
     let cancelled = false;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     setCameraState("starting");
     setFeedback(null);
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onCloseRef.current();
+    }
+    window.addEventListener("keydown", handleEscape);
 
     async function handlePayload(payload: string) {
       const trimmed = payload.trim();
@@ -66,6 +73,11 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
           setFeedback({ text: outcome.message, tone: outcome.tone ?? "warning" });
         }
         if (outcome.action === "close") onCloseRef.current();
+      } catch {
+        setFeedback({
+          text: "تمت قراءة QR لكن تعذر التحقق منه الآن. تحقق من الاتصال ثم أعد المسح.",
+          tone: "error",
+        });
       } finally {
         busyRef.current = false;
       }
@@ -104,6 +116,8 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
       scannerRef.current?.stop();
       scannerRef.current?.destroy();
       scannerRef.current = null;
+      document.body.style.overflow = previousBodyOverflow;
+      window.removeEventListener("keydown", handleEscape);
     };
   }, [open]);
 
@@ -117,7 +131,10 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
       if (outcome.message) setFeedback({ text: outcome.message, tone: outcome.tone ?? "warning" });
       if (outcome.action === "close") onCloseRef.current();
     } catch {
-      setFeedback({ text: "لم أتمكن من قراءة QR من الصورة. جرّب صورة أوضح أو أدخل الكود يدويًا.", tone: "error" });
+      setFeedback({
+        text: "تعذر قراءة أو التحقق من QR في هذه الصورة. جرّب صورة أوضح أو استخدم الإدخال اليدوي.",
+        tone: "error",
+      });
     }
   }
 
