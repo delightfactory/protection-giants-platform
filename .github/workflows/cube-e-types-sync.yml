@@ -1,0 +1,48 @@
+name: Cube E Types Sync
+
+on:
+  push:
+    branches:
+      - feature/cube-e-outer-roll-label-print-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cube-e-outer-roll-label-print-foundation
+          fetch-depth: 0
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Build local schema and generate canonical public types
+        run: |
+          supabase start
+          supabase db reset --local --no-seed
+          supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'lib/supabase/database.types.ts';
+          const content = fs.readFileSync(path, 'utf8').replace(/\n*$/, '\n');
+          fs.writeFileSync(path, content);
+          NODE
+
+      - name: Remove one-shot workflow and commit generated types
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/cube-e-types-sync.yml
+          git add lib/supabase/database.types.ts
+          git commit -m "Sync generated types for public Roll resolver"
+          git push origin HEAD:feature/cube-e-outer-roll-label-print-foundation
