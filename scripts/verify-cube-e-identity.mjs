@@ -150,6 +150,13 @@ const invalidLength = await rest("products?select=id", {
 });
 assert(!invalidLength.response.ok, "Database unexpectedly accepted an unsupported GTIN length.");
 
+const invalidCharacters = await rest("products?select=id", {
+  method: "POST",
+  token: adminToken,
+  body: productFixture("PG-GTIN-CHARS", "pg-gtin-chars", "40063813339A1"),
+});
+assert(!invalidCharacters.response.ok, "Database unexpectedly accepted a non-digit GTIN.");
+
 const duplicate = await rest("products?select=id", {
   method: "POST",
   token: adminToken,
@@ -201,6 +208,12 @@ const production = await rpc("create_production_order", {
 }, adminToken);
 assert(production.response.ok && typeof production.body === "string", `Could not create production for GTIN lock test: ${JSON.stringify(production.body)}`);
 
+const anonRollBrowse = await rest("rolls?select=serial_number&limit=1");
+assert(
+  !anonRollBrowse.response.ok || (Array.isArray(anonRollBrowse.body) && anonRollBrowse.body.length === 0),
+  `Anonymous Roll browsing unexpectedly exposed operational Roll data: ${JSON.stringify(anonRollBrowse.body)}`,
+);
+
 const firstAssignment = expectOne(
   await rest(`products?id=eq.${encodeURIComponent(producedProduct.id)}&select=id,gtin`, {
     method: "PATCH",
@@ -231,4 +244,4 @@ const lockedRead = expectOne(
 );
 assert(lockedRead.gtin === gtin12, `Produced Product GTIN drifted: ${JSON.stringify(lockedRead)}`);
 
-console.log("Cube E Product GTIN database contract verification passed.");
+console.log("Cube E Product GTIN and anonymous Roll-boundary verification passed.");
