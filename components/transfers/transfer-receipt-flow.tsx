@@ -40,7 +40,10 @@ export function TransferReceiptFlow({
   publicSiteOrigin: string;
 }) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
-  const rpc = supabase.rpc as unknown as RpcInvoker;
+  const rpc = useMemo(
+    () => (supabase.rpc as unknown as RpcInvoker).bind(supabase),
+    [supabase],
+  );
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("scan");
   const [stage, setStage] = useState<Stage>("verify");
@@ -287,13 +290,6 @@ export function TransferReceiptFlow({
     }
   }
 
-  function clearSelection() {
-    setSelected(new Set());
-    setSelectionDetails(new Map());
-    setStage("verify");
-    setConfirmOpen(false);
-  }
-
   function submitReceipt() {
     const rollIds = [...selected];
     if (rollIds.length === 0) return;
@@ -390,7 +386,7 @@ export function TransferReceiptFlow({
                 <p className={styles.sectionCopy}>امسح QR الخارجي لكل Roll. الماسح يظل مفتوحًا بعد كل قراءة ناجحة.</p>
                 <div className={styles.scanActions}>
                   <button type="button" className={`button button-primary ${styles.scanButton}`} onClick={() => setScannerOpen(true)}>فتح الكاميرا</button>
-                  <button type="button" className={`button button-ghost ${styles.scanButton}`} onClick={() => setMode("expected")}>عرض القائمة المتوقعة</button>
+                  <button type="button" className={`button button-ghost ${styles.scanButton}`} onClick={() => { setMode("expected"); if (rows.length === 0) void loadExpected(); }}>عرض القائمة المتوقعة</button>
                 </div>
                 <div className={styles.manual}>
                   <input className={styles.input} value={manualSerial} onChange={(event) => setManualSerial(event.target.value)} placeholder="PG-R-..." aria-label="Roll Serial يدوي" />
