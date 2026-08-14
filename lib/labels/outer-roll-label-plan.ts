@@ -22,6 +22,7 @@ export type OuterRollLabelOrderSource = {
   status: string;
   orderNumber: string;
   productionDate: string;
+  totalRolls: number;
   productCodeSnapshot: string;
   productNameSnapshot: string;
   productVersionSnapshot: string | null;
@@ -35,6 +36,7 @@ export type OuterRollLabelLotSource = {
   productionOrderId: string;
   lotNumber: string;
   lotSequence: number;
+  rollCount: number;
 };
 
 export type OuterRollLabelRollSource = {
@@ -102,6 +104,7 @@ export type OuterRollLabelPlanErrorCode =
   | "invalid-lot"
   | "invalid-roll"
   | "duplicate-roll"
+  | "source-incomplete"
   | "selection-not-found"
   | "invalid-range"
   | "empty-selection"
@@ -199,6 +202,9 @@ export function buildOuterRollLabelPlan(input: OuterRollLabelPlanInput): OuterRo
   if (input.order.productId !== input.product.id) {
     return fail("product-mismatch", "Production Order Product does not match the supplied Product identity.");
   }
+  if (!Number.isInteger(input.order.totalRolls) || input.order.totalRolls < 1) {
+    return fail("source-incomplete", "Production Order Roll total is invalid for outer Roll label planning.");
+  }
 
   const gtin = assertGtin(input.product.gtin);
   const publicOrigin = normalizePublicOrigin(input.publicSiteOrigin);
@@ -207,6 +213,7 @@ export function buildOuterRollLabelPlan(input: OuterRollLabelPlanInput): OuterRo
   const lotById = new Map<string, OuterRollLabelLotSource>();
   const lotSequenceById = new Map<string, number>();
   const usedLotSequences = new Set<number>();
+  let expectedRollsFromLots = 0;
 
   for (const lot of input.lots) {
     if (
@@ -215,6 +222,8 @@ export function buildOuterRollLabelPlan(input: OuterRollLabelPlanInput): OuterRo
       || !lot.lotNumber
       || !Number.isInteger(lot.lotSequence)
       || lot.lotSequence < 1
+      || !Number.isInteger(lot.rollCount)
+      || lot.rollCount < 1
       || lotById.has(lot.id)
       || usedLotSequences.has(lot.lotSequence)
     ) {
@@ -223,11 +232,17 @@ export function buildOuterRollLabelPlan(input: OuterRollLabelPlanInput): OuterRo
     lotById.set(lot.id, lot);
     lotSequenceById.set(lot.id, lot.lotSequence);
     usedLotSequences.add(lot.lotSequence);
+    expectedRollsFromLots += lot.rollCount;
+  }
+
+  if (expectedRollsFromLots !== input.order.totalRolls || input.rolls.length !== input.order.totalRolls) {
+    return fail("source-incomplete", "Outer Roll label source is incomplete or over-complete for this Production Order.");
   }
 
   const rollIds = new Set<string>();
   const rollSerials = new Set<string>();
   const rollPositions = new Set<string>();
+  const actualRollCountByLot = new Map<string, number>();
 
   for (const roll of input.rolls) {
     const lot = lotById.get(roll.productionLotId);
@@ -248,6 +263,13 @@ export function buildOuterRollLabelPlan(input: OuterRollLabelPlanInput): OuterRo
     rollIds.add(roll.id);
     rollSerials.add(roll.serialNumber);
     rollPositions.add(positionKey);
+    actualRollCountByLot.set(roll.productionLotId, (actualRollCountByLot.get(roll.productionLotId) ?? 0) + 1);
+  }
+
+  for (const lot of input.lots) {
+    if ((actualRollCountByLot.get(lot.id) ?? 0) !== lot.rollCount) {
+      return fail("source-incomplete", `Outer Roll label source does not contain the expected Rolls for Lot ${lot.lotNumber}.`);
+    }
   }
 
   const orderedRolls = [...input.rolls].sort((left, right) => compareRolls(left, right, lotSequenceById));
