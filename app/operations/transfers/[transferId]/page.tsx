@@ -42,9 +42,6 @@ export default async function TransferDetailPage({
   const detail = await getTransferDetail(transferId);
   if (!detail) notFound();
 
-  const counterpartyName = detail.viewer_is_recipient ? detail.sender_name : detail.recipient_name;
-  const counterpartyType = detail.viewer_is_recipient ? detail.sender_party_type : detail.recipient_party_type;
-
   return (
     <>
       <PageHeader
@@ -59,10 +56,17 @@ export default async function TransferDetailPage({
           <div className={styles.heroTop}>
             <div>
               <p className={styles.number}>{detail.transfer_number}</p>
-              <div className={styles.counterparty}>
-                <span>{detail.viewer_is_recipient ? "مرسل من" : "موجّه إلى"}</span>
-                <strong>{counterpartyName}</strong>
-                <span>{transferPartyTypeLabel(counterpartyType)}</span>
+              <div className={styles.parties}>
+                <div className={styles.counterparty}>
+                  <span>من</span>
+                  <strong>{detail.sender_name}</strong>
+                  <span>{transferPartyTypeLabel(detail.sender_party_type)}</span>
+                </div>
+                <div className={styles.counterparty}>
+                  <span>إلى</span>
+                  <strong>{detail.recipient_name}</strong>
+                  <span>{transferPartyTypeLabel(detail.recipient_party_type)}</span>
+                </div>
               </div>
             </div>
             <StatusBadge tone={tone(detail.status)}>{transferStatusLabel(detail.status)}</StatusBadge>
