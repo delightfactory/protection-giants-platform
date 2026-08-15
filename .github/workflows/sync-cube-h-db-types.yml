@@ -1,0 +1,53 @@
+name: Temporary Cube H DB Type Sync
+
+"on":
+  push:
+    branches:
+      - feature/cube-h-transfer-receipt-resolution
+    paths:
+      - ".github/workflows/sync-cube-h-db-types.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cube-h-transfer-receipt-resolution
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild schema from committed migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Generate canonical public database types
+        run: supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
+
+      - name: Commit generated types only
+        run: |
+          if git diff --quiet -- lib/supabase/database.types.ts; then
+            echo "Generated database types are already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/supabase/database.types.ts
+          git commit -m "chore(db): sync generated Supabase types"
+          git push origin HEAD:feature/cube-h-transfer-receipt-resolution
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup || true
