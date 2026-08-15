@@ -1,4 +1,4 @@
-name: Temporary Cube H DB Type Sync
+name: Temporary Cube H Closure Patch
 
 "on":
   push:
@@ -6,48 +6,83 @@ name: Temporary Cube H DB Type Sync
       - feature/cube-h-transfer-receipt-resolution
     paths:
       - ".github/workflows/sync-cube-h-db-types.yml"
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  sync:
+  close:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4
         with:
           ref: feature/cube-h-transfer-receipt-resolution
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v2
-        with:
-          version: 2.105.0
-          github-token: ${{ github.token }}
-
-      - name: Start fresh local Supabase stack
-        run: supabase start
-
-      - name: Rebuild schema from committed migrations
-        run: supabase db reset --local --no-seed
-
-      - name: Generate canonical public database types
-        run: supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
-
-      - name: Commit generated types only
+      - name: Apply deterministic closure patches
+        shell: bash
         run: |
-          if git diff --quiet -- lib/supabase/database.types.ts; then
-            echo "Generated database types are already synchronized."
-            exit 0
+          python - <<'PY'
+          from pathlib import Path
+
+          db_path = Path('.github/workflows/database-quality.yml')
+          db = db_path.read_text()
+
+          trigger = '      - "scripts/verify-transfer-receipt-recovery-reads.mjs"\n'
+          trigger_add = trigger + '      - "scripts/verify-transfer-item-state-grants.mjs"\n'
+          if '      - "scripts/verify-transfer-item-state-grants.mjs"\n' not in db:
+              if trigger not in db:
+                  raise SystemExit('Database Quality trigger anchor was not found.')
+              db = db.replace(trigger, trigger_add, 1)
+
+          run_anchor = '''          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-transfer-receipt-recovery-reads.mjs
+            test_status=$?
           fi
+
+'''
+          run_add = run_anchor + '''          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-transfer-item-state-grants.mjs
+            test_status=$?
+          fi
+
+'''
+          if 'node scripts/verify-transfer-item-state-grants.mjs' not in db:
+              if run_anchor not in db:
+                  raise SystemExit('Database Quality execution anchor was not found.')
+              db = db.replace(run_anchor, run_add, 1)
+
+          db_path.write_text(db)
+
+          receipt_path = Path('components/transfers/transfer-receipt-flow.tsx')
+          receipt_lines = receipt_path.read_text().splitlines()
+          heading_found = copy_found = False
+          for index, line in enumerate(receipt_lines):
+              if '<h2>{finalReceipt ? "تم استلام التحويل بالكامل" : "تم تأكيد الاستلام الجزئي"}</h2>' in line:
+                  receipt_lines[index] = line.replace(
+                      '<h2>{finalReceipt ? "تم استلام التحويل بالكامل" : "تم تأكيد الاستلام الجزئي"}</h2>',
+                      '<h2>تم تأكيد استلام اللفات</h2>',
+                  )
+                  heading_found = True
+              if 'انتقلت العهدة المؤكدة لـ{selectedCount} لفة إلى جهتك.' in line and 'afterReceiptRemaining' in line:
+                  indent = line[:len(line) - len(line.lstrip())]
+                  receipt_lines[index] = indent + 'انتقلت العهدة المؤكدة لـ{selectedCount} لفة إلى جهتك. افتح تفاصيل التحويل للاطلاع على الحالة الحالية واللفات المتبقية بعد تحديثها.'
+                  copy_found = True
+
+          if not heading_found:
+              raise SystemExit('Receipt success heading anchor was not found.')
+          if not copy_found:
+              raise SystemExit('Receipt success copy anchor was not found.')
+
+          receipt_path.write_text('\n'.join(receipt_lines) + '\n')
+          PY
+
+      - name: Commit closure patches
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/supabase/database.types.ts
-          git commit -m "chore(db): sync generated Supabase types"
+          git add .github/workflows/database-quality.yml components/transfers/transfer-receipt-flow.tsx
+          git diff --cached --check
+          git commit -m "fix(transfers): close Cube H review gates"
           git push origin HEAD:feature/cube-h-transfer-receipt-resolution
-
-      - name: Stop local stack
-        if: always()
-        run: supabase stop --no-backup || true
