@@ -98,6 +98,16 @@ const rollsResult = await rest(`rolls?production_order_id=eq.${orderId}&select=i
 assert(rollsResult.response.ok && rollsResult.body.length === 4, "Expected four recovery Rolls.");
 const rolls = rollsResult.body;
 
+// Database contract scripts intentionally share one rebuilt local database. Measure
+// the caller-scoped baseline so this test proves its own delta without assuming
+// earlier Cube H fixtures left Company attention at zero.
+const centerAttentionBaseline = one(await rpc("get_roll_transfer_attention_counts", {}, centerToken), "Center attention baseline");
+const companyAttentionBaseline = one(await rpc("get_roll_transfer_attention_counts", {}, adminToken), "Company attention baseline");
+const centerIncomingBaseline = Number(centerAttentionBaseline.incoming_action_count);
+const centerOutgoingBaseline = Number(centerAttentionBaseline.outgoing_action_count);
+const companyIncomingBaseline = Number(companyAttentionBaseline.incoming_action_count);
+const companyOutgoingBaseline = Number(companyAttentionBaseline.outgoing_action_count);
+
 const created = await rpc("create_roll_transfer", {
   p_request_id: randomUUID(),
   p_recipient_transfer_code: centerParty.transfer_code,
@@ -107,11 +117,13 @@ assert(created.response.ok && typeof created.body === "string", `Transfer failed
 const transferId = created.body;
 
 const centerCountsBefore = one(await rpc("get_roll_transfer_attention_counts", {}, centerToken), "Center attention before receipt");
-assert(Number(centerCountsBefore.incoming_action_count) === 1 && Number(centerCountsBefore.outgoing_action_count) === 0,
-  `Center attention counts wrong before receipt: ${JSON.stringify(centerCountsBefore)}`);
+assert(Number(centerCountsBefore.incoming_action_count) === centerIncomingBaseline + 1
+  && Number(centerCountsBefore.outgoing_action_count) === centerOutgoingBaseline,
+  `Center attention counts wrong before receipt: ${JSON.stringify({ baseline: centerAttentionBaseline, current: centerCountsBefore })}`);
 const companyCountsBefore = one(await rpc("get_roll_transfer_attention_counts", {}, adminToken), "Company attention before receipt");
-assert(Number(companyCountsBefore.incoming_action_count) === 0 && Number(companyCountsBefore.outgoing_action_count) === 0,
-  `Company pending send should not be marked unresolved: ${JSON.stringify(companyCountsBefore)}`);
+assert(Number(companyCountsBefore.incoming_action_count) === companyIncomingBaseline
+  && Number(companyCountsBefore.outgoing_action_count) === companyOutgoingBaseline,
+  `Company pending send should not add unresolved attention: ${JSON.stringify({ baseline: companyAttentionBaseline, current: companyCountsBefore })}`);
 
 const initialReconcile = await rpc("reconcile_roll_transfer_receipt_selection", {
   p_transfer_id: transferId,
@@ -146,10 +158,12 @@ assert(reconciledAfter.response.ok && reconciledAfter.body.length === 2
 
 const centerCountsAfter = one(await rpc("get_roll_transfer_attention_counts", {}, centerToken), "Center attention after partial receipt");
 const companyCountsAfter = one(await rpc("get_roll_transfer_attention_counts", {}, adminToken), "Company attention after partial receipt");
-assert(Number(centerCountsAfter.incoming_action_count) === 1,
-  `Recipient lost active receipt attention after partial receipt: ${JSON.stringify(centerCountsAfter)}`);
-assert(Number(companyCountsAfter.outgoing_action_count) === 1,
-  `Sender did not gain unresolved attention after partial receipt: ${JSON.stringify(companyCountsAfter)}`);
+assert(Number(centerCountsAfter.incoming_action_count) === centerIncomingBaseline + 1
+  && Number(centerCountsAfter.outgoing_action_count) === centerOutgoingBaseline,
+  `Recipient lost active receipt attention after partial receipt: ${JSON.stringify({ baseline: centerAttentionBaseline, current: centerCountsAfter })}`);
+assert(Number(companyCountsAfter.incoming_action_count) === companyIncomingBaseline
+  && Number(companyCountsAfter.outgoing_action_count) === companyOutgoingBaseline + 1,
+  `Sender did not gain exactly one unresolved attention after partial receipt: ${JSON.stringify({ baseline: companyAttentionBaseline, current: companyCountsAfter })}`);
 
 const unresolvedLot = one(await rpc("expand_roll_transfer_unresolved_lot", {
   p_transfer_id: transferId, p_lot_id: lot.id,
