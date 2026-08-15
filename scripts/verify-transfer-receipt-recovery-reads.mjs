@@ -1,4 +1,3 @@
-import "./verify-transfer-item-state-grants.mjs";
 import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 
