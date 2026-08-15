@@ -1,5 +1,6 @@
 import "./verify-transfer-item-state-grants.mjs";
 import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 const apiUrl = process.env.API_URL;
 const serviceRoleKey = process.env.SERVICE_ROLE_KEY;
@@ -194,4 +195,41 @@ for (const [name, body] of [
   assert(!service.response.ok, `service_role unexpectedly executed ${name}: ${JSON.stringify(service.body)}`);
 }
 
+const grantContainerNames = execFileSync("docker", ["ps", "--format", "{{.Names}}"], { encoding: "utf8" })
+  .split("\n").map((value) => value.trim()).filter(Boolean);
+const grantDbContainer = grantContainerNames.find((value) => value.startsWith("supabase_db_"));
+assert(grantDbContainer, "Supabase database container was not found for item-state grant verification.");
+
+function queryGrant(sql) {
+  return execFileSync(
+    "docker",
+    ["exec", "-i", grantDbContainer, "psql", "-At", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "postgres", "-c", sql],
+    { encoding: "utf8" },
+  ).trim();
+}
+
+for (const column of ["transfer_id", "roll_id", "status", "acted_at"]) {
+  assert(
+    queryGrant(`select has_column_privilege('authenticated', 'public.roll_transfer_item_states', '${column}', 'SELECT');`) === "t",
+    `authenticated lost approved safe item-state column ${column}.`,
+  );
+}
+
+for (const column of ["action_request_id", "acted_by_profile_id", "acted_by_party_id", "resolution_reason", "created_at"]) {
+  assert(
+    queryGrant(`select has_column_privilege('authenticated', 'public.roll_transfer_item_states', '${column}', 'SELECT');`) === "f",
+    `authenticated can read private item-state column ${column}.`,
+  );
+  assert(
+    queryGrant(`select has_column_privilege('service_role', 'public.roll_transfer_item_states', '${column}', 'SELECT');`) === "f",
+    `service_role Data API can read private item-state column ${column}.`,
+  );
+}
+
+assert(
+  queryGrant("select has_table_privilege('authenticated', 'public.roll_transfer_item_states', 'INSERT,UPDATE,DELETE');") === "f",
+  "authenticated unexpectedly gained direct item-state mutation privileges.",
+);
+
+console.log("Cube H item-state safe-column grants verified.");
 console.log("Cube H receipt recovery/attention read contracts verified.");

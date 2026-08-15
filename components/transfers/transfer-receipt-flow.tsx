@@ -335,9 +335,9 @@ export function TransferReceiptFlow({
       <div className={styles.flow}>
         <section className={styles.success}>
           <div className={styles.successMark}>✓</div>
-          <h2>{finalReceipt ? "تم استلام التحويل بالكامل" : "تم تأكيد الاستلام الجزئي"}</h2>
+          <h2>تم تأكيد استلام اللفات</h2>
           <p>
-            انتقلت العهدة المؤكدة لـ{selectedCount} لفة إلى جهتك. {finalReceipt ? "لا توجد لفات معلقة في هذا التحويل." : `ما زال ${afterReceiptRemaining} لفة محجوزة وعهدتها المؤكدة لدى المرسل حتى يتم استلامها أو حسمها.`}
+            انتقلت العهدة المؤكدة لـ{selectedCount} لفة إلى جهتك. افتح تفاصيل التحويل للاطلاع على الحالة الحالية واللفات المتبقية بعد تحديثها.
           </p>
           <Link className="button button-primary" href={`/operations/transfers/${detail.transfer_id}`}>فتح تفاصيل التحويل</Link>
         </section>
