@@ -1,0 +1,42 @@
+name: Temporary Cube H Stale Import Cleanup
+
+"on":
+  push:
+    branches:
+      - feature/cube-h-transfer-receipt-resolution
+    paths:
+      - ".github/workflows/remove-stale-cube-h-import.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cube-h-transfer-receipt-resolution
+
+      - name: Remove stale deleted-test import
+        shell: bash
+        run: |
+          set -euo pipefail
+          file="scripts/verify-transfer-receipt-recovery-reads.mjs"
+          expected='import "./verify-transfer-item-state-grants.mjs";'
+          first_line="$(head -n 1 "$file")"
+          test "$first_line" = "$expected"
+          tail -n +2 "$file" > "$file.tmp"
+          mv "$file.tmp" "$file"
+          node --check "$file"
+          git diff --check -- "$file"
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/verify-transfer-receipt-recovery-reads.mjs
+          git commit -m "test(transfers): remove stale grant verifier import"
+          git push origin HEAD:feature/cube-h-transfer-receipt-resolution
