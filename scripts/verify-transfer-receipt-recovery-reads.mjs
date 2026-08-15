@@ -1,3 +1,4 @@
+import "./verify-transfer-item-state-grants.mjs";
 import { randomUUID } from "node:crypto";
 
 const apiUrl = process.env.API_URL;
