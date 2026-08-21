@@ -23,10 +23,10 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Install independent QR decoder
+      - name: Install independent QR verification tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends zbar-tools
+          sudo apt-get install -y --no-install-recommends zbar-tools poppler-utils
       - name: Verify QR generation and independent decoding
         shell: bash
         run: |
