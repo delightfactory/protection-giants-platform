@@ -20,6 +20,9 @@ export type QrVectorGeometry = {
 };
 
 type DrawingContext = Parameters<typeof bwipjs.render<QrVectorGeometry>>[1];
+type QrRenderOptions = Parameters<typeof bwipjs.render>[0] & {
+  eclevel: typeof QR_ERROR_CORRECTION_LEVEL;
+};
 
 function finiteCoordinate(value: number): string {
   if (!Number.isFinite(value)) throw new Error("QR renderer produced a non-finite coordinate.");
@@ -118,13 +121,15 @@ export function buildQrVectorGeometry(payload: string): QrVectorGeometry {
     },
   };
 
-  return bwipjs.render<QrVectorGeometry>({
+  const options: QrRenderOptions = {
     bcid: "qrcode",
     text,
     scale: QR_RENDER_SCALE,
     eclevel: QR_ERROR_CORRECTION_LEVEL,
     barcolor: "000000",
-  }, drawing);
+  };
+
+  return bwipjs.render<QrVectorGeometry>(options, drawing);
 }
 
 export function qrVectorGeometryToSvg(geometry: QrVectorGeometry): string {
