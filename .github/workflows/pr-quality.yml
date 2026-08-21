@@ -23,6 +23,12 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+      - name: Install independent QR decoder
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends zbar-tools
+      - name: Verify QR generation and independent decoding
+        run: node --experimental-strip-types scripts/verify-qr-reliability.mjs
       - name: Verify contextual Roll QR contract
         run: node --experimental-strip-types scripts/verify-roll-qr-contract.mjs
       - name: Verify Transfer Send client contracts
