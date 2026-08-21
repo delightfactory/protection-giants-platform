@@ -11,13 +11,15 @@ export function TransferIdQr({ transferCode }: { transferCode: string }) {
         role="img"
         aria-label="Transfer ID QR"
         preserveAspectRatio="xMidYMid meet"
+        shapeRendering="crispEdges"
       >
         <rect x="0" y="0" width={geometry.width} height={geometry.height} fill="#fff" />
-        {geometry.polygons.map((polygon, index) => (
-          <polygon
+        {geometry.fills.map((fill, index) => (
+          <path
             key={index}
-            points={polygon.points.map(([x, y]) => `${x},${y}`).join(" ")}
-            fill="#000"
+            d={fill.path}
+            fill={`#${fill.color}`}
+            fillRule="nonzero"
           />
         ))}
       </svg>
