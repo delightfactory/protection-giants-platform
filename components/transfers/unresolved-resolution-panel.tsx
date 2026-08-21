@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   adminReleaseUnreceivedTransferItems,
@@ -18,8 +18,6 @@ import {
 import styles from "./transfer-detail.module.css";
 
 const PAGE_SIZE = 40;
-type RpcResult = { data: unknown; error: { message?: string } | null };
-type RpcInvoker = (name: string, args?: Record<string, unknown>) => Promise<RpcResult>;
 
 type LotExpansion = {
   lot_id: string;
@@ -43,10 +41,6 @@ export function UnresolvedResolutionPanel({
   adminMode: boolean;
 }) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
-  const rpc = useMemo(
-    () => (supabase.rpc as unknown as RpcInvoker).bind(supabase),
-    [supabase],
-  );
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [rows, setRows] = useState<TransferItem[]>([]);
@@ -55,16 +49,31 @@ export function UnresolvedResolutionPanel({
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(false);
   const [reason, setReason] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: "error" | "success" | "info"; text: string } | null>(null);
   const [isSubmitting, startTransition] = useTransition();
 
   const pendingLots = lotGroups.filter((lot) => lot.pending_count > 0);
 
+  useEffect(() => {
+    if (!confirmOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSubmitting) setConfirmOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [confirmOpen, isSubmitting]);
+
   const loadRows = useCallback(async (nextPage = 0, rawSearch = search) => {
     setLoading(true);
     setFeedback(null);
     try {
-      const { data, error } = await rpc("list_roll_transfer_items", {
+      const { data, error } = await supabase.rpc("list_roll_transfer_items", {
         p_transfer_id: transferId,
         p_search: rawSearch.trim().toUpperCase() || null,
         p_status: "pending",
@@ -80,13 +89,13 @@ export function UnresolvedResolutionPanel({
     } finally {
       setLoading(false);
     }
-  }, [rpc, search, transferId]);
+  }, [search, supabase, transferId]);
 
   async function addLot(lotId: string) {
     setLoading(true);
     setFeedback(null);
     try {
-      const { data, error } = await rpc("expand_roll_transfer_unresolved_lot", {
+      const { data, error } = await supabase.rpc("expand_roll_transfer_unresolved_lot", {
         p_transfer_id: transferId,
         p_lot_id: lotId,
       });
@@ -114,6 +123,12 @@ export function UnresolvedResolutionPanel({
     });
   }
 
+  function openResolutionConfirmation() {
+    if (selected.size === 0 || reason.trim().length < 5) return;
+    setFeedback(null);
+    setConfirmOpen(true);
+  }
+
   function submitResolution() {
     const rollIds = [...selected];
     const trimmedReason = reason.trim();
@@ -129,17 +144,20 @@ export function UnresolvedResolutionPanel({
           : await releaseUnreceivedTransferItems({ requestId, transferId, rollIds, reason: trimmedReason });
 
         if (!result.ok) {
+          setConfirmOpen(false);
           setFeedback({ tone: "error", text: transferActionErrorMessage(result.code) });
           return;
         }
 
         clearTransferActionRequest(action, transferId);
+        setConfirmOpen(false);
         setSelected(new Set());
         setReason("");
         setFeedback({ tone: "success", text: "تم حسم اللفات المحددة مع بقاء عهدتها المؤكدة لدى المرسل." });
         await loadRows(0, search);
         router.refresh();
       } catch {
+        setConfirmOpen(false);
         setFeedback({ tone: "error", text: "انقطع الاتصال أثناء التنفيذ. لم نفقد اختيارك؛ أعد المحاولة بنفس البيانات للتحقق بأمان." });
       }
     });
@@ -210,10 +228,34 @@ export function UnresolvedResolutionPanel({
           maxLength={500}
           style={{ width: "100%", minHeight: 100, resize: "vertical", padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: "var(--surface-0)", color: "var(--text-primary)", font: "inherit" }}
         />
-        <button type="button" className="button button-primary" disabled={selected.size === 0 || reason.trim().length < 5 || isSubmitting} onClick={submitResolution}>
-          {isSubmitting ? "جارٍ التحقق والحسم…" : `تأكيد بقاء ${selected.size} لفة لدى المرسل`}
+        <button type="button" className="button button-primary" disabled={selected.size === 0 || reason.trim().length < 5 || isSubmitting} onClick={openResolutionConfirmation}>
+          {`مراجعة حسم ${selected.size} لفة`}
         </button>
       </div>
+
+      {confirmOpen ? (
+        <div className={styles.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSubmitting) setConfirmOpen(false); }}>
+          <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="resolution-confirm-title">
+            <div className={styles.sheetHeader}>
+              <div>
+                <span className={styles.eyebrow}>{adminMode ? "حسم إداري موثق" : "حسم نهائي للمتبقي"}</span>
+                <h2 id="resolution-confirm-title">تأكيد حسم {selected.size} لفة؟</h2>
+              </div>
+              <button type="button" className={styles.close} onClick={() => setConfirmOpen(false)} disabled={isSubmitting} aria-label="إغلاق">×</button>
+            </div>
+            <p>
+              سيتم تحرير حجز {selected.size} لفة من هذا التحويل، ولن تُنشأ حركة عهدة جديدة؛ ستظل العهدة المؤكدة لهذه اللفات لدى المرسل.
+            </p>
+            <p>هذا الحسم نهائي داخل التحويل ولا يمكن التراجع عنه من هذه الشاشة.</p>
+            <div className={styles.sheetActions}>
+              <button type="button" className="button button-ghost" onClick={() => setConfirmOpen(false)} disabled={isSubmitting}>رجوع</button>
+              <button type="button" className="button button-primary" onClick={submitResolution} disabled={isSubmitting}>
+                {isSubmitting ? "جارٍ التحقق والحسم…" : `نعم، احسم ${selected.size} لفة`}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }
