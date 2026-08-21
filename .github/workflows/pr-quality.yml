@@ -28,7 +28,19 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends zbar-tools
       - name: Verify QR generation and independent decoding
-        run: node --experimental-strip-types scripts/verify-qr-reliability.mjs
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf /tmp/qr-reliability-test
+          npx tsc scripts/verify-qr-reliability.ts \
+            --target ES2022 \
+            --module NodeNext \
+            --moduleResolution NodeNext \
+            --esModuleInterop \
+            --skipLibCheck \
+            --strict \
+            --outDir /tmp/qr-reliability-test
+          NODE_PATH="$PWD/node_modules" node /tmp/qr-reliability-test/scripts/verify-qr-reliability.js
       - name: Verify contextual Roll QR contract
         run: node --experimental-strip-types scripts/verify-roll-qr-contract.mjs
       - name: Verify Transfer Send client contracts
