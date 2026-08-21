@@ -1,5 +1,7 @@
 import bwipjs from "bwip-js/browser";
 
+import { buildQrVectorGeometry, type QrVectorGeometry } from "../qr/qr-vector";
+
 export const OUTER_ROLL_MACHINE_CODE_RENDER_SCALE = 4;
 
 export type OuterRollGtinSymbology = "ean8" | "upca" | "ean13" | "itf14";
@@ -31,7 +33,7 @@ export type OuterRollGtinBarcodeVector = {
 
 export type OuterRollQrVector = {
   payload: string;
-  geometry: BwipVectorGeometry;
+  geometry: QrVectorGeometry;
 };
 
 export class OuterRollMachineCodeError extends Error {
@@ -165,21 +167,14 @@ export function buildOuterRollQrVector(qrPayload: string): OuterRollQrVector {
     throw new OuterRollMachineCodeError("Roll QR payload must use the approved HTTPS public-site contract.");
   }
 
-  const geometry = renderVector({
-    bcid: "qrcode",
-    text: qrPayload,
-    scale: OUTER_ROLL_MACHINE_CODE_RENDER_SCALE,
-    paddingwidth: 0,
-    paddingheight: 0,
-  });
-
-  if (geometry.polygons.length === 0) {
+  const geometry = buildQrVectorGeometry(qrPayload);
+  if (geometry.fills.length === 0) {
     throw new OuterRollMachineCodeError("Roll QR produced no vector modules.");
   }
 
   return { payload: qrPayload, geometry };
 }
 
-export function buildOuterRollQrGeometry(qrPayload: string): BwipVectorGeometry {
+export function buildOuterRollQrGeometry(qrPayload: string): QrVectorGeometry {
   return buildOuterRollQrVector(qrPayload).geometry;
 }
