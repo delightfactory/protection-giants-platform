@@ -177,6 +177,13 @@ describe("Cube H Transfer receipt interactions", () => {
             lot_number: "LOT-OUTSIDE",
             product_name: "Protection Film",
             item_status: "pending",
+          }, {
+            roll_id: "beyond-cap",
+            serial_number: "PG-R-BEYOND-CAP",
+            lot_id: "77777777-7777-4777-8777-777777777777",
+            lot_number: "LOT-BEYOND",
+            product_name: "Protection Film",
+            item_status: "pending",
           }],
           error: null,
         });
@@ -232,6 +239,24 @@ describe("Cube H Transfer receipt interactions", () => {
 
     expect(textOf(root.container)).toContain("10000 لفة");
     expect(textOf(root.container)).not.toContain("10001 لفة");
+
+    const checkboxesAtCap = root.container.queryAll((node) => node.type === "input" && node.props.type === "checkbox");
+    expect(checkboxesAtCap).toHaveLength(2);
+    expect(checkboxesAtCap[1].props.checked).toBe(false);
+
+    await act(async () => {
+      checkboxesAtCap[1].props.onChange();
+    });
+
+    const checkboxesAfterRejectedAddition = root.container.queryAll((node) => node.type === "input" && node.props.type === "checkbox");
+    expect(checkboxesAfterRejectedAddition[1].props.checked).toBe(false);
+    expect(textOf(root.container)).toContain("10000 لفة");
+    expect(textOf(root.container)).not.toContain("10001 لفة");
+
+    await act(async () => {
+      findButton(root.container, /مراجعة الاستلام/).props.onClick();
+    });
+    expect(textOf(root.container)).not.toContain("LOT-BEYOND");
 
     const plan = planReceiptLotSelection(
       new Set(Array.from({ length: MAX_TRANSFER_RECEIPT_ROLLS - 1 }, (_, index) => `existing-${index}`)),

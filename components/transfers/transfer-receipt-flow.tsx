@@ -241,8 +241,12 @@ export function TransferReceiptFlow({
     if (row.item_status !== "pending") return;
     const nextSelection = new Set(selectionRef.current);
     const wasSelected = nextSelection.has(row.roll_id);
+    if (!wasSelected && nextSelection.size >= MAX_TRANSFER_RECEIPT_ROLLS) {
+      setFeedback({ tone: "error", text: "وصلت للحد الأقصى 10,000 لفة." });
+      return;
+    }
     if (wasSelected) nextSelection.delete(row.roll_id);
-    else if (nextSelection.size < MAX_TRANSFER_RECEIPT_ROLLS) nextSelection.add(row.roll_id);
+    else nextSelection.add(row.roll_id);
     selectionRef.current = nextSelection;
     setSelected(nextSelection);
     setSelectionDetails((current) => {
