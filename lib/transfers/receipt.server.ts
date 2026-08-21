@@ -7,14 +7,6 @@ import type {
   TransferSummary,
 } from "@/lib/transfers/receipt";
 
-type RpcResult = { data: unknown; error: { message?: string } | null };
-type RpcInvoker = (name: string, args?: Record<string, unknown>) => Promise<RpcResult>;
-
-async function rpc(name: string, args: Record<string, unknown> = {}): Promise<RpcResult> {
-  const supabase = await createSupabaseServerClient();
-  return (supabase.rpc as unknown as RpcInvoker)(name, args);
-}
-
 function rows<T>(data: unknown): T[] {
   return Array.isArray(data) ? data as T[] : [];
 }
@@ -23,7 +15,8 @@ export async function getTransferAttentionCounts(): Promise<{
   incomingActionCount: number;
   outgoingActionCount: number;
 }> {
-  const { data, error } = await rpc("get_roll_transfer_attention_counts");
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("get_roll_transfer_attention_counts");
   if (error) throw new Error(error.message ?? "PG_TRANSFER_ATTENTION_COUNT_FAILED");
   const row = rows<{ incoming_action_count: number; outgoing_action_count: number }>(data)[0];
   return {
@@ -39,7 +32,8 @@ export async function listTransfers(input: {
   limit?: number;
   offset?: number;
 }): Promise<TransferSummary[]> {
-  const { data, error } = await rpc("list_roll_transfers", {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("list_roll_transfers", {
     p_direction: input.direction,
     p_scope: input.scope ?? "active",
     p_search: input.search ?? null,
@@ -51,7 +45,8 @@ export async function listTransfers(input: {
 }
 
 export async function getTransferDetail(transferId: string): Promise<TransferDetail | null> {
-  const { data, error } = await rpc("get_roll_transfer_detail", { p_transfer_id: transferId });
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("get_roll_transfer_detail", { p_transfer_id: transferId });
   if (error) throw new Error(error.message ?? "PG_TRANSFER_DETAIL_FAILED");
   return rows<TransferDetail>(data)[0] ?? null;
 }
@@ -63,7 +58,8 @@ export async function listTransferItems(input: {
   limit?: number;
   offset?: number;
 }): Promise<TransferItem[]> {
-  const { data, error } = await rpc("list_roll_transfer_items", {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("list_roll_transfer_items", {
     p_transfer_id: input.transferId,
     p_search: input.search ?? null,
     p_status: input.status ?? null,
