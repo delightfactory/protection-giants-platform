@@ -1,0 +1,87 @@
+name: Temporary Cube H RPC Optional Args Cleanup
+
+"on":
+  push:
+    branches:
+      - feature/cube-h-transfer-receipt-resolution
+    paths:
+      - ".github/workflows/temporary-cube-h-rpc-optional-args.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cube-h-transfer-receipt-resolution
+
+      - name: Align optional RPC args with generated types
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path: str, old: str, new: str, expected: int = 1) -> None:
+              target = Path(path)
+              text = target.read_text()
+              count = text.count(old)
+              if count == 0 and text.count(new) >= expected:
+                  return
+              if count != expected:
+                  raise SystemExit(f"{path}: expected {expected} match(es), found {count}")
+              target.write_text(text.replace(old, new))
+
+          replace_exact(
+              "components/transfers/transfer-receipt-flow.tsx",
+              "p_search: rawSearch?.trim().toUpperCase() || null,",
+              "p_search: rawSearch?.trim().toUpperCase() || undefined,",
+          )
+          replace_exact(
+              "components/transfers/transfer-receipt-flow.tsx",
+              "p_status: status,",
+              "p_status: status ?? undefined,",
+          )
+          replace_exact(
+              "components/transfers/unresolved-resolution-panel.tsx",
+              "p_search: rawSearch.trim().toUpperCase() || null,",
+              "p_search: rawSearch.trim().toUpperCase() || undefined,",
+          )
+          replace_exact(
+              "lib/transfers/receipt.server.ts",
+              "p_search: input.search ?? null,",
+              "p_search: input.search ?? undefined,",
+              expected=2,
+          )
+          replace_exact(
+              "lib/transfers/receipt.server.ts",
+              "p_status: input.status ?? null,",
+              "p_status: input.status ?? undefined,",
+          )
+          PY
+          git diff --check -- \
+            components/transfers/transfer-receipt-flow.tsx \
+            components/transfers/unresolved-resolution-panel.tsx \
+            lib/transfers/receipt.server.ts
+
+      - name: Commit cleanup if needed
+        run: |
+          if git diff --quiet -- \
+            components/transfers/transfer-receipt-flow.tsx \
+            components/transfers/unresolved-resolution-panel.tsx \
+            lib/transfers/receipt.server.ts; then
+            echo "Typed optional RPC args already aligned."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            components/transfers/transfer-receipt-flow.tsx \
+            components/transfers/unresolved-resolution-panel.tsx \
+            lib/transfers/receipt.server.ts
+          git commit -m "fix(transfers): align optional RPC args with generated types"
+          git push origin HEAD:feature/cube-h-transfer-receipt-resolution
