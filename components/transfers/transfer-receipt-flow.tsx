@@ -9,6 +9,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { normalizeRollSerial, parseRollQrPayload } from "@/lib/rolls/roll-qr";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { MAX_TRANSFER_RECEIPT_ROLLS, planReceiptLotSelection } from "@/lib/transfers/receipt-selection";
 import {
   clearTransferActionRequest,
   receiptDraftStorageKey,
@@ -22,7 +23,6 @@ import {
 import styles from "./transfer-receipt-flow.module.css";
 
 const PAGE_SIZE = 40;
-const MAX_ROLLS = 10000;
 type Mode = "scan" | "expected" | "lots";
 type Stage = "verify" | "review" | "success";
 
@@ -30,7 +30,6 @@ type InlineFeedback = { tone: "success" | "warning" | "error" | "info"; text: st
 type SelectionDetail = Pick<TransferItem, "roll_id" | "serial_number" | "lot_id" | "lot_number" | "product_name">;
 type LotSelectionConfirmation = {
   lot: ReceiptLotExpansion;
-  additions: string[];
 };
 
 export function TransferReceiptFlow({
@@ -64,6 +63,12 @@ export function TransferReceiptFlow({
   const selectedCount = selected.size;
   const afterReceiptRemaining = Math.max(0, detail.pending_count - selectedCount);
   const finalReceipt = selectedCount > 0 && selectedCount === detail.pending_count;
+  const lotSelectionPlan = useMemo(
+    () => lotConfirmation
+      ? planReceiptLotSelection(selected, lotConfirmation.lot.pending_roll_ids)
+      : null,
+    [lotConfirmation, selected],
+  );
 
   useEffect(() => {
     let active = true;
@@ -71,7 +76,7 @@ export function TransferReceiptFlow({
       let candidate: string[] = [];
       try {
         const parsed = JSON.parse(sessionStorage.getItem(receiptDraftStorageKey(detail.transfer_id)) ?? "[]");
-        if (Array.isArray(parsed)) candidate = [...new Set(parsed.filter((value): value is string => typeof value === "string"))].slice(0, MAX_ROLLS);
+        if (Array.isArray(parsed)) candidate = [...new Set(parsed.filter((value): value is string => typeof value === "string"))].slice(0, MAX_TRANSFER_RECEIPT_ROLLS);
       } catch {
         sessionStorage.removeItem(receiptDraftStorageKey(detail.transfer_id));
       }
@@ -88,7 +93,9 @@ export function TransferReceiptFlow({
         });
         if (!error && Array.isArray(data) && active) {
           const valid = data.filter((value): value is string => typeof value === "string");
-          setSelected(new Set(valid));
+          const restored = new Set(valid);
+          selectionRef.current = restored;
+          setSelected(restored);
           if (valid.length < candidate.length) {
             setFeedback({ tone: "info", text: "تم تحديث الاختيار المحفوظ واستبعاد أي لفات لم تعد معلقة في التحويل." });
           } else {
@@ -166,11 +173,14 @@ export function TransferReceiptFlow({
     if (selectionRef.current.has(row.roll_id)) {
       return { action: "continue", message: "هذه اللفة تم التحقق منها وإضافتها بالفعل.", tone: "warning" };
     }
-    if (selectionRef.current.size >= MAX_ROLLS) {
+    if (selectionRef.current.size >= MAX_TRANSFER_RECEIPT_ROLLS) {
       return { action: "continue", message: "وصلت للحد الأقصى 10,000 لفة.", tone: "error" };
     }
 
-    setSelected((current) => new Set(current).add(row.roll_id));
+    const nextSelection = new Set(selectionRef.current);
+    nextSelection.add(row.roll_id);
+    selectionRef.current = nextSelection;
+    setSelected(nextSelection);
     setSelectionDetails((current) => {
       const next = new Map(current);
       next.set(row.roll_id, {
@@ -229,15 +239,15 @@ export function TransferReceiptFlow({
 
   function toggleRow(row: TransferItem) {
     if (row.item_status !== "pending") return;
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(row.roll_id)) next.delete(row.roll_id);
-      else if (next.size < MAX_ROLLS) next.add(row.roll_id);
-      return next;
-    });
+    const nextSelection = new Set(selectionRef.current);
+    const wasSelected = nextSelection.has(row.roll_id);
+    if (wasSelected) nextSelection.delete(row.roll_id);
+    else if (nextSelection.size < MAX_TRANSFER_RECEIPT_ROLLS) nextSelection.add(row.roll_id);
+    selectionRef.current = nextSelection;
+    setSelected(nextSelection);
     setSelectionDetails((current) => {
       const next = new Map(current);
-      if (selected.has(row.roll_id)) next.delete(row.roll_id);
+      if (wasSelected) next.delete(row.roll_id);
       else next.set(row.roll_id, {
         roll_id: row.roll_id,
         serial_number: row.serial_number,
@@ -250,6 +260,10 @@ export function TransferReceiptFlow({
   }
 
   async function addLot(lotId: string) {
+    if (!draftHydrated) {
+      setFeedback({ tone: "info", text: "جارٍ استعادة اختيار الاستلام السابق. أكمل بعد انتهاء الاستعادة." });
+      return;
+    }
     setLoading(true);
     setFeedback(null);
     try {
@@ -259,13 +273,12 @@ export function TransferReceiptFlow({
       });
       if (error || !Array.isArray(data) || data.length !== 1) throw new Error(error?.message ?? "lot");
       const lot = data[0] as ReceiptLotExpansion;
-      const room = MAX_ROLLS - selectionRef.current.size;
-      const additions = lot.pending_roll_ids.filter((id) => !selectionRef.current.has(id)).slice(0, room);
-      if (additions.length === 0) {
+      const plan = planReceiptLotSelection(selectionRef.current, lot.pending_roll_ids);
+      if (plan.additions.length === 0) {
         setFeedback({ tone: "info", text: `لا توجد لفات جديدة معلقة لإضافتها من Lot ${lot.lot_number}.` });
         return;
       }
-      setLotConfirmation({ lot, additions });
+      setLotConfirmation({ lot });
     } catch {
       setFeedback({ tone: "error", text: "تعذر تحديث مجموعة Lot. حدّث التحويل ثم أعد المحاولة." });
     } finally {
@@ -274,13 +287,18 @@ export function TransferReceiptFlow({
   }
 
   function confirmLotSelection() {
-    if (!lotConfirmation) return;
-    const { lot, additions } = lotConfirmation;
-    setSelected((current) => {
-      const next = new Set(current);
-      additions.forEach((id) => next.add(id));
-      return next;
-    });
+    if (!lotConfirmation || !draftHydrated) return;
+    const { lot } = lotConfirmation;
+    const plan = planReceiptLotSelection(selectionRef.current, lot.pending_roll_ids);
+    const additions = plan.additions;
+    if (additions.length === 0) {
+      setLotConfirmation(null);
+      setFeedback({ tone: "info", text: `لم تعد هناك لفات جديدة قابلة للإضافة من Lot ${lot.lot_number}.` });
+      return;
+    }
+
+    selectionRef.current = plan.next;
+    setSelected(plan.next);
     setSelectionDetails((current) => {
       const next = new Map(current);
       additions.forEach((rollId) => next.set(rollId, {
@@ -385,8 +403,8 @@ export function TransferReceiptFlow({
             <button type="button" className={styles.mode} data-active={mode === "expected"} onClick={() => { setMode("expected"); if (rows.length === 0) void loadExpected(); }}>
               <strong>اختيار من المتوقع</strong><span>راجع اللفات المسجلة في التحويل</span>
             </button>
-            <button type="button" className={styles.mode} data-active={mode === "lots"} onClick={() => setMode("lots")}>
-              <strong>تأكيد مجموعة Lot</strong><span>للحركة الكبيرة الموثوقة</span>
+            <button type="button" className={styles.mode} data-active={mode === "lots"} onClick={() => setMode("lots")} disabled={!draftHydrated}>
+              <strong>تأكيد مجموعة Lot</strong><span>{draftHydrated ? "للحركة الكبيرة الموثوقة" : "جارٍ استعادة الاختيار السابق…"}</span>
             </button>
           </div>
 
@@ -442,8 +460,8 @@ export function TransferReceiptFlow({
                     <article className={styles.lot} key={lot.lot_id}>
                       <div className={styles.lotTop}>
                         <div><strong>{lot.product_name}</strong><code>{lot.lot_number}</code></div>
-                        <button type="button" className="button button-ghost" onClick={() => void addLot(lot.lot_id)} disabled={loading || lot.pending_count === 0}>
-                          {lot.pending_count === 0 ? "لا يوجد متبقي" : `مراجعة تحديد ${lot.pending_count}`}
+                        <button type="button" className="button button-ghost" onClick={() => void addLot(lot.lot_id)} disabled={!draftHydrated || loading || lot.pending_count === 0}>
+                          {!draftHydrated ? "جارٍ الاستعادة…" : lot.pending_count === 0 ? "لا يوجد متبقي" : `مراجعة تحديد ${lot.pending_count}`}
                         </button>
                       </div>
                       <div className={styles.lotCounts}>
@@ -502,19 +520,19 @@ export function TransferReceiptFlow({
         onDecode={handleScannedPayload}
       />
 
-      {lotConfirmation ? (
+      {lotConfirmation && lotSelectionPlan ? (
         <div className={styles.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setLotConfirmation(null); }}>
           <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="lot-selection-confirm-title">
-            <h2 id="lot-selection-confirm-title">إضافة {lotConfirmation.additions.length} لفة من Lot {lotConfirmation.lot.lot_number}؟</h2>
+            <h2 id="lot-selection-confirm-title">إضافة {lotSelectionPlan.additions.length} لفة من Lot {lotConfirmation.lot.lot_number}؟</h2>
             <p>
               {lotConfirmation.lot.transfer_contains_full_lot
-                ? `سيتم إضافة ${lotConfirmation.additions.length} لفة معلقة من هذا الـLot إلى اختيار الاستلام الحالي.`
-                : `التحويل يشمل جزءًا فقط من هذا الـLot؛ سيتم إضافة ${lotConfirmation.additions.length} لفة معلقة ومسجلة داخل هذا التحويل فقط.`}
+                ? `سيتم إضافة ${lotSelectionPlan.additions.length} لفة معلقة من هذا الـLot إلى اختيار الاستلام الحالي.`
+                : `التحويل يشمل جزءًا فقط من هذا الـLot؛ سيتم إضافة ${lotSelectionPlan.additions.length} لفة معلقة ومسجلة داخل هذا التحويل فقط.`}
             </p>
             <p>هذه الخطوة تضيف اللفات إلى الاختيار فقط؛ لن تنتقل العهدة قبل مراجعة الاستلام ثم تأكيده صراحةً.</p>
             <div className={styles.sheetActions}>
               <button type="button" className="button button-ghost" onClick={() => setLotConfirmation(null)}>رجوع</button>
-              <button type="button" className="button button-primary" onClick={confirmLotSelection}>نعم، أضف {lotConfirmation.additions.length} لفة</button>
+              <button type="button" className="button button-primary" onClick={confirmLotSelection} disabled={!draftHydrated || lotSelectionPlan.additions.length === 0}>نعم، أضف {lotSelectionPlan.additions.length} لفة</button>
             </div>
           </section>
         </div>
