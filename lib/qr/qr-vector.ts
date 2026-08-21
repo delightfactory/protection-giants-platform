@@ -19,23 +19,35 @@ export type QrVectorGeometry = {
   fills: readonly QrVectorFill[];
 };
 
-type DrawingContext = Parameters<typeof bwipjs.render<QrVectorGeometry>>[1];
-type QrRenderOptions = Parameters<typeof bwipjs.render>[0] & {
+type QrRawOptions = {
+  bcid: "qrcode";
+  text: string;
   eclevel: typeof QR_ERROR_CORRECTION_LEVEL;
 };
+
+type QrRawMatrix = {
+  pixs: number[];
+  pixx: number;
+  pixy: number;
+  width: number;
+  height: number;
+};
+
+const encodeRawQr = bwipjs.raw as unknown as (options: QrRawOptions) => QrRawMatrix[];
 
 function finiteCoordinate(value: number): string {
   if (!Number.isFinite(value)) throw new Error("QR renderer produced a non-finite coordinate.");
   return Number(value.toFixed(4)).toString();
 }
 
-function polygonSubpath(points: readonly [number, number][], offset: number): string {
-  if (points.length < 3) throw new Error("QR renderer produced an invalid polygon.");
-
-  const [first, ...rest] = points;
+function rectangleSubpath(x: number, y: number, width: number, height: number): string {
+  const x2 = x + width;
+  const y2 = y + height;
   return [
-    `M ${finiteCoordinate(first[0] + offset)} ${finiteCoordinate(first[1] + offset)}`,
-    ...rest.map(([x, y]) => `L ${finiteCoordinate(x + offset)} ${finiteCoordinate(y + offset)}`),
+    `M ${finiteCoordinate(x)} ${finiteCoordinate(y)}`,
+    `L ${finiteCoordinate(x2)} ${finiteCoordinate(y)}`,
+    `L ${finiteCoordinate(x2)} ${finiteCoordinate(y2)}`,
+    `L ${finiteCoordinate(x)} ${finiteCoordinate(y2)}`,
     "Z",
   ].join(" ");
 }
@@ -45,91 +57,86 @@ function normalizeColor(value: unknown): string {
   return /^[0-9A-F]{6}$/.test(normalized) ? normalized : "000000";
 }
 
+function readQrMatrix(text: string): QrRawMatrix {
+  const raw = encodeRawQr({
+    bcid: "qrcode",
+    text,
+    eclevel: QR_ERROR_CORRECTION_LEVEL,
+  });
+
+  if (!Array.isArray(raw) || raw.length !== 1) {
+    throw new Error("QR encoder returned an unexpected raw symbol stack.");
+  }
+
+  const matrix = raw[0];
+  if (
+    !matrix
+    || !Number.isInteger(matrix.pixx)
+    || !Number.isInteger(matrix.pixy)
+    || matrix.pixx !== matrix.pixy
+    || matrix.pixx < 21
+    || (matrix.pixx - 21) % 4 !== 0
+    || matrix.pixs.length !== matrix.pixx * matrix.pixy
+    || matrix.pixs.some((value) => value !== 0 && value !== 1)
+  ) {
+    throw new Error("QR encoder returned an invalid module matrix.");
+  }
+
+  return matrix;
+}
+
 export function buildQrVectorGeometry(payload: string): QrVectorGeometry {
   const text = payload.trim();
   if (!text) throw new Error("QR payload is required.");
 
-  const quietZone = QR_RENDER_SCALE * QR_QUIET_ZONE_MODULES;
-  let width = 0;
-  let height = 0;
-  let symbolModules = 0;
-  let pendingSubpaths: string[] = [];
-  const fills: QrVectorFill[] = [];
+  const matrix = readQrMatrix(text);
+  const moduleSize = QR_RENDER_SCALE;
+  const quietZone = moduleSize * QR_QUIET_ZONE_MODULES;
+  const totalModules = matrix.pixx + QR_QUIET_ZONE_MODULES * 2;
+  const subpaths: string[] = [];
 
-  const drawing: DrawingContext = {
-    setopts() {},
-    scale() {
-      return null;
-    },
-    measure() {
-      return { width: 0, ascent: 0, descent: 0 };
-    },
-    init(symbolWidth, symbolHeight) {
-      if (!(symbolWidth > 0) || symbolWidth !== symbolHeight) {
-        throw new Error("QR renderer returned invalid symbol dimensions.");
+  for (let row = 0; row < matrix.pixy; row += 1) {
+    let column = 0;
+    while (column < matrix.pixx) {
+      const index = row * matrix.pixx + column;
+      if (matrix.pixs[index] !== 1) {
+        column += 1;
+        continue;
       }
 
-      const modules = symbolWidth / QR_RENDER_SCALE;
-      if (!Number.isInteger(modules) || modules < 21 || (modules - 21) % 4 !== 0) {
-        throw new Error("QR renderer returned dimensions that do not match a standard QR version.");
+      const start = column;
+      while (
+        column < matrix.pixx
+        && matrix.pixs[row * matrix.pixx + column] === 1
+      ) {
+        column += 1;
       }
 
-      symbolModules = modules;
-      width = symbolWidth + quietZone * 2;
-      height = symbolHeight + quietZone * 2;
-    },
-    line() {
-      throw new Error("Unexpected line primitive in QR renderer.");
-    },
-    polygon(points) {
-      pendingSubpaths.push(polygonSubpath(points, quietZone));
-    },
-    hexagon(points) {
-      pendingSubpaths.push(polygonSubpath(points, quietZone));
-    },
-    ellipse() {
-      throw new Error("Unexpected ellipse primitive in QR renderer.");
-    },
-    fill(rgb) {
-      if (pendingSubpaths.length === 0) return;
-      fills.push({
-        path: pendingSubpaths.join(" "),
-        color: normalizeColor(rgb),
-      });
-      pendingSubpaths = [];
-    },
-    text() {
-      throw new Error("QR rendering must not rely on text primitives.");
-    },
-    end() {
-      if (pendingSubpaths.length > 0) {
-        throw new Error("QR renderer returned an unflushed compound path.");
-      }
-      if (!(width > 0) || !(height > 0) || fills.length === 0 || symbolModules === 0) {
-        throw new Error("QR renderer returned invalid vector geometry.");
-      }
+      subpaths.push(rectangleSubpath(
+        quietZone + start * moduleSize,
+        quietZone + row * moduleSize,
+        (column - start) * moduleSize,
+        moduleSize,
+      ));
+    }
+  }
 
-      return {
-        width,
-        height,
-        symbolModules,
-        moduleSize: QR_RENDER_SCALE,
-        quietZoneModules: QR_QUIET_ZONE_MODULES,
-        quietZone,
-        fills,
-      };
-    },
+  if (subpaths.length === 0) {
+    throw new Error("QR encoder returned a module matrix with no dark modules.");
+  }
+
+  return {
+    width: totalModules * moduleSize,
+    height: totalModules * moduleSize,
+    symbolModules: matrix.pixx,
+    moduleSize,
+    quietZoneModules: QR_QUIET_ZONE_MODULES,
+    quietZone,
+    fills: [{
+      path: subpaths.join(" "),
+      color: "000000",
+    }],
   };
-
-  const options: QrRenderOptions = {
-    bcid: "qrcode",
-    text,
-    scale: QR_RENDER_SCALE,
-    eclevel: QR_ERROR_CORRECTION_LEVEL,
-    barcolor: "000000",
-  };
-
-  return bwipjs.render<QrVectorGeometry>(options, drawing);
 }
 
 export function qrVectorGeometryToSvg(geometry: QrVectorGeometry): string {
