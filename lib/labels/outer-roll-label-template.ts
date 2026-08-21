@@ -61,5 +61,5 @@ export const OUTER_ROLL_LABEL_TEMPLATE = {
     yMm: 29.5,
     widthMm: 29,
   },
-  qrInsetMm: 3,
+  qrInsetMm: 0,
 } as const;
