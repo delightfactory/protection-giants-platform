@@ -230,8 +230,6 @@ declare
   v_actor_party_id uuid;
   v_sender_party_id uuid;
   v_recipient_party_id uuid;
-  v_status text;
-  v_pending_count integer;
 begin
   if p_transfer_id is null then
     raise exception using errcode = '22023', message = 'PG_TRANSFER_ID_REQUIRED';
@@ -254,8 +252,8 @@ begin
     raise exception using errcode = '42501', message = 'PG_TRANSFER_ACTOR_INACTIVE';
   end if;
 
-  select transfer.sender_party_id, transfer.recipient_party_id, transfer.status
-    into v_sender_party_id, v_recipient_party_id, v_status
+  select transfer.sender_party_id, transfer.recipient_party_id
+    into v_sender_party_id, v_recipient_party_id
   from public.roll_transfers transfer
   where transfer.id = p_transfer_id;
 
@@ -268,11 +266,6 @@ begin
   then
     return;
   end if;
-
-  select count(*)::integer into v_pending_count
-  from public.roll_transfer_item_states state
-  where state.transfer_id = p_transfer_id
-    and state.status = 'pending';
 
   return query
   with item_counts as (

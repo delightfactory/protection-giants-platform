@@ -32,7 +32,6 @@ declare
   v_existing_action_count integer;
   v_pending_count integer;
   v_received_count integer;
-  v_released_count integer;
   v_closed_unreceived_count integer;
   v_event_sequence integer;
   v_event_type text;
@@ -283,12 +282,10 @@ begin
   select
     count(*) filter (where state.status = 'pending')::integer,
     count(*) filter (where state.status = 'received')::integer,
-    count(*) filter (where state.status = 'released_to_sender')::integer,
     count(*) filter (where state.status = 'closed_unreceived')::integer
   into
     v_pending_count,
     v_received_count,
-    v_released_count,
     v_closed_unreceived_count
   from public.roll_transfer_item_states state
   where state.transfer_id = p_transfer_id;
