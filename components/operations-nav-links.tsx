@@ -30,34 +30,47 @@ const adminDesktopItems: NavItem[] = [
   { href: "/operations/products", label: "المنتجات", icon: "products" },
   { href: "/operations/production-orders", label: "الإنتاج", icon: "production" },
   { href: "/operations/rolls", label: "العهدة", icon: "production" },
+  { href: "/operations/transfers", label: "التحويلات", icon: "transfer" },
 ];
 
-const agentItems: NavItem[] = [
+const agentMobileItems: NavItem[] = [
   { href: "/operations", label: "الرئيسية", icon: "home" },
   { href: "/operations/dealers", label: "الموزعون", icon: "dealers" },
   { href: "/operations/centers", label: "المراكز", icon: "centers" },
   { href: "/operations/products", label: "المنتجات", icon: "products" },
   { href: "/operations/rolls", label: "العهدة", icon: "production" },
 ];
+const agentDesktopItems: NavItem[] = [
+  ...agentMobileItems,
+  { href: "/operations/transfers", label: "التحويلات", icon: "transfer" },
+];
 
-const dealerItems: NavItem[] = [
+const dealerMobileItems: NavItem[] = [
   { href: "/operations", label: "الرئيسية", icon: "home" },
   { href: "/operations/centers", label: "المراكز", icon: "centers" },
   { href: "/operations/products", label: "المنتجات", icon: "products" },
   { href: "/operations/rolls", label: "العهدة", icon: "production" },
 ];
+const dealerDesktopItems: NavItem[] = [
+  ...dealerMobileItems,
+  { href: "/operations/transfers", label: "التحويلات", icon: "transfer" },
+];
 
-const centerItems: NavItem[] = [
+const centerMobileItems: NavItem[] = [
   { href: "/operations", label: "الرئيسية", icon: "home" },
   { href: "/operations/products", label: "المنتجات", icon: "products" },
   { href: "/operations/rolls", label: "العهدة", icon: "production" },
 ];
+const centerDesktopItems: NavItem[] = [
+  ...centerMobileItems,
+  { href: "/operations/transfers", label: "التحويلات", icon: "transfer" },
+];
 
 function itemsForRole(role: OperationalRole, variant: NavVariant) {
   if (role === "admin") return variant === "mobile" ? adminMobileItems : adminDesktopItems;
-  if (role === "agent") return agentItems;
-  if (role === "dealer") return dealerItems;
-  return centerItems;
+  if (role === "agent") return variant === "mobile" ? agentMobileItems : agentDesktopItems;
+  if (role === "dealer") return variant === "mobile" ? dealerMobileItems : dealerDesktopItems;
+  return variant === "mobile" ? centerMobileItems : centerDesktopItems;
 }
 
 function isActivePath(pathname: string, href: string) {
@@ -67,7 +80,7 @@ function isActivePath(pathname: string, href: string) {
 export function OperationsNavLinks({ role, variant }: { role: OperationalRole; variant: NavVariant }) {
   const pathname = usePathname();
   const items = itemsForRole(role, variant);
-  const isTaskRoute = pathname.endsWith("/new") || pathname.endsWith("/edit");
+  const isTaskRoute = pathname.endsWith("/new") || pathname.endsWith("/edit") || pathname.endsWith("/receive");
 
   if (variant === "mobile" && isTaskRoute) {
     return null;

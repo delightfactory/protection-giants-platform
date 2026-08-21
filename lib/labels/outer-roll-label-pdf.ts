@@ -6,6 +6,7 @@ import {
   type PDFPage,
 } from "pdf-lib";
 
+import type { QrVectorGeometry } from "../qr/qr-vector";
 import type { OuterRollLabelViewModel } from "./outer-roll-label-plan";
 import {
   OUTER_ROLL_MACHINE_CODE_RENDER_SCALE,
@@ -182,6 +183,36 @@ function drawVectorGeometry(
 
   for (const polygon of geometry.polygons) {
     page.drawSvgPath(polygonPath(polygon.points), {
+      x: offsetXPt,
+      y: topYPt,
+      scale: pointScale,
+      color: BLACK,
+    });
+  }
+}
+
+function drawQrVectorGeometry(
+  page: PDFPage,
+  geometry: QrVectorGeometry,
+  box: { xPt: number; yPt: number; widthPt: number; heightPt: number },
+) {
+  if (!(geometry.width > 0) || !(geometry.height > 0) || geometry.fills.length === 0) {
+    throw new OuterRollLabelPdfError("QR vector geometry has invalid dimensions or no filled paths.");
+  }
+
+  const pointScale = Math.min(box.widthPt / geometry.width, box.heightPt / geometry.height);
+  if (!(pointScale > 0) || !Number.isFinite(pointScale)) {
+    throw new OuterRollLabelPdfError("QR vector geometry cannot fit the fixed label box.");
+  }
+
+  const renderedWidthPt = geometry.width * pointScale;
+  const renderedHeightPt = geometry.height * pointScale;
+  const offsetXPt = box.xPt + (box.widthPt - renderedWidthPt) / 2;
+  const offsetYPt = box.yPt + (box.heightPt - renderedHeightPt) / 2;
+  const topYPt = offsetYPt + renderedHeightPt;
+
+  for (const fill of geometry.fills) {
+    page.drawSvgPath(fill.path, {
       x: offsetXPt,
       y: topYPt,
       scale: pointScale,
@@ -381,7 +412,7 @@ function drawFixedOuterRollLabel(
 
   const qrGeometry = buildOuterRollQrGeometry(model.qrPayload);
   const qrInnerMm = quietBox.widthMm - template.qrInsetMm * 2;
-  drawVectorGeometry(
+  drawQrVectorGeometry(
     page,
     qrGeometry,
     {
@@ -390,7 +421,6 @@ function drawFixedOuterRollLabel(
       widthPt: millimetresToPdfPoints(qrInnerMm),
       heightPt: millimetresToPdfPoints(qrInnerMm),
     },
-    "fit",
   );
 
   page.drawText("SCAN ROLL", {

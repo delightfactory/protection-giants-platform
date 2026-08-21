@@ -220,7 +220,12 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
           ? "اعرض كل لفة وهوية حامل العهدة المؤكدة حاليًا، مع الاحتفاظ ببيانات الإنتاج كسجل مرجعي."
           : "تظهر هنا فقط اللفات المؤكدة حاليًا في عهدة جهتك التشغيلية."}
         meta={`صفحة ${page.toLocaleString("en-US")} · ${rolls.length.toLocaleString("en-US")} لفة${hasNext ? " · يوجد المزيد" : ""}`}
-        actions={isAdmin ? <Link href="/operations/production-orders" className="button button-ghost">أوامر الإنتاج</Link> : undefined}
+        actions={(
+          <>
+            <Link href="/operations/transfers/new" className="button button-primary">تحويل لفات</Link>
+            {isAdmin ? <Link href="/operations/production-orders" className="button button-ghost">أوامر الإنتاج</Link> : null}
+          </>
+        )}
       />
 
       <FilterBar label="البحث في العهدة">

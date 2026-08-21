@@ -23,8 +23,32 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+      - name: Install independent QR verification tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends zbar-tools poppler-utils
+      - name: Verify QR generation and independent decoding
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf /tmp/qr-reliability-test
+          npx tsc scripts/verify-qr-reliability.ts \
+            --target ES2022 \
+            --module NodeNext \
+            --moduleResolution NodeNext \
+            --esModuleInterop \
+            --skipLibCheck \
+            --strict \
+            --outDir /tmp/qr-reliability-test
+          NODE_PATH="$PWD/node_modules" node /tmp/qr-reliability-test/scripts/verify-qr-reliability.js
       - name: Verify contextual Roll QR contract
         run: node --experimental-strip-types scripts/verify-roll-qr-contract.mjs
+      - name: Verify Transfer Send client contracts
+        run: node --experimental-strip-types scripts/verify-transfer-send-client-contract.mjs
+      - name: Verify Transfer Receipt client retry contracts
+        run: node --experimental-strip-types scripts/verify-transfer-receipt-client-contract.mjs
+      - name: Verify Transfer Receipt component interactions
+        run: npx vitest run scripts/verify-transfer-receipt-interactions.test.mjs --config vitest.config.mjs
       - name: Verify outer Roll label planning contract
         run: node --experimental-strip-types scripts/verify-outer-roll-label-plan.cjs
       - name: Verify outer Roll label request contract

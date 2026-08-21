@@ -351,21 +351,21 @@ expectSqlFailure(
   "Duplicate custody sequence unexpectedly succeeded.",
 );
 
-const voided = await rpc("void_production_order", {
+// Cube H strengthens the historical Cube D void boundary: once any physical
+// Roll has confirmed custody sequence > 1, the Production Order is distributed
+// and must remain generated. The custody projection/history must remain intact.
+const voidDistributed = await rpc("void_production_order", {
   p_order_id: orderId,
-  p_reason: "Cube D voided-order custody eligibility test",
+  p_reason: "Cube H distributed-order void guard regression",
 }, adminToken);
-assert(voided.response.ok && voided.body === orderId, `Could not void custody test order: ${JSON.stringify(voided.body)}`);
+assert(!voidDistributed.response.ok && voidDistributed.body?.message === "PG_TRANSFER_PRODUCTION_VOID_DISTRIBUTED",
+  `Distributed custody order was unexpectedly voided: ${JSON.stringify(voidDistributed.body)}`);
 
 const retainedCurrent = await rest(`roll_custody_current?roll_id=in.(${rollIds.join(",")})&select=roll_id,custodian_party_id`, adminToken);
 const retainedEvents = await rest(`roll_custody_events?roll_id=in.(${rollIds.join(",")})&select=roll_id,custody_sequence`, adminToken);
-assert(retainedCurrent.response.ok && retainedCurrent.body.length === 4, "Voiding destroyed confirmed custody audit state.");
-assert(retainedEvents.response.ok && retainedEvents.body.length === 7, "Voiding destroyed custody history.");
-none(await rest(`rolls?production_order_id=eq.${encodeURIComponent(orderId)}&select=id`, agentToken), "Agent reads voided Roll downstream");
-none(await rest(`roll_custody_current?roll_id=in.(${rollIds.join(",")})&select=roll_id`, agentToken), "Agent reads voided custody downstream");
-none(await rest(`rolls?production_order_id=eq.${encodeURIComponent(orderId)}&select=id`, dealerToken), "Dealer reads voided Roll downstream");
-none(await rest(`roll_custody_current?roll_id=in.(${rollIds.join(",")})&select=roll_id`, dealerToken), "Dealer reads voided custody downstream");
-none(await rest(`rolls?production_order_id=eq.${encodeURIComponent(orderId)}&select=id`, centerToken), "Center reads voided Roll downstream");
-none(await rest(`roll_custody_current?roll_id=in.(${rollIds.join(",")})&select=roll_id`, centerToken), "Center reads voided custody downstream");
+assert(retainedCurrent.response.ok && retainedCurrent.body.length === 4, "Distributed-order void rejection damaged confirmed custody state.");
+assert(retainedEvents.response.ok && retainedEvents.body.length === 7, "Distributed-order void rejection damaged custody history.");
+assert((await rest(`production_orders?id=eq.${encodeURIComponent(orderId)}&select=id,status`, adminToken)).body?.[0]?.status === "generated",
+  "Distributed Production Order did not remain generated after rejected void.");
 
-console.log("Roll Custody Foundation database/RLS verification passed.");
+console.log("Roll Custody Foundation database/RLS verification passed through Cube H void hardening.");

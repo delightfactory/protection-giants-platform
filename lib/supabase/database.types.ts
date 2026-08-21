@@ -756,6 +756,7 @@ export type Database = {
           id: string
           recorded_at: string
           roll_id: string
+          transfer_id: string | null
         }
         Insert: {
           confirmed_at: string
@@ -764,6 +765,7 @@ export type Database = {
           id?: string
           recorded_at?: string
           roll_id: string
+          transfer_id?: string | null
         }
         Update: {
           confirmed_at?: string
@@ -772,6 +774,7 @@ export type Database = {
           id?: string
           recorded_at?: string
           roll_id?: string
+          transfer_id?: string | null
         }
         Relationships: [
           {
@@ -788,12 +791,21 @@ export type Database = {
             referencedRelation: "rolls"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "roll_custody_events_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "roll_transfers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       roll_transfer_events: {
         Row: {
+          action_request_id: string | null
           actor_party_id: string | null
           actor_profile_id: string
+          affected_roll_count: number | null
           event_sequence: number
           event_type: string
           id: string
@@ -802,8 +814,10 @@ export type Database = {
           transfer_id: string
         }
         Insert: {
+          action_request_id?: string | null
           actor_party_id?: string | null
           actor_profile_id: string
+          affected_roll_count?: number | null
           event_sequence: number
           event_type: string
           id?: string
@@ -812,8 +826,10 @@ export type Database = {
           transfer_id: string
         }
         Update: {
+          action_request_id?: string | null
           actor_party_id?: string | null
           actor_profile_id?: string
+          affected_roll_count?: number | null
           event_sequence?: number
           event_type?: string
           id?: string
@@ -842,6 +858,64 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "roll_transfers"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      roll_transfer_item_states: {
+        Row: {
+          acted_at: string | null
+          acted_by_party_id: string | null
+          acted_by_profile_id: string | null
+          action_request_id: string | null
+          created_at: string
+          resolution_reason: string | null
+          roll_id: string
+          status: string
+          transfer_id: string
+        }
+        Insert: {
+          acted_at?: string | null
+          acted_by_party_id?: string | null
+          acted_by_profile_id?: string | null
+          action_request_id?: string | null
+          created_at?: string
+          resolution_reason?: string | null
+          roll_id: string
+          status: string
+          transfer_id: string
+        }
+        Update: {
+          acted_at?: string | null
+          acted_by_party_id?: string | null
+          acted_by_profile_id?: string | null
+          action_request_id?: string | null
+          created_at?: string
+          resolution_reason?: string | null
+          roll_id?: string
+          status?: string
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_transfer_item_states_acted_by_party_id_fkey"
+            columns: ["acted_by_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_transfer_item_states_acted_by_profile_id_fkey"
+            columns: ["acted_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_transfer_item_states_membership_fkey"
+            columns: ["transfer_id", "roll_id"]
+            isOneToOne: true
+            referencedRelation: "roll_transfer_items"
+            referencedColumns: ["transfer_id", "roll_id"]
           },
         ]
       }
@@ -1069,6 +1143,15 @@ export type Database = {
         Args: { p_reason: string; p_transfer_id: string }
         Returns: string
       }
+      admin_release_unreceived_roll_transfer_items: {
+        Args: {
+          p_reason: string
+          p_request_id: string
+          p_roll_ids: string[]
+          p_transfer_id: string
+        }
+        Returns: string
+      }
       admin_update_center_location: {
         Args: { p_center_id: string; p_latitude: number; p_longitude: number }
         Returns: {
@@ -1114,11 +1197,193 @@ export type Database = {
         Args: { p_entity_id?: string; p_party_type: string }
         Returns: string
       }
+      expand_roll_transfer_receipt_lot: {
+        Args: { p_lot_id: string; p_transfer_id: string }
+        Returns: {
+          lot_id: string
+          lot_number: string
+          pending_count: number
+          pending_roll_ids: string[]
+          product_code: string
+          product_name: string
+          production_lot_total: number
+          received_count: number
+          released_to_sender_count: number
+          transfer_contains_full_lot: boolean
+          transfer_count: number
+        }[]
+      }
+      expand_roll_transfer_unresolved_lot: {
+        Args: { p_lot_id: string; p_transfer_id: string }
+        Returns: {
+          lot_id: string
+          lot_number: string
+          pending_count: number
+          pending_roll_ids: string[]
+          product_code: string
+          product_name: string
+          received_count: number
+          released_to_sender_count: number
+          transfer_count: number
+        }[]
+      }
+      expand_transfer_send_lot: {
+        Args: { p_lot_id: string }
+        Returns: {
+          available_count: number
+          available_roll_ids: string[]
+          elsewhere_count: number
+          held_count: number
+          lot_id: string
+          lot_number: string
+          product_code: string
+          product_name: string
+          reserved_count: number
+          total_count: number
+        }[]
+      }
       generate_operational_transfer_code: {
         Args: { p_party_type: string }
         Returns: string
       }
+      get_roll_transfer_attention_counts: {
+        Args: never
+        Returns: {
+          incoming_action_count: number
+          outgoing_action_count: number
+        }[]
+      }
+      get_roll_transfer_detail: {
+        Args: { p_transfer_id: string }
+        Returns: {
+          can_admin_recovery_cancel: boolean
+          can_admin_resolve_unreceived: boolean
+          can_cancel: boolean
+          can_receive: boolean
+          can_reject: boolean
+          can_resolve_unreceived: boolean
+          closed_at: string
+          closed_unreceived_count: number
+          created_at: string
+          lot_groups: Json
+          pending_count: number
+          received_count: number
+          recipient_name: string
+          recipient_party_type: string
+          released_to_sender_count: number
+          roll_count: number
+          sender_name: string
+          sender_party_type: string
+          status: string
+          timeline: Json
+          transfer_id: string
+          transfer_number: string
+          viewer_is_admin: boolean
+          viewer_is_recipient: boolean
+          viewer_is_sender: boolean
+        }[]
+      }
+      list_roll_transfer_items: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+          p_transfer_id: string
+        }
+        Returns: {
+          acted_at: string
+          erp_serial: string
+          item_status: string
+          lot_id: string
+          lot_number: string
+          product_code: string
+          product_name: string
+          roll_id: string
+          serial_number: string
+        }[]
+      }
+      list_roll_transfers: {
+        Args: {
+          p_direction?: string
+          p_limit?: number
+          p_offset?: number
+          p_scope?: string
+          p_search?: string
+        }
+        Returns: {
+          closed_at: string
+          closed_unreceived_count: number
+          created_at: string
+          matching_count: number
+          needs_action: boolean
+          pending_count: number
+          received_count: number
+          recipient_name: string
+          recipient_party_type: string
+          released_to_sender_count: number
+          roll_count: number
+          sender_name: string
+          sender_party_type: string
+          status: string
+          transfer_id: string
+          transfer_number: string
+        }[]
+      }
+      list_transfer_send_lots: {
+        Args: { p_limit?: number; p_offset?: number; p_search?: string }
+        Returns: {
+          available_count: number
+          elsewhere_count: number
+          held_count: number
+          lot_id: string
+          lot_number: string
+          product_code: string
+          product_name: string
+          reserved_count: number
+          total_count: number
+        }[]
+      }
+      list_transfer_send_rolls: {
+        Args: {
+          p_limit?: number
+          p_lot_id?: string
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: {
+          availability: string
+          erp_serial: string
+          lot_id: string
+          lot_number: string
+          product_code: string
+          product_name: string
+          roll_id: string
+          serial_number: string
+        }[]
+      }
+      receive_roll_transfer_items: {
+        Args: {
+          p_request_id: string
+          p_roll_ids: string[]
+          p_transfer_id: string
+        }
+        Returns: string
+      }
+      reconcile_roll_transfer_receipt_selection: {
+        Args: { p_roll_ids: string[]; p_transfer_id: string }
+        Returns: string[]
+      }
       reject_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
+      release_unreceived_roll_transfer_items: {
+        Args: {
+          p_reason: string
+          p_request_id: string
+          p_roll_ids: string[]
+          p_transfer_id: string
+        }
+        Returns: string
+      }
       resolve_public_roll_product_slug: {
         Args: { p_serial: string }
         Returns: string

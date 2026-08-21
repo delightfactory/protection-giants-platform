@@ -4,6 +4,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { requireOperationalProfile, type OperationalRole } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+const transferModule = {
+  href: "/operations/transfers",
+  title: "تحويل اللفات",
+  description: "إرسال لفات من عهدة جهتك باستخدام Transfer ID ومسارات المسح أو الاختيار أو الـLot.",
+  icon: "transfer" as const,
+};
+
 const adminModules = [
   { href: "/operations/users", title: "الحسابات التشغيلية", description: "المستخدمون والأدوار والارتباطات التشغيلية.", icon: "users" as const },
   { href: "/operations/agents", title: "وكلاء الدول", description: "إدارة وكلاء الدول وهويتهم وحالتهم التشغيلية وTransfer ID.", icon: "users" as const },
@@ -12,6 +19,7 @@ const adminModules = [
   { href: "/operations/products", title: "المنتجات", description: "هوية المنتج ومدة الضمان وحالة الإتاحة.", icon: "products" as const },
   { href: "/operations/production-orders", title: "الإنتاج واللفات", description: "إنشاء أوامر الإنتاج والـLots وتوليد هويات اللفات ومراجعتها.", icon: "production" as const },
   { href: "/operations/rolls", title: "عهدة اللفات", description: "مراجعة حامل العهدة المؤكد حاليًا لكل لفة وحالة أهلية أمر الإنتاج.", icon: "production" as const },
+  transferModule,
 ];
 
 const agentModules = [
@@ -19,18 +27,21 @@ const agentModules = [
   { href: "/operations/centers", title: "مراكز التركيب", description: "إدارة المراكز داخل الشبكة ومراجعة اعتمادها وإرسال دعوة الحساب الأول.", icon: "centers" as const },
   { href: "/operations/products", title: "المنتجات", description: "مراجعة بيانات المنتجات التشغيلية المتاحة.", icon: "products" as const },
   { href: "/operations/rolls", title: "عهدة اللفات", description: "عرض اللفات المؤكدة حاليًا في عهدة جهة وكيل الدولة فقط.", icon: "production" as const },
+  transferModule,
 ];
 
 const dealerModules = [
   { href: "/operations/centers", title: "مراكز التركيب", description: "إدارة المراكز التابعة للموزع وإرسال دعوة الحساب الأول.", icon: "centers" as const },
   { href: "/operations/products", title: "المنتجات", description: "مراجعة بيانات المنتجات التشغيلية المتاحة.", icon: "products" as const },
   { href: "/operations/rolls", title: "عهدة اللفات", description: "عرض اللفات المؤكدة حاليًا في عهدة الموزع فقط.", icon: "production" as const },
+  transferModule,
 ];
 
 const centerModules = [
   { href: "/operations/location", title: "موقع المركز", description: "تسجيل الموقع الفعلي للمركز من الجهاز ومراجعة آخر قراءة محفوظة.", icon: "centers" as const },
   { href: "/operations/products", title: "المنتجات", description: "مراجعة بيانات المنتجات التشغيلية المتاحة للمركز.", icon: "products" as const },
   { href: "/operations/rolls", title: "عهدة اللفات", description: "عرض اللفات المؤكدة حاليًا في عهدة المركز فقط.", icon: "production" as const },
+  transferModule,
 ];
 
 function modulesForRole(role: OperationalRole) {

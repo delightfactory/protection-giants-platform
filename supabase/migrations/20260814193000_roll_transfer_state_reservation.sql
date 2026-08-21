@@ -600,7 +600,6 @@ declare
   v_actor_party_id uuid;
   v_sender_party_id uuid;
   v_status text;
-  v_closed_at timestamptz;
 begin
   if p_transfer_id is null then
     raise exception using errcode = '22023', message = 'PG_TRANSFER_ID_REQUIRED';
@@ -614,8 +613,8 @@ begin
     raise exception using errcode = '42501', message = 'PG_TRANSFER_ACTOR_INACTIVE';
   end if;
 
-  select rt.sender_party_id, rt.status, rt.closed_at
-    into v_sender_party_id, v_status, v_closed_at
+  select rt.sender_party_id, rt.status
+    into v_sender_party_id, v_status
   from public.roll_transfers rt
   where rt.id = p_transfer_id
   for update;

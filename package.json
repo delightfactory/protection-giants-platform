@@ -17,6 +17,7 @@
     "bwip-js": "4.11.2",
     "next": "16.2.11",
     "pdf-lib": "1.17.1",
+    "qr-scanner": "1.4.2",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
@@ -24,6 +25,8 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "typescript": "^5.9.0"
+    "test-renderer": "1.2.0",
+    "typescript": "^5.9.0",
+    "vitest": "4.1.11"
   }
 }
