@@ -45,9 +45,6 @@ const transferMutationErrors = new Set([
   "PG_TRANSFER_ADMIN_REASON_INVALID",
 ]);
 
-type RpcResult = { data: unknown; error: { message?: string } | null };
-type RpcInvoker = (name: string, args?: Record<string, unknown>) => Promise<RpcResult>;
-
 export type TransferActionResult =
   | { ok: true; transferId: string }
   | { ok: false; code: string };
@@ -80,11 +77,6 @@ function revalidateTransfer(transferId: string): void {
   revalidatePath("/operations/rolls");
 }
 
-async function invoke(name: string, args: Record<string, unknown>): Promise<RpcResult> {
-  const supabase = await createSupabaseServerClient();
-  return (supabase.rpc as unknown as RpcInvoker)(name, args);
-}
-
 export async function receiveTransferItems(input: {
   requestId: string;
   transferId: string;
@@ -95,7 +87,8 @@ export async function receiveTransferItems(input: {
   if (idError) return { ok: false, code: idError };
   if (!uuidPattern.test(input.requestId ?? "")) return { ok: false, code: "PG_TRANSFER_RECEIPT_REQUEST_ID_REQUIRED" };
 
-  const { data, error } = await invoke("receive_roll_transfer_items", {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("receive_roll_transfer_items", {
     p_request_id: input.requestId,
     p_transfer_id: input.transferId,
     p_roll_ids: rollIds,
@@ -112,7 +105,8 @@ export async function receiveTransferItems(input: {
 export async function cancelTransfer(transferId: string): Promise<TransferActionResult> {
   const idError = validateIds(transferId);
   if (idError) return { ok: false, code: idError };
-  const { data, error } = await invoke("cancel_roll_transfer", { p_transfer_id: transferId });
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("cancel_roll_transfer", { p_transfer_id: transferId });
   if (error || data !== transferId) return { ok: false, code: publicError(error?.message, "PG_TRANSFER_ACTION_FAILED") };
   revalidateTransfer(transferId);
   return { ok: true, transferId };
@@ -121,7 +115,8 @@ export async function cancelTransfer(transferId: string): Promise<TransferAction
 export async function rejectTransfer(transferId: string): Promise<TransferActionResult> {
   const idError = validateIds(transferId);
   if (idError) return { ok: false, code: idError };
-  const { data, error } = await invoke("reject_roll_transfer", { p_transfer_id: transferId });
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("reject_roll_transfer", { p_transfer_id: transferId });
   if (error || data !== transferId) return { ok: false, code: publicError(error?.message, "PG_TRANSFER_ACTION_FAILED") };
   revalidateTransfer(transferId);
   return { ok: true, transferId };
@@ -141,15 +136,21 @@ async function releaseItems(input: {
   const reason = (input.reason ?? "").trim();
   if (reason.length < 5 || reason.length > 500) return { ok: false, code: "PG_TRANSFER_RESOLUTION_REASON_INVALID" };
 
-  const { data, error } = await invoke(
-    input.admin ? "admin_release_unreceived_roll_transfer_items" : "release_unreceived_roll_transfer_items",
-    {
-      p_request_id: input.requestId,
-      p_transfer_id: input.transferId,
-      p_roll_ids: rollIds,
-      p_reason: reason,
-    },
-  );
+  const supabase = await createSupabaseServerClient();
+  const result = input.admin
+    ? await supabase.rpc("admin_release_unreceived_roll_transfer_items", {
+        p_request_id: input.requestId,
+        p_transfer_id: input.transferId,
+        p_roll_ids: rollIds,
+        p_reason: reason,
+      })
+    : await supabase.rpc("release_unreceived_roll_transfer_items", {
+        p_request_id: input.requestId,
+        p_transfer_id: input.transferId,
+        p_roll_ids: rollIds,
+        p_reason: reason,
+      });
+  const { data, error } = result;
 
   if (error || data !== input.transferId) {
     return { ok: false, code: publicError(error?.message, "PG_TRANSFER_ACTION_FAILED") };
@@ -186,7 +187,8 @@ export async function adminRecoveryCancelTransfer(input: {
   const reason = (input.reason ?? "").trim();
   if (reason.length < 5 || reason.length > 500) return { ok: false, code: "PG_TRANSFER_ADMIN_REASON_INVALID" };
 
-  const { data, error } = await invoke("admin_cancel_pending_roll_transfer", {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_cancel_pending_roll_transfer", {
     p_transfer_id: input.transferId,
     p_reason: reason,
   });
