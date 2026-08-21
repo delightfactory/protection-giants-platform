@@ -7,6 +7,7 @@ import {
   type BwipVectorGeometry,
 } from "@/lib/labels/outer-roll-machine-codes";
 import { OUTER_ROLL_LABEL_TEMPLATE } from "@/lib/labels/outer-roll-label-template";
+import type { QrVectorGeometry } from "@/lib/qr/qr-vector";
 import styles from "./outer-roll-label-preview.module.css";
 
 type OuterRollLabelPreviewProps = {
@@ -73,6 +74,29 @@ function VectorCode({ geometry, label }: { geometry: BwipVectorGeometry; label: 
   );
 }
 
+function QrVectorCode({ geometry, label }: { geometry: QrVectorGeometry; label: string }) {
+  return (
+    <svg
+      viewBox={`0 0 ${geometry.width} ${geometry.height}`}
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-label={label}
+      className={styles.vectorCode}
+      shapeRendering="crispEdges"
+    >
+      <rect width={geometry.width} height={geometry.height} fill="#fff" />
+      {geometry.fills.map((fill, index) => (
+        <path
+          key={`fill-${index}`}
+          d={fill.path}
+          fill={`#${fill.color}`}
+          fillRule="nonzero"
+        />
+      ))}
+    </svg>
+  );
+}
+
 export function OuterRollLabelPreview({ model }: OuterRollLabelPreviewProps) {
   const template = OUTER_ROLL_LABEL_TEMPLATE;
   const barcode = buildOuterRollGtinBarcodeGeometry(
@@ -111,7 +135,7 @@ export function OuterRollLabelPreview({ model }: OuterRollLabelPreviewProps) {
       <div className={styles.qrLabel} style={positionStyle(template.qrLabel)}>ROLL QR</div>
       <div className={styles.qr} style={boxStyle(template.qrQuietBox)}>
         <div className={styles.qrInner}>
-          <VectorCode geometry={qr.geometry} label={`Roll QR ${qr.payload}`} />
+          <QrVectorCode geometry={qr.geometry} label={`Roll QR ${qr.payload}`} />
         </div>
       </div>
       <span className={styles.scan} style={positionStyle(template.scanLabel)}>SCAN ROLL</span>
