@@ -1,0 +1,49 @@
+name: Temporary Cube H Selection Cap Closure
+
+on:
+  push:
+    branches:
+      - feature/cube-h-transfer-receipt-resolution
+
+permissions:
+  contents: write
+
+jobs:
+  close-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cube-h-transfer-receipt-resolution
+
+      - name: Apply bounded closure patch
+        run: |
+          python scripts/temporary-cube-h-selection-cap-closure.py
+          git diff --check -- \
+            components/transfers/transfer-receipt-flow.tsx \
+            scripts/verify-transfer-receipt-interactions.test.mjs
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run focused interaction test
+        run: npx vitest run scripts/verify-transfer-receipt-interactions.test.mjs --config vitest.config.mjs
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Commit closure patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            components/transfers/transfer-receipt-flow.tsx \
+            scripts/verify-transfer-receipt-interactions.test.mjs
+          if git diff --cached --quiet; then
+            echo "Selection-cap closure patch already applied."
+            exit 0
+          fi
+          git commit -m "fix(transfers): keep selection details within receipt cap"
+          git push origin HEAD:feature/cube-h-transfer-receipt-resolution
