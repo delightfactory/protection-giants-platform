@@ -36,49 +36,40 @@ jobs:
 
           resolution = "supabase/migrations/20260815011000_transfer_unresolved_resolution.sql"
           replace_once(resolution, "  v_released_count integer;\n", "")
-          replace_once(
-              resolution,
-              """  select
-    count(*) filter (where state.status = 'pending')::integer,
-    count(*) filter (where state.status = 'received')::integer,
-    count(*) filter (where state.status = 'released_to_sender')::integer,
-    count(*) filter (where state.status = 'closed_unreceived')::integer
-  into
-    v_pending_count,
-    v_received_count,
-    v_released_count,
-    v_closed_unreceived_count
-""",
-              """  select
-    count(*) filter (where state.status = 'pending')::integer,
-    count(*) filter (where state.status = 'received')::integer,
-    count(*) filter (where state.status = 'closed_unreceived')::integer
-  into
-    v_pending_count,
-    v_received_count,
-    v_closed_unreceived_count
-""",
+          old_resolution_counts = (
+              "  select\n"
+              "    count(*) filter (where state.status = 'pending')::integer,\n"
+              "    count(*) filter (where state.status = 'received')::integer,\n"
+              "    count(*) filter (where state.status = 'released_to_sender')::integer,\n"
+              "    count(*) filter (where state.status = 'closed_unreceived')::integer\n"
+              "  into\n"
+              "    v_pending_count,\n"
+              "    v_received_count,\n"
+              "    v_released_count,\n"
+              "    v_closed_unreceived_count\n"
           )
+          new_resolution_counts = (
+              "  select\n"
+              "    count(*) filter (where state.status = 'pending')::integer,\n"
+              "    count(*) filter (where state.status = 'received')::integer,\n"
+              "    count(*) filter (where state.status = 'closed_unreceived')::integer\n"
+              "  into\n"
+              "    v_pending_count,\n"
+              "    v_received_count,\n"
+              "    v_closed_unreceived_count\n"
+          )
+          replace_once(resolution, old_resolution_counts, new_resolution_counts)
 
           reads = "supabase/migrations/20260815013000_transfer_receipt_reads.sql"
           replace_once(reads, "  v_status text;\n  v_pending_count integer;\n", "")
           replace_once(
               reads,
-              """  select transfer.sender_party_id, transfer.recipient_party_id, transfer.status
-    into v_sender_party_id, v_recipient_party_id, v_status
-""",
-              """  select transfer.sender_party_id, transfer.recipient_party_id
-    into v_sender_party_id, v_recipient_party_id
-""",
+              "  select transfer.sender_party_id, transfer.recipient_party_id, transfer.status\n    into v_sender_party_id, v_recipient_party_id, v_status\n",
+              "  select transfer.sender_party_id, transfer.recipient_party_id\n    into v_sender_party_id, v_recipient_party_id\n",
           )
           replace_once(
               reads,
-              """  select count(*)::integer into v_pending_count
-  from public.roll_transfer_item_states state
-  where state.transfer_id = p_transfer_id
-    and state.status = 'pending';
-
-""",
+              "  select count(*)::integer into v_pending_count\n  from public.roll_transfer_item_states state\n  where state.transfer_id = p_transfer_id\n    and state.status = 'pending';\n\n",
               "",
           )
 
@@ -86,12 +77,8 @@ jobs:
           replace_once(transfer, "  v_closed_at timestamptz;\n", "")
           replace_once(
               transfer,
-              """  select rt.sender_party_id, rt.status, rt.closed_at
-    into v_sender_party_id, v_status, v_closed_at
-""",
-              """  select rt.sender_party_id, rt.status
-    into v_sender_party_id, v_status
-""",
+              "  select rt.sender_party_id, rt.status, rt.closed_at\n    into v_sender_party_id, v_status, v_closed_at\n",
+              "  select rt.sender_party_id, rt.status\n    into v_sender_party_id, v_status\n",
           )
           PY
           git diff --check -- \
