@@ -36,7 +36,7 @@ export async function listTransfers(input: {
   const { data, error } = await supabase.rpc("list_roll_transfers", {
     p_direction: input.direction,
     p_scope: input.scope ?? "active",
-    p_search: input.search ?? null,
+    p_search: input.search ?? undefined,
     p_limit: input.limit ?? 30,
     p_offset: input.offset ?? 0,
   });
@@ -61,8 +61,8 @@ export async function listTransferItems(input: {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("list_roll_transfer_items", {
     p_transfer_id: input.transferId,
-    p_search: input.search ?? null,
-    p_status: input.status ?? null,
+    p_search: input.search ?? undefined,
+    p_status: input.status ?? undefined,
     p_limit: input.limit ?? 50,
     p_offset: input.offset ?? 0,
   });

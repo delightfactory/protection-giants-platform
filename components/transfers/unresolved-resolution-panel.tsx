@@ -75,7 +75,7 @@ export function UnresolvedResolutionPanel({
     try {
       const { data, error } = await supabase.rpc("list_roll_transfer_items", {
         p_transfer_id: transferId,
-        p_search: rawSearch.trim().toUpperCase() || null,
+        p_search: rawSearch.trim().toUpperCase() || undefined,
         p_status: "pending",
         p_limit: PAGE_SIZE + 1,
         p_offset: nextPage * PAGE_SIZE,

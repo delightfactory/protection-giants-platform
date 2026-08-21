@@ -131,8 +131,8 @@ export function TransferReceiptFlow({
   const queryItems = useCallback(async (rawSearch: string | null, status: string | null, limit = PAGE_SIZE + 1, offset = 0) => {
     return supabase.rpc("list_roll_transfer_items", {
       p_transfer_id: detail.transfer_id,
-      p_search: rawSearch?.trim().toUpperCase() || null,
-      p_status: status,
+      p_search: rawSearch?.trim().toUpperCase() || undefined,
+      p_status: status ?? undefined,
       p_limit: limit,
       p_offset: offset,
     });
