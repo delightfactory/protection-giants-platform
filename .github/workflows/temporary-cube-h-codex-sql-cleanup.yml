@@ -1,0 +1,111 @@
+name: Temporary Cube H Codex SQL Cleanup
+
+"on":
+  push:
+    branches:
+      - feature/cube-h-transfer-receipt-resolution
+    paths:
+      - ".github/workflows/temporary-cube-h-codex-sql-cleanup.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cube-h-transfer-receipt-resolution
+
+      - name: Remove reviewed unused PL/pgSQL variables
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}")
+              target.write_text(text.replace(old, new, 1))
+
+          resolution = "supabase/migrations/20260815011000_transfer_unresolved_resolution.sql"
+          replace_once(resolution, "  v_released_count integer;\n", "")
+          replace_once(
+              resolution,
+              """  select
+    count(*) filter (where state.status = 'pending')::integer,
+    count(*) filter (where state.status = 'received')::integer,
+    count(*) filter (where state.status = 'released_to_sender')::integer,
+    count(*) filter (where state.status = 'closed_unreceived')::integer
+  into
+    v_pending_count,
+    v_received_count,
+    v_released_count,
+    v_closed_unreceived_count
+""",
+              """  select
+    count(*) filter (where state.status = 'pending')::integer,
+    count(*) filter (where state.status = 'received')::integer,
+    count(*) filter (where state.status = 'closed_unreceived')::integer
+  into
+    v_pending_count,
+    v_received_count,
+    v_closed_unreceived_count
+""",
+          )
+
+          reads = "supabase/migrations/20260815013000_transfer_receipt_reads.sql"
+          replace_once(reads, "  v_status text;\n  v_pending_count integer;\n", "")
+          replace_once(
+              reads,
+              """  select transfer.sender_party_id, transfer.recipient_party_id, transfer.status
+    into v_sender_party_id, v_recipient_party_id, v_status
+""",
+              """  select transfer.sender_party_id, transfer.recipient_party_id
+    into v_sender_party_id, v_recipient_party_id
+""",
+          )
+          replace_once(
+              reads,
+              """  select count(*)::integer into v_pending_count
+  from public.roll_transfer_item_states state
+  where state.transfer_id = p_transfer_id
+    and state.status = 'pending';
+
+""",
+              "",
+          )
+
+          transfer = "supabase/migrations/20260814193000_roll_transfer_state_reservation.sql"
+          replace_once(transfer, "  v_closed_at timestamptz;\n", "")
+          replace_once(
+              transfer,
+              """  select rt.sender_party_id, rt.status, rt.closed_at
+    into v_sender_party_id, v_status, v_closed_at
+""",
+              """  select rt.sender_party_id, rt.status
+    into v_sender_party_id, v_status
+""",
+          )
+          PY
+          git diff --check -- \
+            supabase/migrations/20260814193000_roll_transfer_state_reservation.sql \
+            supabase/migrations/20260815011000_transfer_unresolved_resolution.sql \
+            supabase/migrations/20260815013000_transfer_receipt_reads.sql
+
+      - name: Commit SQL cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            supabase/migrations/20260814193000_roll_transfer_state_reservation.sql \
+            supabase/migrations/20260815011000_transfer_unresolved_resolution.sql \
+            supabase/migrations/20260815013000_transfer_receipt_reads.sql
+          git commit -m "chore(transfers): clean reviewed SQL lint warnings"
+          git push origin HEAD:feature/cube-h-transfer-receipt-resolution
