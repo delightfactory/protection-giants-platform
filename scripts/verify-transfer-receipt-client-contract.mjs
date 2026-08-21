@@ -81,7 +81,7 @@ assert.match(
 );
 assert.match(
   resolutionPanelSource,
-  /تأكيد حسم \{selected\.size\} لفة\?/,
+  /تأكيد حسم \{selected\.size\} لفة؟/,
   "Resolution confirmation must show the exact selected Roll count.",
 );
 assert.match(
