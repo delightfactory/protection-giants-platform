@@ -1,4 +1,4 @@
-import { buildQrVectorGeometry, type QrVectorGeometry } from "@/lib/qr/qr-vector";
+import { buildQrVectorGeometry, type QrVectorGeometry } from "../qr/qr-vector";
 import { normalizeTransferId } from "./transfer-id";
 
 export type TransferQrGeometry = QrVectorGeometry;
