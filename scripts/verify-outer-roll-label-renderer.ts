@@ -13,6 +13,7 @@ import {
 } from "../lib/labels/outer-roll-label-pdf";
 import { planOuterRollPrintLayout } from "../lib/labels/outer-roll-print-layout";
 import type { OuterRollLabelViewModel } from "../lib/labels/outer-roll-label-plan";
+import { QR_QUIET_ZONE_MODULES } from "../lib/qr/qr-vector";
 
 function model(index: number): OuterRollLabelViewModel {
   const suffix = String(index).padStart(4, "0");
@@ -55,7 +56,13 @@ async function main() {
   const qr = buildOuterRollQrVector(qrPayload);
   assert.equal(qr.payload, qrPayload, "QR vector payload must remain the exact contextual Roll URL.");
   assert.ok(qr.geometry.width > 0 && qr.geometry.height > 0);
-  assert.ok(qr.geometry.polygons.length > 0, "QR must be represented by vector polygons/modules.");
+  assert.ok(qr.geometry.fills.length > 0, "QR must be represented by compound vector fill paths.");
+  assert.equal(qr.geometry.quietZoneModules, QR_QUIET_ZONE_MODULES);
+  assert.equal(qr.geometry.quietZone, qr.geometry.moduleSize * QR_QUIET_ZONE_MODULES);
+  assert.ok(
+    qr.geometry.fills.some((fill) => (fill.path.match(/\bM\b/g) ?? []).length > 1),
+    "QR must preserve multiple polygon subpaths within a single non-zero fill.",
+  );
 
   const masterA = await renderOuterRollLabelMasterPdf(model(1));
   const masterB = await renderOuterRollLabelMasterPdf(model(1));
@@ -97,7 +104,7 @@ async function main() {
   const tamperedLayout = { ...layout, labelCount: layout.labelCount + 1 };
   await assert.rejects(() => renderOuterRollPrintPdf(tamperedLayout));
 
-  console.log("Outer Roll vector machine-code, PDF dimension and deterministic export verification passed.");
+  console.log("Outer Roll vector machine-code, QR quiet-zone, PDF dimension and deterministic export verification passed.");
 }
 
 main().catch((error) => {
