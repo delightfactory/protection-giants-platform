@@ -10,7 +10,7 @@ This amendment records the repository state after completion of **Cube J — Rol
 
 Where older README, roadmap, post-Transfer status, or Cube J pre-implementation wording still describes Roll Opening / Claiming as the current or next software step, this amendment controls current implementation status.
 
-The frozen business rules in `docs/cube-j-roll-opening-claiming-spec.md` remain authoritative for Cube J behavior. This amendment changes status only; it does not redefine the approved lifecycle.
+The frozen business rules in `docs/cube-j-roll-opening-claiming-spec.md` remain authoritative for Cube J behavior. Its old header text `Specification candidate for product-owner approval` is now historical/stale status wording: the contract was approved, implemented, reviewed and merged. This amendment controls closure status without rewriting the frozen pre-implementation specification history.
 
 ## 2. Cube J is complete on `main`
 
@@ -52,6 +52,27 @@ The final review used two separate passes:
 2. mobile UX / QR integration / discoverability / Transfer integration.
 
 The UX/integration review found and corrected two issues before merge: Opening/Recovery QR parsing now uses the canonical public origin rather than the browser preview origin, and opened-Roll Recovery is explicitly labeled in the Transfer timeline instead of falling through to a generic event label.
+
+### 3.1 Post-merge audit before the next lifecycle cube
+
+A separate post-merge audit was performed on the merged `main` implementation before preparing Pre-install Roll Issue Reporting.
+
+No critical domain, authorization, custody, concurrency, or migration contradiction was found. The audit re-confirmed:
+
+- Opening/standard-Transfer concurrency leaves exactly one durable winner;
+- Opening evidence is immutable;
+- Recovery preserves the Opening fact and moves confirmed custody only through the existing receipt/custody engine;
+- enabled Agent Recovery remains network-scoped and default-off;
+- Production Order void is blocked once physical Roll use has begun;
+- Cube J remains separate from Warranty Activation and Pre-install Issue Reporting.
+
+The audit did identify three bounded closure-quality gaps and hardened them without changing the approved business lifecycle:
+
+1. Opening and Recovery server actions now call generated Supabase RPC types directly instead of bypassing them through an `unknown` RPC cast;
+2. shared Transfer-helper inactive-actor errors are mapped back into Cube J domain errors so Opening/Recovery UX does not leak an unrelated Transfer error code;
+3. Roll Opening pre-confirmation and success UX visibly identify the authenticated current Center, matching the frozen Cube J confirmation contract.
+
+Permanent PR Quality structural assertions protect these client/application-layer corrections from regression.
 
 Cube J introduces no new camera/scanner primitive; it reuses the same contextual Roll QR scanner and parser already validated in the completed Transfer stage. Production-environment deployment validation remains a launch/environment concern and is not implied by this repository-status amendment.
 
