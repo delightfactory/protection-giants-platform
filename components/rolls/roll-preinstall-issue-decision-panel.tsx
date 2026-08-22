@@ -21,6 +21,24 @@ const errorMessages: Record<string, string> = {
 
 type DecisionKind = "cleared_for_use" | "return_required" | "reported_in_error";
 
+const decisionCopy: Record<DecisionKind, { title: string; consequence: string; confirm: string }> = {
+  cleared_for_use: {
+    title: "السماح باستخدام الرول",
+    consequence: "سيُغلق هذا البلاغ كـ«مسموح بالاستخدام»، وسيتوقف هذا البلاغ وحده عن منع تفعيل الضمان. أي شروط تشغيلية أخرى تظل واجبة التحقق.",
+    confirm: "تأكيد السماح بالاستخدام",
+  },
+  return_required: {
+    title: "إلزام بإرجاع الرول",
+    consequence: "سيصبح قرار الإرجاع نهائيًا، وسيظل الرول محظورًا من تفعيل الضمان. لن تنتقل العهدة تلقائيًا؛ Recovery يتم فقط عند الاستلام المادي.",
+    confirm: "تأكيد إلزام الإرجاع",
+  },
+  reported_in_error: {
+    title: "تسجيل أن البلاغ أُنشئ بالخطأ",
+    consequence: "سيُغلق الـhold الخاص بهذا البلاغ كتصحيح إداري، مع الاحتفاظ بالبلاغ والأدلة في السجل. هذا ليس قرار جودة بأن الرول سليم.",
+    confirm: "تأكيد البلاغ بالخطأ",
+  },
+};
+
 function decisionError(code: string) {
   return errorMessages[code] ?? "تعذر حسم البلاغ. أعد تحميل الصفحة إذا استمرت المشكلة.";
 }
@@ -28,6 +46,7 @@ function decisionError(code: string) {
 export function RollPreinstallIssueDecisionPanel({ issueId }: { issueId: string }) {
   const router = useRouter();
   const [reason, setReason] = useState("");
+  const [confirmation, setConfirmation] = useState<DecisionKind | null>(null);
   const [feedback, setFeedback] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
   const requestRef = useRef<{ kind: DecisionKind; id: string } | null>(null);
@@ -39,10 +58,24 @@ export function RollPreinstallIssueDecisionPanel({ issueId }: { issueId: string 
     return requestRef.current.id;
   }
 
-  function runDecision(kind: DecisionKind) {
+  function prepareDecision(kind: DecisionKind) {
     if (isPending) return;
     const trimmedReason = reason.trim();
     if (trimmedReason.length < 5 || trimmedReason.length > 500) {
+      setFeedback({ tone: "error", text: errorMessages.PG_ROLL_ISSUE_RESOLUTION_REASON_INVALID });
+      return;
+    }
+    requestRef.current = null;
+    setFeedback(null);
+    setConfirmation(kind);
+  }
+
+  function runConfirmedDecision() {
+    if (!confirmation || isPending) return;
+    const kind = confirmation;
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < 5 || trimmedReason.length > 500) {
+      setConfirmation(null);
       setFeedback({ tone: "error", text: errorMessages.PG_ROLL_ISSUE_RESOLUTION_REASON_INVALID });
       return;
     }
@@ -61,18 +94,20 @@ export function RollPreinstallIssueDecisionPanel({ issueId }: { issueId: string 
             setFeedback({ tone: "error", text: decisionError(result.code) });
             if (result.code === "PG_ROLL_ISSUE_ALREADY_RESOLVED" || result.code === "PG_ROLL_ISSUE_NOT_FOUND") {
               requestRef.current = null;
+              setConfirmation(null);
               router.refresh();
             }
             return;
           }
 
           requestRef.current = null;
+          setConfirmation(null);
           setFeedback({ tone: "success", text: "تم تسجيل القرار النهائي وحفظه في سجل البلاغ." });
           router.refresh();
         } catch {
           setFeedback({
             tone: "error",
-            text: "انقطع تأكيد القرار. أعد الضغط على نفس القرار بنفس السبب؛ النظام سيستخدم نفس هوية المحاولة ولن ينشئ قرارًا ثانيًا.",
+            text: "انقطع تأكيد القرار. أعد الضغط على زر التأكيد بنفس السبب؛ النظام سيستخدم نفس هوية المحاولة ولن ينشئ قرارًا ثانيًا.",
           });
         }
       })();
@@ -95,7 +130,7 @@ export function RollPreinstallIssueDecisionPanel({ issueId }: { issueId: string 
         maxLength={500}
         placeholder="اكتب الأساس التشغيلي للقرار بوضوح…"
         value={reason}
-        disabled={isPending}
+        disabled={isPending || confirmation !== null}
         onChange={(event) => {
           setReason(event.target.value);
           requestRef.current = null;
@@ -103,20 +138,45 @@ export function RollPreinstallIssueDecisionPanel({ issueId }: { issueId: string 
         }}
       />
 
-      <div className={styles.actions}>
-        <button type="button" className="button button-primary" disabled={isPending} onClick={() => runDecision("cleared_for_use")}>
-          {isPending ? "جارٍ تسجيل القرار…" : "السماح باستخدام الرول"}
-        </button>
-        <button type="button" className="button button-secondary" disabled={isPending} onClick={() => runDecision("return_required")}>
-          يلزم إرجاع الرول
-        </button>
-      </div>
+      {confirmation ? (
+        <div className={styles.confirmation} role="alert">
+          <strong>{decisionCopy[confirmation].title}</strong>
+          <p>{decisionCopy[confirmation].consequence}</p>
+          <div className={styles.actions}>
+            <button type="button" className="button button-primary" disabled={isPending} onClick={runConfirmedDecision}>
+              {isPending ? "جارٍ تسجيل القرار…" : decisionCopy[confirmation].confirm}
+            </button>
+            <button
+              type="button"
+              className="button button-ghost"
+              disabled={isPending}
+              onClick={() => {
+                requestRef.current = null;
+                setConfirmation(null);
+              }}
+            >
+              إلغاء والعودة للمراجعة
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className={styles.actions}>
+            <button type="button" className="button button-primary" disabled={isPending} onClick={() => prepareDecision("cleared_for_use")}>
+              السماح باستخدام الرول
+            </button>
+            <button type="button" className="button button-secondary" disabled={isPending} onClick={() => prepareDecision("return_required")}>
+              يلزم إرجاع الرول
+            </button>
+          </div>
 
-      <div className={styles.correction}>
-        <button type="button" className="button button-ghost" disabled={isPending} onClick={() => runDecision("reported_in_error")}>
-          تسجيل أن البلاغ أُنشئ بالخطأ
-        </button>
-      </div>
+          <div className={styles.correction}>
+            <button type="button" className="button button-ghost" disabled={isPending} onClick={() => prepareDecision("reported_in_error")}>
+              تسجيل أن البلاغ أُنشئ بالخطأ
+            </button>
+          </div>
+        </>
+      )}
     </section>
   );
 }
