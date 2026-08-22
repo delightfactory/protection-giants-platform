@@ -37,13 +37,101 @@ async function login(page, role) {
   ]);
 }
 
+async function measureStableHorizontalOverflow(page) {
+  const configuredViewportWidth = page.viewportSize()?.width ?? null;
+  return page.evaluate(async (expectedViewportWidth) => {
+    if (document.fonts?.ready) {
+      try {
+        await document.fonts.ready;
+      } catch {
+        // Keep the rendered gate diagnostic even if the FontFaceSet promise rejects.
+      }
+    }
+
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+
+    const root = document.documentElement;
+    const viewportWidth = expectedViewportWidth ?? root.clientWidth ?? window.innerWidth;
+    const scrollWidth = root.scrollWidth;
+    const overflow = Math.max(0, scrollWidth - viewportWidth);
+
+    if (overflow <= 1) {
+      return { overflow, viewportWidth, scrollWidth, offenders: [] };
+    }
+
+    const escapeSelector = (value) => {
+      if (globalThis.CSS?.escape) return CSS.escape(value);
+      return String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+    };
+
+    const selectorFor = (element) => {
+      if (element.id) return `#${escapeSelector(element.id)}`;
+      const name = element.getAttribute("name");
+      if (name) return `${element.tagName.toLowerCase()}[name="${name.replaceAll('"', '\\"')}"]`;
+      const ariaLabel = element.getAttribute("aria-label");
+      if (ariaLabel) return `${element.tagName.toLowerCase()}[aria-label="${ariaLabel.replaceAll('"', '\\"')}"]`;
+      const classes = [...element.classList].slice(0, 3).map((className) => `.${escapeSelector(className)}`).join("");
+      if (classes) return `${element.tagName.toLowerCase()}${classes}`;
+      const parent = element.parentElement;
+      if (!parent) return element.tagName.toLowerCase();
+      const siblings = [...parent.children].filter((candidate) => candidate.tagName === element.tagName);
+      return `${element.tagName.toLowerCase()}:nth-of-type(${siblings.indexOf(element) + 1})`;
+    };
+
+    const offenders = [...document.querySelectorAll("body *")]
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return null;
+        const style = getComputedStyle(element);
+        const leftOverflow = Math.max(0, -rect.left);
+        const rightOverflow = Math.max(0, rect.right - viewportWidth);
+        if (leftOverflow <= 1 && rightOverflow <= 1) return null;
+        return {
+          selector: selectorFor(element),
+          rect: {
+            left: Math.round(rect.left * 100) / 100,
+            right: Math.round(rect.right * 100) / 100,
+            top: Math.round(rect.top * 100) / 100,
+            bottom: Math.round(rect.bottom * 100) / 100,
+            width: Math.round(rect.width * 100) / 100,
+            height: Math.round(rect.height * 100) / 100,
+          },
+          width: Math.round(rect.width * 100) / 100,
+          left: Math.round(rect.left * 100) / 100,
+          right: Math.round(rect.right * 100) / 100,
+          direction: style.direction,
+          position: style.position,
+          overflowX: style.overflowX,
+          leftOverflow: Math.round(leftOverflow * 100) / 100,
+          rightOverflow: Math.round(rightOverflow * 100) / 100,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => Math.max(b.leftOverflow, b.rightOverflow) - Math.max(a.leftOverflow, a.rightOverflow))
+      .slice(0, 25);
+
+    return { overflow, viewportWidth, scrollWidth, offenders };
+  }, configuredViewportWidth);
+}
+
 async function assertHealthyPage(page, roleName, route, pageErrors, consoleErrors) {
   assert(!page.url().includes("/access-denied"), `${roleName} was denied ${route}.`);
   assert(pageErrors.length === 0, `${roleName} ${route} page errors: ${pageErrors.join(" | ")}`);
   assert(consoleErrors.length === 0, `${roleName} ${route} console errors: ${consoleErrors.join(" | ")}`);
-  const overflow = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
-  assert(overflow <= 1, `${roleName} ${route} has ${overflow}px horizontal overflow.`);
-  return overflow;
+
+  const measurement = await measureStableHorizontalOverflow(page);
+  if (measurement.overflow > 1) {
+    console.error(`[Cube K overflow diagnostic] ${roleName} ${route}: ${JSON.stringify(measurement, null, 2)}`);
+  }
+  assert(
+    measurement.overflow <= 1,
+    `${roleName} ${route} has ${measurement.overflow}px horizontal overflow after fonts/layout stabilization. ` +
+      `viewport=${measurement.viewportWidth}px scrollWidth=${measurement.scrollWidth}px. ` +
+      `Offenders: ${JSON.stringify(measurement.offenders)}`,
+  );
+  return measurement.overflow;
 }
 
 async function capture(browser, roleName, route, viewportName, suffix) {
