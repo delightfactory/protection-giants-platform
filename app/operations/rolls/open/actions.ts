@@ -20,10 +20,6 @@ const exposedOpeningErrors = new Set([
   "PG_ROLL_ALREADY_OPENED",
 ]);
 
-type RpcError = { message?: string } | null;
-type RpcResponse = { data: unknown; error: RpcError };
-type RpcCaller = (name: string, args: Record<string, unknown>) => Promise<RpcResponse>;
-
 export type RollOpeningCandidate = {
   rollId: string;
   serialNumber: string;
@@ -43,6 +39,7 @@ export type OpenRollResult =
   | { ok: false; code: string };
 
 function publicOpeningError(message: string | undefined): string {
+  if (message === "PG_TRANSFER_ACTOR_INACTIVE") return "PG_ROLL_OPENING_CENTER_INACTIVE";
   return message && exposedOpeningErrors.has(message) ? message : "PG_ROLL_OPENING_FAILED";
 }
 
@@ -83,17 +80,12 @@ function candidateShape(row: unknown) {
   return row;
 }
 
-async function callRpc(name: string, args: Record<string, unknown>): Promise<RpcResponse> {
-  const supabase = await createSupabaseServerClient();
-  const rpc = supabase.rpc.bind(supabase) as unknown as RpcCaller;
-  return rpc(name, args);
-}
-
 export async function resolveRollOpeningCandidate(serialInput: string): Promise<ResolveRollOpeningResult> {
   const serial = normalizeRollSerial(serialInput ?? "");
   if (!serial) return { ok: false, code: "PG_ROLL_OPENING_SERIAL_INVALID" };
 
-  const { data, error } = await callRpc("resolve_roll_opening_candidate", { p_roll_serial: serial });
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("resolve_roll_opening_candidate", { p_roll_serial: serial });
   if (error) return { ok: false, code: publicOpeningError(error.message) };
   if (!Array.isArray(data) || data.length !== 1 || !isCandidateRow(data[0])) {
     return { ok: false, code: "PG_ROLL_OPENING_CANDIDATE_INVALID" };
@@ -107,7 +99,8 @@ export async function openRoll(input: { requestId: string; serialNumber: string 
   if (!uuidPattern.test(input.requestId ?? "")) return { ok: false, code: "PG_ROLL_OPENING_REQUEST_ID_REQUIRED" };
   if (!serial) return { ok: false, code: "PG_ROLL_OPENING_SERIAL_INVALID" };
 
-  const { data, error } = await callRpc("open_roll", {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("open_roll", {
     p_request_id: input.requestId,
     p_roll_serial: serial,
   });
