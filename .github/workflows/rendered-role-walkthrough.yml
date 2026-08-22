@@ -6,6 +6,7 @@ name: Rendered Role Walkthrough
       - audit/platform-role-experience
     paths:
       - "scripts/rendered-role-walkthrough.mjs"
+      - "scripts/rendered-cube-k-closure.mjs"
       - ".github/workflows/rendered-role-walkthrough.yml"
       - "app/**"
       - "components/**"
@@ -16,6 +17,7 @@ name: Rendered Role Walkthrough
       - feature/cube-k-preinstall-issues
     paths:
       - "scripts/rendered-role-walkthrough.mjs"
+      - "scripts/rendered-cube-k-closure.mjs"
       - ".github/workflows/rendered-role-walkthrough.yml"
       - "app/**"
       - "components/**"
@@ -100,11 +102,17 @@ jobs:
       - name: Execute rendered role walkthrough
         run: node scripts/rendered-role-walkthrough.mjs
 
+      - name: Execute focused Cube K rendered closure
+        run: node scripts/rendered-cube-k-closure.mjs
+
       - name: Print audit summary
         if: always()
         run: |
           if [ -f artifacts/rendered-role-walkthrough/summary.md ]; then
             cat artifacts/rendered-role-walkthrough/summary.md
+          fi
+          if [ -f artifacts/rendered-role-walkthrough/cube-k-closure-summary.md ]; then
+            cat artifacts/rendered-role-walkthrough/cube-k-closure-summary.md
           fi
 
       - name: Upload rendered evidence
