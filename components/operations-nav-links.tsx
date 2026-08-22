@@ -80,7 +80,7 @@ function isActivePath(pathname: string, href: string) {
 export function OperationsNavLinks({ role, variant }: { role: OperationalRole; variant: NavVariant }) {
   const pathname = usePathname();
   const items = itemsForRole(role, variant);
-  const isTaskRoute = pathname.endsWith("/new") || pathname.endsWith("/edit") || pathname.endsWith("/receive");
+  const isTaskRoute = ["/new", "/edit", "/receive", "/open", "/recovery"].some((suffix) => pathname.endsWith(suffix));
 
   if (variant === "mobile" && isTaskRoute) {
     return null;
