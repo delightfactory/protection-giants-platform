@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { RecordItem, RecordList } from "@/components/ui/record-list";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -26,13 +27,6 @@ function parsePage(value: string | undefined) {
 
 function issuesHref(page: number) {
   return page > 1 ? `/operations/rolls/issues?page=${page}` : "/operations/rolls/issues";
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 
 export default async function RollPreinstallIssuesPage({ searchParams }: IssuesPageProps) {
@@ -99,10 +93,10 @@ export default async function RollPreinstallIssuesPage({ searchParams }: IssuesP
                 facts={[
                   { label: "التصنيف", value: rollPreinstallIssueCategoryLabel(issue.category), dir: "rtl" as const },
                   { label: "Lot", value: issue.lot_number, dir: "ltr" as const },
-                  { label: "وقت البلاغ", value: formatDate(issue.created_at), dir: "ltr" as const },
+                  { label: "وقت البلاغ", value: <LocalDateTime value={issue.created_at} />, dir: "ltr" as const },
                   { label: "الصور", value: issue.evidence_count.toLocaleString("en-US"), dir: "ltr" as const },
                   ...(issue.resolved_at
-                    ? [{ label: "وقت القرار", value: formatDate(issue.resolved_at), dir: "ltr" as const }]
+                    ? [{ label: "وقت القرار", value: <LocalDateTime value={issue.resolved_at} />, dir: "ltr" as const }]
                     : []),
                 ]}
                 status={<StatusBadge tone={rollPreinstallIssueStatusTone(issue.status)}>{rollPreinstallIssueStatusLabel(issue.status)}</StatusBadge>}
