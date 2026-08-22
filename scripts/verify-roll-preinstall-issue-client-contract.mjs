@@ -60,9 +60,15 @@ assert(openingFlow.includes("إرسال البلاغ يوقف التفعيل"), 
 assert(decisionPanel.includes('"cleared_for_use"'), "Admin decision UI must expose cleared_for_use.");
 assert(decisionPanel.includes('"return_required"'), "Admin decision UI must expose return_required.");
 assert(decisionPanel.includes('"reported_in_error"'), "Admin decision UI must expose the audited reported_in_error correction.");
+assert(decisionPanel.includes("prepareDecision"), "Terminal decisions must enter an explicit confirmation step before mutation.");
+assert(decisionPanel.includes("runConfirmedDecision"), "Terminal mutations must run only from the explicit confirmation step.");
+assert(decisionPanel.includes("إلغاء والعودة للمراجعة"), "Admin confirmation must provide a safe cancel path.");
+assert(decisionPanel.includes("لن تنتقل العهدة تلقائيًا"), "Return confirmation must explain that custody is not moved by the quality decision.");
+assert(decisionPanel.includes("سيتوقف هذا البلاغ وحده عن منع تفعيل الضمان"), "Clearance confirmation must explain its Activation consequence.");
 
 assert(issueLibrary.includes('ROLL_PREINSTALL_ISSUE_EVIDENCE_BUCKET = "roll-preinstall-issue-evidence"'), "Cube K must retain a dedicated issue-evidence bucket.");
 assert(issueLibrary.includes("ROLL_PREINSTALL_ISSUE_MAX_IMAGES = 5"), "Cube K evidence count must remain bounded to five images.");
 assert(issueLibrary.includes("8 * 1024 * 1024"), "Cube K evidence size must remain bounded to 8 MiB per image.");
+assert(!actions.includes('from("product_assets")'), "Issue evidence must not reuse the Product asset data model.");
 
 console.log("Cube K Pre-install Issue client and integration contracts verified.");
