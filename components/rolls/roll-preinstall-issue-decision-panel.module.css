@@ -29,6 +29,19 @@
   gap: .6rem;
 }
 
+.confirmation {
+  display: grid;
+  gap: .65rem;
+  padding: .85rem;
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.confirmation strong {
+  font-size: 1.02rem;
+}
+
 .correction {
   border-top: 1px solid var(--line);
   padding-top: .75rem;
