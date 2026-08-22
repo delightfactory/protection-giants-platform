@@ -22,11 +22,13 @@ For completed Cube E print/QR behavior, also read:
 - `docs/cube-e-outer-roll-label-print-foundation-spec.md`;
 - `docs/cube-e-pending-physical-print-validation.md`.
 
-The current next software design/specification step is **Roll Opening / Claiming**. Its final cube number, business boundaries, state model and implementation contract must be reviewed and frozen before implementation begins from fresh `main`.
+The current next software cube is **Cube J — Roll Opening / Claiming**. Before implementation, read `docs/cube-j-roll-opening-claiming-spec.md`; it freezes the Center Opening boundary, the no-Undo rule, ordinary-Transfer exclusion for opened Rolls, and the narrow Admin/explicitly-enabled-Agent Opened Roll Recovery path.
 
 Cube I — Remaining Production-owned Label Package remains valid later/parallel work, but it is not the current critical operational step. Activation/Warranty labels remain blocked on their own identity/lifecycle decisions.
 
-Older documents such as `docs/scope-guardrails.md`, the pre-F Transfer context/specification documents, and older roadmap status sections remain useful for their original scope and design history, but any wording superseded by a later Product Decision, normative amendment, canonical-context note, or latest canonical-status amendment must not be treated as current status authority.
+Pre-install Roll Issue Reporting remains the next separate lifecycle cube after Cube J and must not be pulled into the Cube J implementation branch.
+
+Older documents such as `docs/scope-guardrails.md`, the pre-F Transfer context/specification documents, and older roadmap status sections remain useful for their original scope and design history, but any wording superseded by a later Product Decision, normative amendment, canonical-context note, latest canonical-status amendment, or current frozen cube specification must not be treated as current status authority.
 
 ## Current implementation scope
 
