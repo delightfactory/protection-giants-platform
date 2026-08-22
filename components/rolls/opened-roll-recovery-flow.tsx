@@ -41,7 +41,7 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 
-export function OpenedRollRecoveryFlow() {
+export function OpenedRollRecoveryFlow({ publicSiteOrigin }: { publicSiteOrigin: string }) {
   const [serialInput, setSerialInput] = useState("");
   const [candidate, setCandidate] = useState<OpenedRollRecoveryCandidate | null>(null);
   const [reason, setReason] = useState("");
@@ -102,7 +102,7 @@ export function OpenedRollRecoveryFlow() {
   }
 
   async function handleQrDecode(payload: string): Promise<ScannerDecodeOutcome> {
-    const serial = parseRollQrPayload(payload, window.location.origin);
+    const serial = parseRollQrPayload(payload, publicSiteOrigin);
     if (!serial) {
       return { action: "continue", tone: "error", message: "هذا QR ليس QR رول صالحًا لهذه المنصة." };
     }
