@@ -72,4 +72,11 @@ for (const [label, url] of structuralSources) {
   assert.doesNotMatch(source, /supabase\.rpc\s+as\s+unknown/, `${label} must call generated RPC definitions directly.`);
 }
 
-console.log("Cube H Transfer receipt retry/idempotency and RPC typing structural contracts verified.");
+const receiptDomainSource = readFileSync(new URL("../lib/transfers/receipt.ts", import.meta.url), "utf8");
+assert.match(
+  receiptDomainSource,
+  /case "opened_roll_recovery_created": return "تم إنشاء استرداد رول مفتوح";/,
+  "Opened Roll Recovery must be explicit in the Transfer timeline instead of using the generic fallback label.",
+);
+
+console.log("Cube H Transfer receipt contracts and Cube J recovery timeline integration verified.");
