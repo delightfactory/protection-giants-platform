@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { RollPreinstallIssueDecisionPanel } from "@/components/rolls/roll-preinstall-issue-decision-panel";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
@@ -20,13 +21,6 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 type IssueDetailPageProps = {
   params: Promise<{ id: string }>;
 };
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(date);
-}
 
 function formatSize(bytes: number) {
   return bytes < 1024 * 1024
@@ -116,9 +110,9 @@ export default async function RollPreinstallIssueDetailPage({ params }: IssueDet
 
           <div className={styles.facts}>
             <div className={styles.fact}><span>نوع المشكلة</span><strong>{rollPreinstallIssueCategoryLabel(issue.category)}</strong></div>
-            <div className={styles.fact}><span>وقت فتح الرول</span><strong dir="ltr">{formatDate(issue.opened_at)}</strong></div>
-            <div className={styles.fact}><span>وقت إرسال البلاغ</span><strong dir="ltr">{formatDate(issue.created_at)}</strong></div>
-            <div className={styles.fact}><span>وقت القرار</span><strong dir="ltr">{formatDate(issue.resolved_at)}</strong></div>
+            <div className={styles.fact}><span>وقت فتح الرول</span><strong dir="ltr"><LocalDateTime value={issue.opened_at} /></strong></div>
+            <div className={styles.fact}><span>وقت إرسال البلاغ</span><strong dir="ltr"><LocalDateTime value={issue.created_at} /></strong></div>
+            <div className={styles.fact}><span>وقت القرار</span><strong dir="ltr"><LocalDateTime value={issue.resolved_at} /></strong></div>
           </div>
 
           <div>
@@ -130,21 +124,28 @@ export default async function RollPreinstallIssueDetailPage({ params }: IssueDet
         <section className={styles.card}>
           <div>
             <h2>الأدلة المرفقة</h2>
-            <p>{evidence.length ? "الصور خاصة وتُفتح بروابط مؤقتة بعد التحقق من صلاحية الحساب." : "لم يرفق المركز صورًا مع هذا البلاغ، وهو مسموح في الإصدار الحالي."}</p>
+            <p>{evidence.length ? "الصور خاصة وتظهر هنا للمراجعة بعد التحقق من صلاحية الحساب. يمكنك فتح أي صورة بالحجم الكامل عند الحاجة." : "لم يرفق المركز صورًا مع هذا البلاغ، وهو مسموح في الإصدار الحالي."}</p>
           </div>
           {evidence.length ? (
             <ul className={styles.evidenceList}>
               {evidence.map((item) => (
                 <li key={item.id} className={styles.evidenceItem}>
-                  <strong>صورة {item.index.toLocaleString("en-US")}</strong>
+                  {item.signedUrl ? (
+                    <a href={item.signedUrl} className={styles.evidencePreview} target="_blank" rel="noreferrer" aria-label={`فتح صورة الدليل ${item.index.toLocaleString("en-US")} بالحجم الكامل`}>
+                      <img src={item.signedUrl} alt={`صورة دليل ${item.index.toLocaleString("en-US")} مرفقة بالبلاغ`} loading="lazy" />
+                    </a>
+                  ) : (
+                    <div className={styles.evidenceUnavailable}>تعذر إنشاء معاينة مؤقتة لهذه الصورة.</div>
+                  )}
+                  <div className={styles.evidenceHeading}>
+                    <strong>صورة {item.index.toLocaleString("en-US")}</strong>
+                    {item.signedUrl ? <a href={item.signedUrl} className="button button-ghost" target="_blank" rel="noreferrer">فتح بالحجم الكامل</a> : null}
+                  </div>
                   <div className={styles.evidenceMeta}>
                     <span dir="ltr">{item.mime_type}</span>
                     <span dir="ltr">{formatSize(item.size_bytes)}</span>
-                    <span dir="ltr">{formatDate(item.created_at)}</span>
+                    <span dir="ltr"><LocalDateTime value={item.created_at} /></span>
                   </div>
-                  {item.signedUrl
-                    ? <a href={item.signedUrl} className="button button-ghost" target="_blank" rel="noreferrer">عرض الصورة</a>
-                    : <span>تعذر إنشاء رابط العرض المؤقت لهذه الصورة.</span>}
                 </li>
               ))}
             </ul>
@@ -162,7 +163,7 @@ export default async function RollPreinstallIssueDetailPage({ params }: IssueDet
                 <strong>{eventLabel(event.event_kind)}</strong>
                 <div className={styles.timelineMeta}>
                   <span>{event.event_kind === "submitted" ? issue.center_name : issue.resolved_by_name ?? "Protection Giants"}</span>
-                  <span dir="ltr">{formatDate(event.created_at)}</span>
+                  <span dir="ltr"><LocalDateTime value={event.created_at} /></span>
                 </div>
                 {event.reason ? <p>{event.reason}</p> : null}
               </li>
@@ -177,7 +178,7 @@ export default async function RollPreinstallIssueDetailPage({ params }: IssueDet
             <section className={styles.card}>
               <div className={styles.outcomeNote}>
                 <strong>البلاغ قيد مراجعة الشركة</strong>
-                <p>تفعيل الضمان على هذا الرول متوقف مؤقتًا، كما لا يمكن تنفيذ Recovery قبل صدور القرار.</p>
+                <p>تفعيل الضمان على هذا الرول متوقف مؤقتًا. لا تستخدم الرول ولا تسلمه كحالة نهائية حتى يصدر قرار الشركة؛ وإذا تقرر الإرجاع يتم تسجيل الاسترداد عند الاستلام المادي.</p>
               </div>
             </section>
           )
@@ -187,13 +188,13 @@ export default async function RollPreinstallIssueDetailPage({ params }: IssueDet
               <strong>{rollPreinstallIssueStatusLabel(issue.status)}</strong>
               {issue.resolution_reason ? <p>{issue.resolution_reason}</p> : null}
               {issue.status === "cleared_for_use" ? (
-                <p>هذا البلاغ لم يعد يمنع التفعيل، مع بقاء أي شروط تشغيلية أخرى للمكعبات اللاحقة واجبة التحقق.</p>
+                <p>هذا البلاغ لم يعد يمنع التفعيل، مع بقاء أي شروط تشغيلية أخرى واجبة التحقق قبل تفعيل الضمان.</p>
               ) : null}
               {issue.status === "return_required" ? (
-                <p>الرول يظل محظورًا من التفعيل. قرار الإرجاع لا ينقل العهدة؛ يتم Recovery فقط عند الاستلام المادي.</p>
+                <p>الرول يظل محظورًا من التفعيل. قرار الإرجاع لا ينقل العهدة؛ يتم تسجيل استرداد الرول فقط عند الاستلام المادي.</p>
               ) : null}
               {issue.status === "reported_in_error" ? (
-                <p>تم إغلاق الـhold الخاص بهذا البلاغ كتصحيح إداري، مع بقاء البلاغ والأدلة محفوظة في التاريخ.</p>
+                <p>تم رفع إيقاف التفعيل المؤقت الخاص بهذا البلاغ باعتباره تصحيحًا إداريًا، مع بقاء البلاغ والأدلة محفوظة في التاريخ.</p>
               ) : null}
             </div>
             {isAdmin && issue.status === "return_required" ? (
