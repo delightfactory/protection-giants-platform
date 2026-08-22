@@ -28,12 +28,23 @@ for (const rpcName of [
 }
 assert(!actions.includes("rpc.bind"), "Cube K actions must not bypass typed RPC calls with bind().");
 assert(!actions.includes("as unknown as"), "Cube K actions must not bypass generated database types with unknown casts.");
-assert(actions.includes("cleanupEvidence(uploaded.uploadedPaths)"), "Evidence compensation must delete only objects uploaded by the current attempt.");
+assert(actions.includes("cleanupEvidence(uploadedPaths)"), "Evidence compensation must delete only objects uploaded by the current attempt.");
 assert(!actions.includes("cleanupEvidence(evidencePaths)"), "Evidence compensation must never delete all deterministic paths after an RPC failure.");
 assert(actions.includes('type MatchingIssueCheck = "exists" | "missing" | "unknown"'), "Ambiguous post-RPC reads must remain tri-state, not collapse unknown into missing.");
 assert(actions.includes('if (matching === "exists") return { ok: true, issueId }'), "Transport recovery must recognize an already committed matching issue.");
 assert(actions.includes('if (matching === "unknown")'), "Unknown commit state must preserve deterministic evidence for a safe retry.");
 assert(actions.includes("const domainCode ="), "Database domain errors must be separated from transport/unknown failures.");
+
+const submitStart = actions.indexOf("export async function submitRollPreinstallIssue");
+const activeCenterAuth = actions.indexOf("await requireOperationalProfile()", submitStart);
+const exactPreflight = actions.indexOf("await resolveRollPreinstallIssueCandidate(serial)", submitStart);
+const privilegedUpload = actions.indexOf("await ensureEvidenceUploaded(issueId, parsed.value.images)", submitStart);
+assert(submitStart >= 0 && activeCenterAuth > submitStart && exactPreflight > activeCenterAuth && privilegedUpload > exactPreflight,
+  "Privileged issue evidence upload must occur only after active-Center auth and exact Roll preflight.");
+assert(actions.includes('if (preflight.candidate.eligibility === "eligible")'),
+  "Only an eligible exact Roll may stage new evidence objects.");
+assert(actions.includes("const evidencePaths = parsed.value.images.map"),
+  "Non-eligible candidate retries must still carry deterministic evidence paths to the idempotent DB RPC without re-uploading them.");
 
 assert(newPage.includes("getPublicSiteOrigin()"), "Center issue QR flow must use the canonical public-site origin.");
 assert(newPage.includes('profile.role !== "center"'), "Issue submission route must remain Center-only.");
