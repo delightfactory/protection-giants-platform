@@ -120,6 +120,7 @@ await createUser({ email: "cube-k-boundary-dealer@example.test", role: "dealer",
 const agentToken = await signIn("cube-k-boundary-agent@example.test");
 const dealerToken = await signIn("cube-k-boundary-dealer@example.test");
 const centerToken = await signIn("cube-k-center-a@example.test");
+const adminToken = await signIn("cube-k-admin@example.test");
 
 for (const [role, token] of [["Agent", agentToken], ["Dealer", dealerToken]]) {
   for (const table of ["roll_preinstall_issues", "roll_preinstall_issue_events", "roll_preinstall_issue_evidence"]) {
@@ -137,19 +138,19 @@ await assertAdminMutationDenied("Agent", agentToken);
 await assertAdminMutationDenied("Dealer", dealerToken);
 await assertAdminMutationDenied("Center", centerToken);
 
-const clearedIssueResult = await request(
-  "/rest/v1/roll_preinstall_issues?status=eq.cleared_for_use&select=id,roll_id,reporting_center_party_id&order=created_at.asc&limit=1",
-  { key: serviceRoleKey, token: serviceRoleKey },
+const clearedIssueResult = await rest(
+  "roll_preinstall_issues?status=eq.cleared_for_use&select=id,roll_id,reporting_center_party_id&order=created_at.asc&limit=1",
+  adminToken,
 );
 assert(clearedIssueResult.response.ok && clearedIssueResult.body?.length === 1,
-  `Cleared Cube K issue fixture is missing: ${JSON.stringify(clearedIssueResult.body)}`);
+  `Cleared Cube K issue fixture is missing through Admin RLS: ${JSON.stringify(clearedIssueResult.body)}`);
 const clearedIssue = clearedIssueResult.body[0];
-const custodyResult = await request(
-  `/rest/v1/roll_custody_current?roll_id=eq.${clearedIssue.roll_id}&select=custodian_party_id`,
-  { key: serviceRoleKey, token: serviceRoleKey },
+const custodyResult = await rest(
+  `roll_custody_current?roll_id=eq.${clearedIssue.roll_id}&select=custodian_party_id`,
+  adminToken,
 );
 assert(custodyResult.response.ok && custodyResult.body?.length === 1,
-  `Cleared issue custody fixture is missing: ${JSON.stringify(custodyResult.body)}`);
+  `Cleared issue custody fixture is missing through Admin RLS: ${JSON.stringify(custodyResult.body)}`);
 assert(custodyResult.body[0].custodian_party_id === clearedIssue.reporting_center_party_id,
   "Issue submission and Admin clearance must not move confirmed Roll custody.");
 
