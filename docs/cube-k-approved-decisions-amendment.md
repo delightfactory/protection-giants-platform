@@ -22,3 +22,21 @@ The lifecycle contract is:
 The Pre-install Issue domain must not automatically move custody, create a Recovery transfer, create Warranty state, or erase the immutable Cube J Roll Opening fact.
 
 The future Warranty Activation cube must revalidate this issue-state rule atomically at activation time rather than trusting UI state.
+
+## K-Q2 — Final quality-decision authority in V1
+
+**Approved decision:**
+
+The final Pre-install Roll Issue quality decision in V1 is owned by **Admin / Company only**.
+
+Country Agents, Dealers and Centers do not receive issue-review or quality-decision authority in this first release.
+
+In particular, the separate Cube J capability that may allow an explicitly enabled Country Agent to perform opened-Roll Recovery does **not** grant that Agent any authority to clear a Roll for use or require its return. Recovery authority and quality-decision authority remain separate responsibilities.
+
+Therefore:
+
+- Center may report an eligible issue and read the issue information exposed to it;
+- Admin / Company reviews the submitted issue and records the final quality outcome;
+- Agent may participate later only in physical Recovery when its separate Cube J capability and scope rules allow it;
+- Dealer has no review authority;
+- no generic delegated quality-permission model is introduced in Cube K V1.
