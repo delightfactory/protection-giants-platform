@@ -149,6 +149,17 @@ async function ensureEvidenceUploaded(issueId: string, images: PreparedRollIssue
   return { ok: true as const };
 }
 
+async function matchingIssueExists(issueId: string, requestId: string): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("roll_preinstall_issues")
+    .select("id, request_id")
+    .eq("id", issueId)
+    .eq("request_id", requestId)
+    .maybeSingle();
+  return !error && data?.id === issueId && data.request_id === requestId;
+}
+
 export async function resolveRollPreinstallIssueCandidate(serialInput: string): Promise<ResolveRollIssueCandidateResult> {
   const serial = normalizeRollSerial(serialInput ?? "");
   if (!serial) return { ok: false, code: "PG_ROLL_ISSUE_SERIAL_INVALID" };
@@ -191,6 +202,12 @@ export async function submitRollPreinstallIssue(formData: FormData): Promise<Sub
   });
 
   if (error || typeof data !== "string") {
+    // A network failure can occur after PostgreSQL committed. Never compensate
+    // Storage until the authenticated Center read proves the exact request did
+    // not land; otherwise evidence for a durable issue could be destroyed.
+    if (await matchingIssueExists(issueId, requestId)) {
+      return { ok: true, issueId };
+    }
     await cleanupEvidence(evidencePaths);
     return { ok: false, code: publicIssueError(error?.message, "center") };
   }
