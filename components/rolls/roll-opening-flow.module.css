@@ -1,0 +1,153 @@
+.flow {
+  display: grid;
+  gap: 1rem;
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.entryCard,
+.candidateCard,
+.successCard {
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: var(--surface-color);
+  padding: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.entryCard {
+  display: grid;
+  gap: 1rem;
+}
+
+.entryHero {
+  display: grid;
+  gap: .35rem;
+}
+
+.entryHero h2,
+.candidateCard h2,
+.successCard h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 4vw, 1.55rem);
+}
+
+.entryHero p,
+.candidateCard p,
+.successCard p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+.scanAction {
+  min-height: 52px;
+  width: 100%;
+}
+
+.manualForm {
+  display: grid;
+  gap: .55rem;
+}
+
+.manualForm label {
+  font-weight: 700;
+}
+
+.manualRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .6rem;
+}
+
+.manualRow input {
+  min-width: 0;
+}
+
+.candidateCard,
+.successCard {
+  display: grid;
+  gap: .9rem;
+}
+
+.identity {
+  display: grid;
+  gap: .35rem;
+  padding: .9rem;
+  border-radius: 14px;
+  background: var(--surface-muted, rgba(127, 127, 127, .08));
+}
+
+.identity strong {
+  font-size: 1.05rem;
+}
+
+.identity code {
+  direction: ltr;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem .8rem;
+  color: var(--text-muted);
+  font-size: .92rem;
+}
+
+.permanentNotice {
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  border-radius: 14px;
+  padding: .85rem;
+  display: grid;
+  gap: .3rem;
+}
+
+.permanentNotice strong {
+  font-size: .98rem;
+}
+
+.permanentNotice p {
+  font-size: .92rem;
+}
+
+.actions {
+  display: grid;
+  gap: .65rem;
+}
+
+.actions button {
+  min-height: 50px;
+}
+
+.successMark {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  font-weight: 900;
+  border: 1px solid currentColor;
+}
+
+.nextNote {
+  border-top: 1px solid var(--border-color);
+  padding-top: .8rem;
+  display: grid;
+  gap: .35rem;
+}
+
+@media (max-width: 560px) {
+  .manualRow {
+    grid-template-columns: 1fr;
+  }
+
+  .entryCard,
+  .candidateCard,
+  .successCard {
+    border-radius: 15px;
+    padding: .9rem;
+  }
+}
