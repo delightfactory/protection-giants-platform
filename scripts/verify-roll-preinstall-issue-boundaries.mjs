@@ -8,6 +8,7 @@ if (!apiUrl || !serviceRoleKey || !anonKey) {
 
 const password = "Cube-K-Preinstall-Issues-2026!";
 const bucket = "roll-preinstall-issue-evidence";
+const deniedIssueId = "00000000-0000-4000-8000-000000000001";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -77,6 +78,25 @@ async function signIn(email) {
   return result.body.access_token;
 }
 
+async function assertAdminMutationDenied(role, token) {
+  const resolveResult = await rpc("resolve_roll_preinstall_issue", {
+    p_request_id: "00000000-0000-4000-8000-000000000002",
+    p_issue_id: deniedIssueId,
+    p_outcome: "cleared_for_use",
+    p_reason: "اختبار منع قرار الجودة لغير الإدارة.",
+  }, token);
+  assert(!resolveResult.response.ok && resolveResult.body?.message === "PG_ROLL_ISSUE_ADMIN_REQUIRED",
+    `${role} quality resolution must be Admin-only: ${resolveResult.response.status} ${JSON.stringify(resolveResult.body)}`);
+
+  const correctionResult = await rpc("mark_roll_preinstall_issue_reported_in_error", {
+    p_request_id: "00000000-0000-4000-8000-000000000003",
+    p_issue_id: deniedIssueId,
+    p_reason: "اختبار منع التصحيح الإداري لغير الإدارة.",
+  }, token);
+  assert(!correctionResult.response.ok && correctionResult.body?.message === "PG_ROLL_ISSUE_ADMIN_REQUIRED",
+    `${role} reported_in_error correction must be Admin-only: ${correctionResult.response.status} ${JSON.stringify(correctionResult.body)}`);
+}
+
 const bucketResult = await request(`/storage/v1/bucket/${bucket}`, {
   key: serviceRoleKey,
   token: serviceRoleKey,
@@ -99,6 +119,7 @@ await createUser({ email: "cube-k-boundary-agent@example.test", role: "agent", a
 await createUser({ email: "cube-k-boundary-dealer@example.test", role: "dealer", dealerId: dealerResult.body[0].id });
 const agentToken = await signIn("cube-k-boundary-agent@example.test");
 const dealerToken = await signIn("cube-k-boundary-dealer@example.test");
+const centerToken = await signIn("cube-k-center-a@example.test");
 
 for (const [role, token] of [["Agent", agentToken], ["Dealer", dealerToken]]) {
   for (const table of ["roll_preinstall_issues", "roll_preinstall_issue_events", "roll_preinstall_issue_evidence"]) {
@@ -111,6 +132,10 @@ for (const [role, token] of [["Agent", agentToken], ["Dealer", dealerToken]]) {
   assert(!list.response.ok && list.body?.message === "PG_ROLL_ISSUE_FORBIDDEN",
     `${role} issue-list RPC must be denied: ${list.response.status} ${JSON.stringify(list.body)}`);
 }
+
+await assertAdminMutationDenied("Agent", agentToken);
+await assertAdminMutationDenied("Dealer", dealerToken);
+await assertAdminMutationDenied("Center", centerToken);
 
 const clearedIssueResult = await request(
   "/rest/v1/roll_preinstall_issues?status=eq.cleared_for_use&select=id,roll_id,reporting_center_party_id&order=created_at.asc&limit=1",
@@ -128,4 +153,4 @@ assert(custodyResult.response.ok && custodyResult.body?.length === 1,
 assert(custodyResult.body[0].custodian_party_id === clearedIssue.reporting_center_party_id,
   "Issue submission and Admin clearance must not move confirmed Roll custody.");
 
-console.log("Cube K role, private Storage and custody boundaries passed.");
+console.log("Cube K role, private Storage, Admin authority and custody boundaries passed.");
