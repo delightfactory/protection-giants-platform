@@ -346,4 +346,13 @@ await expectRpcError("create_roll_preinstall_issue", {
   p_evidence_paths: [],
 }, centerToken, "PG_ROLL_ISSUE_PRODUCTION_INVALID");
 
-console.log("Cube K role, private Storage, Admin authority, custody, historical access, evidence immutability and Production-state boundaries passed.");
+const suspendCenter = await request(
+  `/rest/v1/installation_centers?id=eq.${centerEntityResult.body[0].id}`,
+  { method: "PATCH", token: adminToken, body: { status: "suspended" } },
+);
+assert(suspendCenter.response.ok,
+  `Could not suspend Center A boundary fixture: ${suspendCenter.response.status} ${JSON.stringify(suspendCenter.body)}`);
+await expectRpcError("list_roll_preinstall_issues", { p_limit: 10, p_offset: 0 }, centerToken, "PG_ROLL_ISSUE_CENTER_INACTIVE");
+await expectRpcError("get_roll_preinstall_issue_detail", { p_issue_id: clearedIssue.id }, centerToken, "PG_ROLL_ISSUE_CENTER_INACTIVE");
+
+console.log("Cube K role, private Storage, active-Center read lifecycle, Admin authority, custody, historical access, evidence immutability and Production-state boundaries passed.");
