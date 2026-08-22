@@ -72,3 +72,22 @@ Cube K V1 uses exactly four report categories:
 The category identifies the type of issue being reported; it does **not** determine the quality outcome automatically.
 
 No severity matrix, root-cause taxonomy, SLA classification or extended quality-code hierarchy is introduced in V1. The Center selects the closest category and provides the required description; Admin / Company remains responsible for the final quality decision under K-Q2 and K-Q3.
+
+## K-Q5 — Optional image evidence at issue submission
+
+**Approved decision:**
+
+Cube K V1 allows the reporting Center to attach image evidence when creating a Pre-install Roll Issue, but evidence is **optional** and is not a prerequisite for submitting a valid issue.
+
+The first-release evidence boundary is:
+
+- images only; video is not introduced in V1;
+- evidence is stored privately and is not anonymously/publicly accessible;
+- evidence is owned by the Pre-install Issue domain and must not reuse `product_assets` as its data model;
+- the existing secure Product-asset Storage pattern may be reused technically for server-only upload, validation, compensation and private/signed access;
+- access is limited to the reporting Center where its issue read authorization allows it and Admin / Company reviewers;
+- implementation must impose bounded allowed image MIME types, file size and image count rather than unbounded uploads;
+- an issue remains valid even when it contains zero images;
+- evidence does not determine the final outcome automatically and does not replace the required human issue description.
+
+This decision does not yet create a formal Company-requested additional-evidence workflow. That remains a separate K-Q6 decision.
