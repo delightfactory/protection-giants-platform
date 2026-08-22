@@ -27,10 +27,6 @@ const exposedRecoveryErrors = new Set([
   "PG_ROLL_RECOVERY_RECEIPT_INCONSISTENT",
 ]);
 
-type RpcError = { message?: string } | null;
-type RpcResponse = { data: unknown; error: RpcError };
-type RpcCaller = (name: string, args: Record<string, unknown>) => Promise<RpcResponse>;
-
 export type OpenedRollRecoveryCandidate = {
   rollId: string;
   serialNumber: string;
@@ -54,6 +50,7 @@ export type RecoverOpenedRollResult =
   | { ok: false; code: string };
 
 function publicRecoveryError(message: string | undefined): string {
+  if (message === "PG_TRANSFER_ACTOR_INACTIVE") return "PG_ROLL_RECOVERY_ACTOR_INACTIVE";
   return message && exposedRecoveryErrors.has(message) ? message : "PG_ROLL_RECOVERY_FAILED";
 }
 
@@ -102,17 +99,12 @@ function toCandidate(row: Parameters<typeof isCandidateRow>[0]): OpenedRollRecov
   };
 }
 
-async function callRpc(name: string, args: Record<string, unknown>): Promise<RpcResponse> {
-  const supabase = await createSupabaseServerClient();
-  const rpc = supabase.rpc.bind(supabase) as unknown as RpcCaller;
-  return rpc(name, args);
-}
-
 export async function resolveOpenedRollRecoveryCandidate(serialInput: string): Promise<ResolveRecoveryCandidateResult> {
   const serial = normalizeRollSerial(serialInput ?? "");
   if (!serial) return { ok: false, code: "PG_ROLL_RECOVERY_SERIAL_INVALID" };
 
-  const { data, error } = await callRpc("resolve_opened_roll_recovery_candidate", { p_roll_serial: serial });
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("resolve_opened_roll_recovery_candidate", { p_roll_serial: serial });
   if (error) return { ok: false, code: publicRecoveryError(error.message) };
   if (!Array.isArray(data) || data.length !== 1 || !isCandidateRow(data[0])) {
     return { ok: false, code: "PG_ROLL_RECOVERY_CANDIDATE_INVALID" };
@@ -135,7 +127,8 @@ export async function recoverOpenedRoll(input: {
   if (reason.length < 5 || reason.length > 500) return { ok: false, code: "PG_ROLL_RECOVERY_REASON_INVALID" };
   if (input.confirmPhysicalReceipt !== true) return { ok: false, code: "PG_ROLL_RECOVERY_PHYSICAL_RECEIPT_REQUIRED" };
 
-  const { data, error } = await callRpc("recover_opened_roll", {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("recover_opened_roll", {
     p_request_id: input.requestId,
     p_roll_serial: serial,
     p_reason: reason,
