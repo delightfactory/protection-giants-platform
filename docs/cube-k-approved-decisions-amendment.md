@@ -105,3 +105,24 @@ The first-release review contract is intentionally simpler:
 - this boundary may be extended later only if real operational usage proves that a formal evidence-request loop is needed.
 
 This decision keeps Cube K focused on reporting, temporary Activation hold and authoritative Company resolution rather than expanding it into a generic ticketing/workflow system.
+
+## K-Q7 — Administrative correction for a report created in error
+
+**Approved decision:**
+
+Cube K V1 includes one narrow audited administrative correction outcome: `reported_in_error`.
+
+This outcome exists only for the case where the submitted report itself was created by mistake and therefore should not be represented as either a real quality clearance or a quality rejection.
+
+The correction contract is:
+
+- the reporting Center cannot delete, retract or self-cancel a submitted issue;
+- only Admin / Company may mark an issue as `reported_in_error`;
+- an explicit correction reason is required;
+- the original report, reporter, category, description, evidence references, timestamps and immutable event history remain preserved;
+- `reported_in_error` removes the issue-specific Warranty Activation hold because the report has been administratively established as erroneous;
+- `reported_in_error` is not equivalent to `cleared_for_use` and must not be counted as a quality-clearance decision;
+- the correction does not move custody, reverse Roll Opening, create Recovery, create Warranty state, or erase any audit evidence;
+- there is no generic Undo or arbitrary status rollback in V1.
+
+Therefore Cube K retains exactly two normal terminal **quality** outcomes (`cleared_for_use`, `return_required`) plus this one separately classified administrative correction outcome (`reported_in_error`).
