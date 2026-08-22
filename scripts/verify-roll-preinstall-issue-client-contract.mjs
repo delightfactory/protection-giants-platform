@@ -30,7 +30,10 @@ assert(!actions.includes("rpc.bind"), "Cube K actions must not bypass typed RPC 
 assert(!actions.includes("as unknown as"), "Cube K actions must not bypass generated database types with unknown casts.");
 assert(actions.includes("cleanupEvidence(uploaded.uploadedPaths)"), "Evidence compensation must delete only objects uploaded by the current attempt.");
 assert(!actions.includes("cleanupEvidence(evidencePaths)"), "Evidence compensation must never delete all deterministic paths after an RPC failure.");
-assert(actions.includes("if (!domainCode && await matchingIssueExists(issueId, requestId))"), "Commit recovery must be limited to transport/unknown failures, not database domain errors.");
+assert(actions.includes('type MatchingIssueCheck = "exists" | "missing" | "unknown"'), "Ambiguous post-RPC reads must remain tri-state, not collapse unknown into missing.");
+assert(actions.includes('if (matching === "exists") return { ok: true, issueId }'), "Transport recovery must recognize an already committed matching issue.");
+assert(actions.includes('if (matching === "unknown")'), "Unknown commit state must preserve deterministic evidence for a safe retry.");
+assert(actions.includes("const domainCode ="), "Database domain errors must be separated from transport/unknown failures.");
 
 assert(newPage.includes("getPublicSiteOrigin()"), "Center issue QR flow must use the canonical public-site origin.");
 assert(newPage.includes('profile.role !== "center"'), "Issue submission route must remain Center-only.");
