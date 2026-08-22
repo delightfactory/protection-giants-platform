@@ -146,7 +146,7 @@ async function ensureEvidenceUploaded(issueId: string, images: PreparedRollIssue
     uploadedPaths.push(image.storagePath);
   }
 
-  return { ok: true as const };
+  return { ok: true as const, uploadedPaths };
 }
 
 async function matchingIssueExists(issueId: string, requestId: string): Promise<boolean> {
@@ -202,13 +202,22 @@ export async function submitRollPreinstallIssue(formData: FormData): Promise<Sub
   });
 
   if (error || typeof data !== "string") {
-    // A network failure can occur after PostgreSQL committed. Never compensate
-    // Storage until the authenticated Center read proves the exact request did
-    // not land; otherwise evidence for a durable issue could be destroyed.
-    if (await matchingIssueExists(issueId, requestId)) {
+    const domainCode = error?.message && exposedIssueErrors.has(error.message)
+      ? error.message
+      : null;
+
+    // Only a transport/unknown response is eligible for commit-recovery. A
+    // database domain error (especially REQUEST_CONFLICT) must remain visible
+    // and must never be converted into a false success merely because the old
+    // issue_id/request_id pair exists.
+    if (!domainCode && await matchingIssueExists(issueId, requestId)) {
       return { ok: true, issueId };
     }
-    await cleanupEvidence(evidencePaths);
+
+    // Compensate only objects created by this invocation. Deterministic objects
+    // found before upload may already belong to a durable earlier attempt and
+    // are therefore never deleted by a later failed retry.
+    await cleanupEvidence(uploaded.uploadedPaths);
     return { ok: false, code: publicIssueError(error?.message, "center") };
   }
 
