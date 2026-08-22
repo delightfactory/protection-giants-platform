@@ -123,6 +123,22 @@ async function assertHealthyPage(page, roleName, route, pageErrors, consoleError
 
   const measurement = await measureStableHorizontalOverflow(page);
   if (measurement.overflow > 1) {
+    const diagnostic = {
+      generatedAt: new Date().toISOString(),
+      roleName,
+      route,
+      url: page.url(),
+      viewport: page.viewportSize(),
+      ...measurement,
+    };
+    fs.writeFileSync(
+      path.join(outDir, "cube-k-overflow-diagnostic.json"),
+      JSON.stringify(diagnostic, null, 2),
+    );
+    await page.screenshot({
+      path: path.join(outDir, "cube-k-overflow-diagnostic.png"),
+      fullPage: true,
+    });
     console.error(`[Cube K overflow diagnostic] ${roleName} ${route}: ${JSON.stringify(measurement, null, 2)}`);
   }
   assert(
