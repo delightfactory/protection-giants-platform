@@ -57,3 +57,18 @@ No additional normal lifecycle states such as `under_review`, `approved`, `rejec
 `cleared_for_use` removes the issue-specific Activation hold. `return_required` keeps the Roll blocked from Warranty Activation.
 
 Neither terminal decision moves custody automatically, deletes the issue, reverses Roll Opening, creates Warranty state, or bypasses the Cube J Recovery rules.
+
+## K-Q4 — Pre-install Issue category set in V1
+
+**Approved decision:**
+
+Cube K V1 uses exactly four report categories:
+
+- `manufacturing_defect` — suspected defect in the film/material itself or its manufacturing layers;
+- `physical_damage` — visible physical damage such as scratches, creases, deformation or other material damage to the Roll/film before installation;
+- `contamination_or_packaging` — contamination, moisture, foreign material, packaging failure or packaging/handling condition that may affect usability;
+- `other` — any relevant Pre-install issue not covered by the three named categories. A human description remains required.
+
+The category identifies the type of issue being reported; it does **not** determine the quality outcome automatically.
+
+No severity matrix, root-cause taxonomy, SLA classification or extended quality-code hierarchy is introduced in V1. The Center selects the closest category and provides the required description; Admin / Company remains responsible for the final quality decision under K-Q2 and K-Q3.
