@@ -8,11 +8,11 @@
 .entryCard,
 .candidateCard,
 .successCard {
-  border: 1px solid var(--border-color);
-  border-radius: 18px;
-  background: var(--surface-color);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
   padding: 1rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-panel);
 }
 
 .entryCard {
@@ -36,7 +36,7 @@
 .candidateCard p,
 .successCard p {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   line-height: 1.75;
 }
 
@@ -74,8 +74,9 @@
   display: grid;
   gap: .35rem;
   padding: .9rem;
-  border-radius: 14px;
-  background: var(--surface-muted, rgba(127, 127, 127, .08));
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
 }
 
 .identity strong {
@@ -92,13 +93,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: .45rem .8rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: .92rem;
 }
 
 .permanentNotice {
-  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
-  border-radius: 14px;
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
   padding: .85rem;
   display: grid;
   gap: .3rem;
@@ -129,11 +131,13 @@
   place-items: center;
   font-size: 1.4rem;
   font-weight: 900;
-  border: 1px solid currentColor;
+  color: var(--success);
+  border: 1px solid var(--success-border);
+  background: var(--success-soft);
 }
 
 .nextNote {
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--line);
   padding-top: .8rem;
   display: grid;
   gap: .35rem;
@@ -147,7 +151,7 @@
   .entryCard,
   .candidateCard,
   .successCard {
-    border-radius: 15px;
+    border-radius: var(--radius-md);
     padding: .9rem;
   }
 }
