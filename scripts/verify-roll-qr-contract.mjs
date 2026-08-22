@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   buildRollQrUrl,
   normalizePublicSiteOrigin,
@@ -29,4 +30,14 @@ assert.equal(parseRollQrPayload(`${origin}/r/PG-R-invalid`, origin), null);
 assert.throws(() => buildRollQrUrl("http://platform.example", serial));
 assert.throws(() => buildRollQrUrl(origin, "not-a-roll"));
 
-console.log("Contextual Roll QR contract verification passed.");
+for (const componentPath of [
+  "components/rolls/roll-opening-flow.tsx",
+  "components/rolls/opened-roll-recovery-flow.tsx",
+]) {
+  const source = fs.readFileSync(new URL(`../${componentPath}`, import.meta.url), "utf8");
+  assert.match(source, /publicSiteOrigin/);
+  assert.match(source, /parseRollQrPayload\(payload, publicSiteOrigin\)/);
+  assert.doesNotMatch(source, /parseRollQrPayload\(payload, window\.location\.origin\)/);
+}
+
+console.log("Contextual Roll QR contract and Cube J canonical-origin reuse verified.");

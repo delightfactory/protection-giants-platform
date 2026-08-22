@@ -1,0 +1,181 @@
+.flow {
+  display: grid;
+  gap: 1rem;
+  max-width: 780px;
+  margin-inline: auto;
+}
+
+.card,
+.successCard {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
+}
+
+.heading {
+  display: grid;
+  gap: .35rem;
+}
+
+.heading h2,
+.successCard h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 4vw, 1.55rem);
+}
+
+.heading p,
+.successCard p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.scanAction {
+  min-height: 52px;
+  width: 100%;
+}
+
+.manualForm,
+.recoveryForm {
+  display: grid;
+  gap: .7rem;
+}
+
+.manualForm label,
+.recoveryForm label {
+  font-weight: 700;
+}
+
+.manualRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .6rem;
+}
+
+.identity {
+  display: grid;
+  gap: .4rem;
+  padding: .9rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.identity strong {
+  font-size: 1.05rem;
+}
+
+.identity code {
+  direction: ltr;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+}
+
+.metaItem {
+  display: grid;
+  gap: .2rem;
+  padding: .7rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+}
+
+.metaItem span {
+  color: var(--text-tertiary);
+  font-size: .8rem;
+}
+
+.route {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: .65rem;
+  align-items: center;
+  padding: .85rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+}
+
+.route strong {
+  text-align: center;
+}
+
+.routeArrow {
+  direction: ltr;
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.reasonField {
+  width: 100%;
+  min-height: 104px;
+  resize: vertical;
+}
+
+.checkRow {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  padding: .85rem;
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  line-height: 1.55;
+}
+
+.checkRow input {
+  margin-top: .25rem;
+}
+
+.actions {
+  display: grid;
+  gap: .65rem;
+}
+
+.actions button {
+  min-height: 50px;
+}
+
+.successMark {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--success);
+  border: 1px solid var(--success-border);
+  background: var(--success-soft);
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+@media (max-width: 600px) {
+  .manualRow,
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .route {
+    grid-template-columns: 1fr;
+  }
+
+  .routeArrow {
+    transform: rotate(90deg);
+    justify-self: center;
+  }
+
+  .card,
+  .successCard {
+    border-radius: var(--radius-md);
+    padding: .9rem;
+  }
+}

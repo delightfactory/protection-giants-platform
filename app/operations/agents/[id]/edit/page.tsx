@@ -4,14 +4,19 @@ import { AgentCoreFields } from "@/components/agent-core-fields";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormPanel, FormSection } from "@/components/ui/form-layout";
 import { PageHeader } from "@/components/ui/page-header";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { updateAgent } from "./actions";
+import { setAgentOpenedRollRecovery, updateAgent } from "./actions";
 
 type AgentEditPageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    recovery?: string;
+    recovery_error?: string;
+  }>;
 };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -23,10 +28,15 @@ const errorMessages: Record<string, string> = {
   failed: "تعذر حفظ التعديلات. حاول مرة أخرى.",
 };
 
+const recoveryErrorMessages: Record<string, string> = {
+  invalid: "تعذر قراءة حالة صلاحية الاسترداد المطلوبة.",
+  failed: "تعذر تحديث صلاحية استرداد اللفات المفتوحة. حاول مرة أخرى.",
+};
+
 export default async function AgentEditPage({ params, searchParams }: AgentEditPageProps) {
   await requireAdminProfile();
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, recovery, recovery_error: recoveryError } = await searchParams;
 
   if (!uuidPattern.test(id)) notFound();
 
@@ -34,7 +44,7 @@ export default async function AgentEditPage({ params, searchParams }: AgentEditP
   const [{ data: agent, error: agentError }, { data: party, error: partyError }] = await Promise.all([
     supabase
       .from("country_agents")
-      .select("id, code, name, country_code")
+      .select("id, code, name, country_code, opened_roll_recovery_enabled")
       .eq("id", id)
       .maybeSingle(),
     supabase
@@ -49,6 +59,12 @@ export default async function AgentEditPage({ params, searchParams }: AgentEditP
   if (!agent) notFound();
 
   const errorMessage = error ? errorMessages[error] : undefined;
+  const recoveryErrorMessage = recoveryError ? recoveryErrorMessages[recoveryError] : undefined;
+  const recoverySuccessMessage = recovery === "enabled"
+    ? "تم تفعيل صلاحية استرداد اللفات المفتوحة لهذا الوكيل."
+    : recovery === "disabled"
+      ? "تم إلغاء صلاحية استرداد اللفات المفتوحة لهذا الوكيل."
+      : undefined;
 
   return (
     <>
@@ -78,6 +94,35 @@ export default async function AgentEditPage({ params, searchParams }: AgentEditP
             <button type="submit" className="button button-primary">حفظ التعديلات</button>
             <Link href="/operations/agents" className="button button-ghost">إلغاء</Link>
           </div>
+        </form>
+      </FormPanel>
+
+      <FormPanel>
+        {recoverySuccessMessage ? <FeedbackBanner tone="success">{recoverySuccessMessage}</FeedbackBanner> : null}
+        {recoveryErrorMessage ? <FeedbackBanner tone="error">{recoveryErrorMessage}</FeedbackBanner> : null}
+        <form action={setAgentOpenedRollRecovery} className="operations-form">
+          <input type="hidden" name="agent_id" value={agent.id} />
+          <input
+            type="hidden"
+            name="enabled"
+            value={agent.opened_roll_recovery_enabled ? "false" : "true"}
+          />
+          <FormSection
+            title="استرداد اللفات المفتوحة"
+            description="صلاحية استثنائية مستقلة. تسمح للوكيل باستلام رول مفتوح فعليًا من مركز داخل شبكته عبر مسار Recovery المراجع، ولا تمنحه أي صلاحية عامة على الحيازة أو التحويلات."
+          >
+            <div className="operations-form-actions">
+              <StatusBadge tone={agent.opened_roll_recovery_enabled ? "success" : "neutral"}>
+                {agent.opened_roll_recovery_enabled ? "مفعّلة" : "غير مفعّلة"}
+              </StatusBadge>
+              <button
+                type="submit"
+                className={agent.opened_roll_recovery_enabled ? "button button-ghost" : "button button-primary"}
+              >
+                {agent.opened_roll_recovery_enabled ? "إلغاء صلاحية الاسترداد" : "تفعيل صلاحية الاسترداد"}
+              </button>
+            </div>
+          </FormSection>
         </form>
       </FormPanel>
     </>

@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { normalizeTransferId } from "../lib/transfers/transfer-id.ts";
 import {
   buildTransferSendFingerprint,
@@ -49,4 +50,32 @@ assert(stored.payloadFingerprint === fingerprintDifferentRolls && stored.request
 clearTransferSendRequest(storage);
 assert(storage.getItem(transferSendSessionKey) === null, "Successful Transfer Send request state was not cleared.");
 
-console.log("Cube G Transfer Send client idempotency and Transfer ID contracts verified.");
+const transferFlowSource = fs.readFileSync(new URL("../components/transfers/transfer-send-flow.tsx", import.meta.url), "utf8");
+const sendActionSource = fs.readFileSync(new URL("../app/operations/transfers/new/actions.ts", import.meta.url), "utf8");
+
+assert(
+  transferFlowSource.includes('availability: "available" | "reserved" | "opened"'),
+  "Transfer Send client does not model opened Roll availability explicitly.",
+);
+assert(
+  transferFlowSource.includes("opened_count: number"),
+  "Transfer Send Lot model does not expose the Cube J opened count.",
+);
+assert(
+  transferFlowSource.includes('row.availability === "opened"'),
+  "Transfer Send client does not block an opened Roll before selection.",
+);
+assert(
+  transferFlowSource.includes("PG_TRANSFER_ROLL_OPENED"),
+  "Transfer Send client does not expose the authoritative opened-Roll mutation error.",
+);
+assert(
+  transferFlowSource.includes("مفتوحة") && transferFlowSource.includes("مفتوح"),
+  "Transfer Send UI does not visibly distinguish opened Rolls from reserved Rolls.",
+);
+assert(
+  sendActionSource.includes('"PG_TRANSFER_ROLL_OPENED"'),
+  "Transfer Send server action does not expose the database opened-Roll guard.",
+);
+
+console.log("Cube G Transfer Send and Cube J opened-Roll client contracts verified.");

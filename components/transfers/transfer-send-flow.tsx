@@ -39,7 +39,7 @@ type SendRollRow = {
   lot_number: string;
   product_code: string;
   product_name: string;
-  availability: "available" | "reserved";
+  availability: "available" | "reserved" | "opened";
 };
 
 type SendLotRow = {
@@ -51,6 +51,7 @@ type SendLotRow = {
   held_count: number;
   available_count: number;
   reserved_count: number;
+  opened_count: number;
   elsewhere_count: number;
 };
 
@@ -93,6 +94,7 @@ const sendErrorMessages: Record<string, string> = {
   PG_TRANSFER_CUSTODY_MISSING: "تعذر تأكيد عهدة بعض اللفات. راجع الاختيار قبل المحاولة مرة أخرى.",
   PG_TRANSFER_ROLL_NOT_HELD: "بعض اللفات لم تعد في عهدة جهتك. تم الاحتفاظ بالاختيار للمراجعة.",
   PG_TRANSFER_ROLL_RESERVED: "بعض اللفات أصبحت محجوزة في تحويل آخر. راجع الاختيار قبل الإرسال.",
+  PG_TRANSFER_ROLL_OPENED: "بعض اللفات تم فتحها وبدأ استخدامها، لذلك لا يمكن إرسالها عبر التحويل العادي. استخدم مسار الاسترداد الاستثنائي عند الحاجة.",
   PG_TRANSFER_ACTOR_INACTIVE: "حسابك أو جهتك التشغيلية لم تعد نشطة لهذه العملية.",
   PG_TRANSFER_REQUEST_PAYLOAD_CONFLICT: "تغيرت بيانات التحويل أثناء إعادة المحاولة. أعد مراجعة العملية قبل الإرسال.",
   PG_TRANSFER_SEND_CONFIRMATION_FAILED: "تم تنفيذ الطلب لكن تعذر تحميل تأكيد التحويل. أعد المحاولة بنفس البيانات للتحقق بأمان.",
@@ -233,6 +235,10 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
   }, [senderTransferId, supabase]);
 
   const addRoll = useCallback((row: SendRollRow): ScannerDecodeOutcome => {
+    if (row.availability === "opened") {
+      return { action: "continue", message: "هذه اللفة مفتوحة وبدأ استخدامها، لذلك لا يمكن إضافتها إلى تحويل عادي.", tone: "warning" };
+    }
+
     if (row.availability === "reserved") {
       return { action: "continue", message: "هذه اللفة محجوزة في تحويل آخر.", tone: "warning" };
     }
@@ -481,6 +487,7 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
         "PG_TRANSFER_CUSTODY_MISSING",
         "PG_TRANSFER_ROLL_NOT_HELD",
         "PG_TRANSFER_ROLL_RESERVED",
+        "PG_TRANSFER_ROLL_OPENED",
       ].includes(result.code)) {
         setStage("select");
         if (mode === "rolls") void loadRolls();
@@ -628,7 +635,7 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
                   <div className={styles.scanGlyph} aria-hidden="true"><span /><span /><span /><span /></div>
                   <div>
                     <h3>امسح QR الموجود على كل لفة</h3>
-                    <p>اللفة الصحيحة تُضاف فورًا ويظل الماسح جاهزًا للفة التالية. اللفات المحجوزة أو غير الموجودة في عهدتك لن تُضاف.</p>
+                    <p>اللفة الصحيحة تُضاف فورًا ويظل الماسح جاهزًا للفة التالية. اللفات المحجوزة أو المفتوحة أو غير الموجودة في عهدتك لن تُضاف.</p>
                   </div>
                   <button type="button" className="button button-primary" onClick={() => setScannerMode("roll")}>فتح الماسح</button>
                 </div>
@@ -663,14 +670,27 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
                 <div className={styles.rollList}>
                   {rollRows.map((row) => {
                     const selected = selectedIds.has(row.roll_id);
-                    const disabled = row.availability === "reserved";
+                    const disabled = row.availability !== "available";
+                    const availabilityLabel = row.availability === "opened"
+                      ? "مفتوحة"
+                      : row.availability === "reserved"
+                        ? "محجوزة"
+                        : selected
+                          ? "محددة"
+                          : "متاحة";
                     return (
                       <article key={row.roll_id} className={styles.rollRow} data-selected={selected ? "true" : "false"} data-disabled={disabled ? "true" : "false"}>
                         <button
                           type="button"
                           className={styles.selectToggle}
                           disabled={disabled}
-                          aria-label={selected ? "إزالة اللفة من التحويل" : "إضافة اللفة للتحويل"}
+                          aria-label={row.availability === "opened"
+                            ? "اللفة مفتوحة وغير متاحة للتحويل العادي"
+                            : row.availability === "reserved"
+                              ? "اللفة محجوزة في تحويل آخر"
+                              : selected
+                                ? "إزالة اللفة من التحويل"
+                                : "إضافة اللفة للتحويل"}
                           onClick={() => selected ? removeRoll(row.roll_id) : addRoll(row)}
                         >{selected ? "✓" : "+"}</button>
                         <div className={styles.rollIdentity}>
@@ -679,7 +699,7 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
                           <span>{row.lot_number} · {row.erp_serial}</span>
                         </div>
                         <StatusBadge tone={disabled ? "warning" : selected ? "success" : "neutral"}>
-                          {disabled ? "محجوزة" : selected ? "محددة" : "متاحة"}
+                          {availabilityLabel}
                         </StatusBadge>
                       </article>
                     );
@@ -720,6 +740,7 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
                         <div><strong>{lot.total_count.toLocaleString("en-US")}</strong><span>إجمالي</span></div>
                         <div><strong>{lot.available_count.toLocaleString("en-US")}</strong><span>متاحة</span></div>
                         <div><strong>{lot.reserved_count.toLocaleString("en-US")}</strong><span>محجوزة</span></div>
+                        <div><strong>{lot.opened_count.toLocaleString("en-US")}</strong><span>مفتوحة</span></div>
                         <div><strong>{lot.elsewhere_count.toLocaleString("en-US")}</strong><span>لدى جهات أخرى</span></div>
                       </div>
                       <button type="button" className="button" disabled={lot.available_count === 0} onClick={() => { void selectLot(lot); }}>
@@ -837,9 +858,10 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
               <div><strong>{pendingLot.total_count.toLocaleString("en-US")}</strong><span>إجمالي</span></div>
               <div><strong>{pendingLot.available_count.toLocaleString("en-US")}</strong><span>متاحة</span></div>
               <div><strong>{pendingLot.reserved_count.toLocaleString("en-US")}</strong><span>محجوزة</span></div>
+              <div><strong>{pendingLot.opened_count.toLocaleString("en-US")}</strong><span>مفتوحة</span></div>
               <div><strong>{pendingLot.elsewhere_count.toLocaleString("en-US")}</strong><span>لدى جهات أخرى</span></div>
             </div>
-            <p>سيتم اختيار اللفات المتاحة فقط، ولن يُسجل التحويل كأنه يحتوي الـLot بالكامل.</p>
+            <p>سيتم اختيار اللفات المتاحة فقط. اللفات المفتوحة والمحجوزة واللفات الموجودة لدى جهات أخرى لن تدخل هذا التحويل.</p>
             <div className={styles.decisionActions}>
               <button type="button" className="button button-primary" onClick={() => applyExpandedLot(pendingLot)}>اختيار {pendingLot.available_count.toLocaleString("en-US")} لفة المتاحة</button>
               <button type="button" className="button button-ghost" onClick={() => setPendingLot(null)}>إلغاء</button>

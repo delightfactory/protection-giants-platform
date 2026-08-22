@@ -166,6 +166,7 @@ export function transferItemStatusLabel(status: TransferItemStatus): string {
 export function transferTimelineLabel(event: TransferTimelineEvent): string {
   switch (event.event_type) {
     case "created": return "تم إنشاء التحويل";
+    case "opened_roll_recovery_created": return "تم إنشاء استرداد رول مفتوح";
     case "received": return `تم استلام ${event.affected_roll_count ?? 0} لفة`;
     case "unresolved_released": return `تم تأكيد بقاء ${event.affected_roll_count ?? 0} لفة لدى المرسل`;
     case "administrative_unresolved_released": return `تم حسم ${event.affected_roll_count ?? 0} لفة إداريًا مع بقاء العهدة لدى المرسل`;
