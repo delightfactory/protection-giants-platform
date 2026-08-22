@@ -4,6 +4,7 @@ import { normalizeRollSerial } from "@/lib/rolls/roll-qr";
 import {
   parseRollIssueSubmission,
   ROLL_PREINSTALL_ISSUE_EVIDENCE_BUCKET,
+  type PreparedRollIssueImage,
   type RollPreinstallIssueCategory,
 } from "@/lib/rolls/preinstall-issues";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -16,6 +17,7 @@ const exposedIssueErrors = new Set([
   "PG_ROLL_ISSUE_SERIAL_INVALID",
   "PG_ROLL_ISSUE_CENTER_REQUIRED",
   "PG_ROLL_ISSUE_CENTER_INACTIVE",
+  "PG_ROLL_ISSUE_ACTOR_INACTIVE",
   "PG_ROLL_ISSUE_FORBIDDEN",
   "PG_ROLL_ISSUE_ADMIN_REQUIRED",
   "PG_ROLL_ISSUE_ROLL_NOT_FOUND",
@@ -59,8 +61,10 @@ export type ResolveRollIssueResult =
   | { ok: true; issueId: string }
   | { ok: false; code: string };
 
-function publicIssueError(message: string | undefined): string {
-  if (message === "PG_TRANSFER_ACTOR_INACTIVE") return "PG_ROLL_ISSUE_CENTER_INACTIVE";
+function publicIssueError(message: string | undefined, actor: "center" | "admin" = "center"): string {
+  if (message === "PG_TRANSFER_ACTOR_INACTIVE") {
+    return actor === "center" ? "PG_ROLL_ISSUE_CENTER_INACTIVE" : "PG_ROLL_ISSUE_ACTOR_INACTIVE";
+  }
   return message && exposedIssueErrors.has(message) ? message : "PG_ROLL_ISSUE_FAILED";
 }
 
@@ -109,7 +113,7 @@ async function cleanupEvidence(paths: string[]) {
   }
 }
 
-async function ensureEvidenceUploaded(issueId: string, images: Awaited<ReturnType<typeof parseRollIssueSubmission>> extends { ok: true; value: { images: infer T } } ? T : never) {
+async function ensureEvidenceUploaded(issueId: string, images: PreparedRollIssueImage[]) {
   const admin = createSupabaseAdminClient();
   const uploadedPaths: string[] = [];
 
@@ -142,7 +146,7 @@ async function ensureEvidenceUploaded(issueId: string, images: Awaited<ReturnTyp
     uploadedPaths.push(image.storagePath);
   }
 
-  return { ok: true as const, uploadedPaths };
+  return { ok: true as const };
 }
 
 export async function resolveRollPreinstallIssueCandidate(serialInput: string): Promise<ResolveRollIssueCandidateResult> {
@@ -151,7 +155,7 @@ export async function resolveRollPreinstallIssueCandidate(serialInput: string): 
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("resolve_roll_preinstall_issue_candidate", { p_roll_serial: serial });
-  if (error) return { ok: false, code: publicIssueError(error.message) };
+  if (error) return { ok: false, code: publicIssueError(error.message, "center") };
   if (!Array.isArray(data) || data.length !== 1 || !isCandidateRow(data[0])) {
     return { ok: false, code: "PG_ROLL_ISSUE_CANDIDATE_INVALID" };
   }
@@ -188,7 +192,7 @@ export async function submitRollPreinstallIssue(formData: FormData): Promise<Sub
 
   if (error || typeof data !== "string") {
     await cleanupEvidence(evidencePaths);
-    return { ok: false, code: publicIssueError(error?.message) };
+    return { ok: false, code: publicIssueError(error?.message, "center") };
   }
 
   return { ok: true, issueId: data };
@@ -217,7 +221,7 @@ export async function resolveRollPreinstallIssue(input: {
   });
 
   if (error || typeof data !== "string") {
-    return { ok: false, code: publicIssueError(error?.message) };
+    return { ok: false, code: publicIssueError(error?.message, "admin") };
   }
   return { ok: true, issueId: data };
 }
@@ -243,7 +247,7 @@ export async function markRollPreinstallIssueReportedInError(input: {
   });
 
   if (error || typeof data !== "string") {
-    return { ok: false, code: publicIssueError(error?.message) };
+    return { ok: false, code: publicIssueError(error?.message, "admin") };
   }
   return { ok: true, issueId: data };
 }
