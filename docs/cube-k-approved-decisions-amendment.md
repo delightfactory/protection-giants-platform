@@ -90,4 +90,18 @@ The first-release evidence boundary is:
 - an issue remains valid even when it contains zero images;
 - evidence does not determine the final outcome automatically and does not replace the required human issue description.
 
-This decision does not yet create a formal Company-requested additional-evidence workflow. That remains a separate K-Q6 decision.
+## K-Q6 — No formal additional-evidence request loop in V1
+
+**Approved decision:**
+
+Cube K V1 does **not** introduce a formal in-system workflow where Admin / Company requests additional evidence and the Center later responds inside the issue lifecycle.
+
+The first-release review contract is intentionally simpler:
+
+- Company reviews the submitted description and any optional images already attached under K-Q5;
+- Company records one of the two approved terminal outcomes under K-Q3;
+- if exceptional clarification or extra evidence is needed in V1, that communication may occur outside the platform;
+- no `evidence_requested`, `awaiting_center_response`, generic comments/threading, assignment, SLA or ticket-style response state is introduced;
+- this boundary may be extended later only if real operational usage proves that a formal evidence-request loop is needed.
+
+This decision keeps Cube K focused on reporting, temporary Activation hold and authoritative Company resolution rather than expanding it into a generic ticketing/workflow system.
