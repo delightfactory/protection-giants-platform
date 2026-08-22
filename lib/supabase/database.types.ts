@@ -169,6 +169,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          opened_roll_recovery_enabled: boolean
           status: string
         }
         Insert: {
@@ -177,6 +178,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          opened_roll_recovery_enabled?: boolean
           status?: string
         }
         Update: {
@@ -185,6 +187,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          opened_roll_recovery_enabled?: boolean
           status?: string
         }
         Relationships: []
@@ -800,6 +803,55 @@ export type Database = {
           },
         ]
       }
+      roll_openings: {
+        Row: {
+          created_at: string
+          opened_at: string
+          opened_by_center_party_id: string
+          opened_by_profile_id: string
+          request_id: string
+          roll_id: string
+        }
+        Insert: {
+          created_at?: string
+          opened_at: string
+          opened_by_center_party_id: string
+          opened_by_profile_id: string
+          request_id: string
+          roll_id: string
+        }
+        Update: {
+          created_at?: string
+          opened_at?: string
+          opened_by_center_party_id?: string
+          opened_by_profile_id?: string
+          request_id?: string
+          roll_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_openings_opened_by_center_party_id_fkey"
+            columns: ["opened_by_center_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_openings_opened_by_profile_id_fkey"
+            columns: ["opened_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_openings_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: true
+            referencedRelation: "rolls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roll_transfer_events: {
         Row: {
           action_request_id: string | null
@@ -996,6 +1048,7 @@ export type Database = {
           roll_count: number
           sender_party_id: string
           status: string
+          transfer_kind: string
           transfer_number: string
         }
         Insert: {
@@ -1008,6 +1061,7 @@ export type Database = {
           roll_count: number
           sender_party_id: string
           status: string
+          transfer_kind?: string
           transfer_number: string
         }
         Update: {
@@ -1020,6 +1074,7 @@ export type Database = {
           roll_count?: number
           sender_party_id?: string
           status?: string
+          transfer_kind?: string
           transfer_number?: string
         }
         Relationships: [
@@ -1236,6 +1291,7 @@ export type Database = {
           held_count: number
           lot_id: string
           lot_number: string
+          opened_count: number
           product_code: string
           product_name: string
           reserved_count: number
@@ -1338,6 +1394,7 @@ export type Database = {
           held_count: number
           lot_id: string
           lot_number: string
+          opened_count: number
           product_code: string
           product_name: string
           reserved_count: number
@@ -1362,6 +1419,10 @@ export type Database = {
           serial_number: string
         }[]
       }
+      open_roll: {
+        Args: { p_request_id: string; p_roll_serial: string }
+        Returns: string
+      }
       receive_roll_transfer_items: {
         Args: {
           p_request_id: string
@@ -1374,6 +1435,15 @@ export type Database = {
         Args: { p_roll_ids: string[]; p_transfer_id: string }
         Returns: string[]
       }
+      recover_opened_roll: {
+        Args: {
+          p_confirm_physical_receipt: boolean
+          p_reason: string
+          p_request_id: string
+          p_roll_serial: string
+        }
+        Returns: string
+      }
       reject_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
       release_unreceived_roll_transfer_items: {
         Args: {
@@ -1384,9 +1454,37 @@ export type Database = {
         }
         Returns: string
       }
+      resolve_opened_roll_recovery_candidate: {
+        Args: { p_roll_serial: string }
+        Returns: {
+          current_custodian_name: string
+          current_custodian_type: string
+          eligibility: string
+          lot_number: string
+          opened_at: string
+          opening_center_name: string
+          product_code: string
+          product_name: string
+          recovery_destination_name: string
+          roll_id: string
+          serial_number: string
+        }[]
+      }
       resolve_public_roll_product_slug: {
         Args: { p_serial: string }
         Returns: string
+      }
+      resolve_roll_opening_candidate: {
+        Args: { p_roll_serial: string }
+        Returns: {
+          eligibility: string
+          lot_number: string
+          opened_at: string
+          product_code: string
+          product_name: string
+          roll_id: string
+          serial_number: string
+        }[]
       }
       resolve_transfer_recipient: {
         Args: { p_transfer_code: string }
@@ -1408,6 +1506,10 @@ export type Database = {
           changed: boolean
           installation_center_id: string
         }[]
+      }
+      set_agent_opened_roll_recovery: {
+        Args: { p_agent_id: string; p_enabled: boolean }
+        Returns: boolean
       }
       update_own_center_location: {
         Args: { p_accuracy_m: number; p_latitude: number; p_longitude: number }
