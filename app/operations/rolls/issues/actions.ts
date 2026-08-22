@@ -61,6 +61,8 @@ export type ResolveRollIssueResult =
   | { ok: true; issueId: string }
   | { ok: false; code: string };
 
+type MatchingIssueCheck = "exists" | "missing" | "unknown";
+
 function publicIssueError(message: string | undefined, actor: "center" | "admin" = "center"): string {
   if (message === "PG_TRANSFER_ACTOR_INACTIVE") {
     return actor === "center" ? "PG_ROLL_ISSUE_CENTER_INACTIVE" : "PG_ROLL_ISSUE_ACTOR_INACTIVE";
@@ -149,7 +151,7 @@ async function ensureEvidenceUploaded(issueId: string, images: PreparedRollIssue
   return { ok: true as const, uploadedPaths };
 }
 
-async function matchingIssueExists(issueId: string, requestId: string): Promise<boolean> {
+async function checkMatchingIssue(issueId: string, requestId: string): Promise<MatchingIssueCheck> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("roll_preinstall_issues")
@@ -157,7 +159,9 @@ async function matchingIssueExists(issueId: string, requestId: string): Promise<
     .eq("id", issueId)
     .eq("request_id", requestId)
     .maybeSingle();
-  return !error && data?.id === issueId && data.request_id === requestId;
+
+  if (error) return "unknown";
+  return data?.id === issueId && data.request_id === requestId ? "exists" : "missing";
 }
 
 export async function resolveRollPreinstallIssueCandidate(serialInput: string): Promise<ResolveRollIssueCandidateResult> {
@@ -206,17 +210,22 @@ export async function submitRollPreinstallIssue(formData: FormData): Promise<Sub
       ? error.message
       : null;
 
-    // Only a transport/unknown response is eligible for commit-recovery. A
-    // database domain error (especially REQUEST_CONFLICT) must remain visible
-    // and must never be converted into a false success merely because the old
-    // issue_id/request_id pair exists.
-    if (!domainCode && await matchingIssueExists(issueId, requestId)) {
-      return { ok: true, issueId };
+    // A database domain error is authoritative and must remain visible. Only a
+    // transport/unknown response is eligible for commit recovery.
+    if (!domainCode) {
+      const matching = await checkMatchingIssue(issueId, requestId);
+      if (matching === "exists") return { ok: true, issueId };
+      if (matching === "unknown") {
+        // We cannot prove whether PostgreSQL committed, so preserve the current
+        // deterministic objects. The same client request can safely retry and
+        // either bind them to the committed issue or create the issue then.
+        return { ok: false, code: "PG_ROLL_ISSUE_FAILED" };
+      }
     }
 
-    // Compensate only objects created by this invocation. Deterministic objects
-    // found before upload may already belong to a durable earlier attempt and
-    // are therefore never deleted by a later failed retry.
+    // Compensate only objects created by this invocation and only when a
+    // durable database outcome is known not to need them. Objects found before
+    // upload may belong to an earlier durable attempt and are never deleted.
     await cleanupEvidence(uploaded.uploadedPaths);
     return { ok: false, code: publicIssueError(error?.message, "center") };
   }
