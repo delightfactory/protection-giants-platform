@@ -36,7 +36,9 @@ jobs:
       - name: Generate and commit canonical database types
         run: |
           supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
-          mv /tmp/generated.database.types.ts lib/supabase/database.types.ts
+          git fetch origin "${{ github.head_ref }}"
+          git reset --hard "origin/${{ github.head_ref }}"
+          cp /tmp/generated.database.types.ts lib/supabase/database.types.ts
           if git diff --quiet -- lib/supabase/database.types.ts; then
             echo "Generated database types are already canonical."
             exit 0
