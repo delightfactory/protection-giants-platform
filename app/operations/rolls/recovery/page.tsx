@@ -3,6 +3,7 @@ import { OpenedRollRecoveryFlow } from "@/components/rolls/opened-roll-recovery-
 import { PageHeader } from "@/components/ui/page-header";
 import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
+import { getPublicSiteOrigin } from "@/lib/public-site";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export default async function OpenedRollRecoveryPage() {
@@ -21,6 +22,8 @@ export default async function OpenedRollRecoveryPage() {
     if (!agent?.opened_roll_recovery_enabled) redirect("/access-denied");
   }
 
+  const publicSiteOrigin = getPublicSiteOrigin();
+
   return (
     <>
       <PageHeader
@@ -29,7 +32,7 @@ export default async function OpenedRollRecoveryPage() {
         description="استخدم هذه العملية فقط بعد استلام رول مفتوح فعليًا. الاسترداد يغيّر الحيازة المؤكدة لكنه لا يلغي أو يمسح حدث الفتح الأصلي."
         actions={<TaskBackLink href="/operations/rolls" label="العودة إلى اللفات" />}
       />
-      <OpenedRollRecoveryFlow />
+      <OpenedRollRecoveryFlow publicSiteOrigin={publicSiteOrigin} />
     </>
   );
 }
