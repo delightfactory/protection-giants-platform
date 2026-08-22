@@ -1,0 +1,177 @@
+.flow {
+  display: grid;
+  gap: 1rem;
+  max-width: 780px;
+  margin-inline: auto;
+}
+
+.card,
+.successCard {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  padding: 1rem;
+  box-shadow: var(--shadow-panel);
+  display: grid;
+  gap: 1rem;
+}
+
+.heading {
+  display: grid;
+  gap: .35rem;
+}
+
+.heading h2,
+.successCard h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 4vw, 1.55rem);
+}
+
+.heading p,
+.successCard p,
+.help {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.scanAction {
+  min-height: 52px;
+  width: 100%;
+}
+
+.manualForm,
+.reportForm {
+  display: grid;
+  gap: .65rem;
+}
+
+.manualForm label,
+.reportForm label {
+  font-weight: 700;
+}
+
+.manualRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .6rem;
+}
+
+.manualRow input {
+  min-width: 0;
+}
+
+.identity {
+  display: grid;
+  gap: .35rem;
+  padding: .9rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.identity strong {
+  font-size: 1.05rem;
+}
+
+.identity code {
+  direction: ltr;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.description {
+  min-height: 140px;
+  resize: vertical;
+  line-height: 1.65;
+}
+
+.counter,
+.help {
+  font-size: .88rem;
+}
+
+.counter {
+  color: var(--text-secondary);
+  justify-self: end;
+}
+
+.holdNotice {
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  padding: .85rem;
+  display: grid;
+  gap: .3rem;
+}
+
+.holdNotice p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.fileList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: .45rem;
+}
+
+.fileList li {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  align-items: center;
+  padding: .65rem .75rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: .9rem;
+}
+
+.fileList li span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: grid;
+  gap: .65rem;
+}
+
+.actions button,
+.actions a {
+  min-height: 50px;
+}
+
+.successMark {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--success);
+  border: 1px solid var(--success-border);
+  background: var(--success-soft);
+}
+
+@media (max-width: 560px) {
+  .manualRow {
+    grid-template-columns: 1fr;
+  }
+
+  .card,
+  .successCard {
+    border-radius: var(--radius-md);
+    padding: .9rem;
+  }
+
+  .fileList li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
