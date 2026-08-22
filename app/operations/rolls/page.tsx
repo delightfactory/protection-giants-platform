@@ -51,6 +51,17 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
   const offset = (page - 1) * PAGE_SIZE;
   const supabase = await createSupabaseServerClient();
 
+  let canRecoverOpenedRoll = isAdmin;
+  if (profile.role === "agent") {
+    const { data: agentRecovery, error: agentRecoveryError } = await supabase
+      .from("country_agents")
+      .select("opened_roll_recovery_enabled")
+      .eq("id", profile.country_agent_id)
+      .maybeSingle();
+    if (agentRecoveryError) throw agentRecoveryError;
+    canRecoverOpenedRoll = Boolean(agentRecovery?.opened_roll_recovery_enabled);
+  }
+
   let recentOrders: Array<{
     id: string;
     order_number: string;
@@ -108,6 +119,15 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
     : { data: [], error: null };
   if (custodyResult.error) throw custodyResult.error;
   const custodyByRoll = new Map(custodyResult.data.map((row) => [row.roll_id, row]));
+
+  const openingResult = rollIds.length && (isAdmin || profile.role === "center")
+    ? await supabase
+        .from("roll_openings")
+        .select("roll_id, opened_at")
+        .in("roll_id", rollIds)
+    : { data: [], error: null };
+  if (openingResult.error) throw openingResult.error;
+  const openingByRoll = new Map(openingResult.data.map((row) => [row.roll_id, row]));
 
   let productsById = new Map<string, { code: string; name: string }>();
   if (!isAdmin && productIds.length) {
@@ -222,7 +242,17 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
         meta={`صفحة ${page.toLocaleString("en-US")} · ${rolls.length.toLocaleString("en-US")} لفة${hasNext ? " · يوجد المزيد" : ""}`}
         actions={(
           <>
-            <Link href="/operations/transfers/new" className="button button-primary">تحويل لفات</Link>
+            {profile.role === "center" ? (
+              <Link href="/operations/rolls/open" className="button button-primary">فتح رول</Link>
+            ) : (
+              <Link href="/operations/transfers/new" className="button button-primary">تحويل لفات</Link>
+            )}
+            {profile.role === "center" ? (
+              <Link href="/operations/transfers/new" className="button button-ghost">تحويل لفات</Link>
+            ) : null}
+            {canRecoverOpenedRoll ? (
+              <Link href="/operations/rolls/recovery" className="button button-ghost">استرداد رول مفتوح</Link>
+            ) : null}
             {isAdmin ? <Link href="/operations/production-orders" className="button button-ghost">أوامر الإنتاج</Link> : null}
           </>
         )}
@@ -277,13 +307,16 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
               ? <Link href="/operations/rolls" className="button button-ghost">عرض العهدة</Link>
               : isAdmin
                 ? <Link href="/operations/production-orders/new" className="button button-primary">إنشاء أمر إنتاج</Link>
-                : undefined}
+                : profile.role === "center"
+                  ? <Link href="/operations/rolls/open" className="button button-primary">فتح رول</Link>
+                  : undefined}
         />
       ) : (
         <>
           <RecordList label="قائمة عهدة اللفات">
             {rolls.map((roll) => {
               const custody = custodyByRoll.get(roll.id);
+              const opening = openingByRoll.get(roll.id);
               const order = ordersById.get(roll.production_order_id);
               const lot = lotsById.get(roll.production_lot_id);
               const product = productsById.get(roll.product_id);
@@ -297,6 +330,7 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
                     { label: "ERP Serial", value: roll.erp_serial, dir: "ltr" as const },
                     { label: "العهدة الحالية", value: custodyLabel, dir: "rtl" as const },
                     { label: "تأكيد العهدة", value: formatCustodyDate(custody?.confirmed_at), dir: "ltr" as const },
+                    { label: "فتح الرول", value: opening ? formatCustodyDate(opening.opened_at) : "—", dir: "ltr" as const },
                     { label: "Lot", value: lot?.lot_number ?? "—", dir: lot ? "ltr" as const : "rtl" as const },
                     { label: "أمر الإنتاج", value: order?.order_number ?? "—", dir: order ? "ltr" as const : "rtl" as const },
                   ]
@@ -304,6 +338,9 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
                     { label: "ERP Serial", value: roll.erp_serial, dir: "ltr" as const },
                     { label: "العهدة الحالية", value: custodyLabel, dir: "rtl" as const },
                     { label: "تأكيد العهدة", value: formatCustodyDate(custody?.confirmed_at), dir: "ltr" as const },
+                    ...(profile.role === "center"
+                      ? [{ label: "فتح الرول", value: opening ? formatCustodyDate(opening.opened_at) : "لم يُفتح", dir: "ltr" as const }]
+                      : []),
                     { label: "ترتيب اللفة", value: roll.roll_index.toLocaleString("en-US"), dir: "ltr" as const },
                   ];
 
@@ -316,11 +353,13 @@ export default async function RollsPage({ searchParams }: RollsPageProps) {
                   title={<span dir="ltr">{roll.serial_number}</span>}
                   subtitle={isAdmin ? order?.product_name_snapshot : product?.name}
                   facts={facts}
-                  status={isAdmin
-                    ? !custody
-                      ? <StatusBadge tone="danger">عهدة غير مكتملة</StatusBadge>
-                      : <StatusBadge tone={isVoided ? "danger" : "success"}>{isVoided ? "أمر مُبطل" : "عهدة مؤكدة"}</StatusBadge>
-                    : <StatusBadge tone="success">في عهدتك</StatusBadge>}
+                  status={opening
+                    ? <StatusBadge tone="warning">مفتوح</StatusBadge>
+                    : isAdmin
+                      ? !custody
+                        ? <StatusBadge tone="danger">عهدة غير مكتملة</StatusBadge>
+                        : <StatusBadge tone={isVoided ? "danger" : "success"}>{isVoided ? "أمر مُبطل" : "عهدة مؤكدة"}</StatusBadge>
+                      : <StatusBadge tone="success">في عهدتك</StatusBadge>}
                   actions={isAdmin && order
                     ? <Link href={`/operations/production-orders/${order.id}`} className="button button-ghost">فتح الأمر</Link>
                     : undefined}
