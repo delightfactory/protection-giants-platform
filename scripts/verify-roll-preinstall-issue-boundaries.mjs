@@ -124,6 +124,18 @@ function runSql(sql) {
   );
 }
 
+function expectSqlFailure(sql, expectedMessage) {
+  let failed = false;
+  try {
+    runSql(sql);
+  } catch (error) {
+    failed = true;
+    const stderr = String(error.stderr ?? "");
+    assert(stderr.includes(expectedMessage), `Expected ${expectedMessage}; received ${stderr}`);
+  }
+  assert(failed, `SQL unexpectedly succeeded; expected ${expectedMessage}.`);
+}
+
 function sqlUuid(value) {
   assert(/^[0-9a-f-]{36}$/i.test(value), `Unsafe UUID fixture: ${value}`);
   return `'${value}'::uuid`;
@@ -135,6 +147,12 @@ const bucketResult = await request(`/storage/v1/bucket/${bucket}`, {
 });
 assert(bucketResult.response.ok && bucketResult.body?.public === false,
   `Cube K evidence bucket must remain private: ${bucketResult.response.status} ${JSON.stringify(bucketResult.body)}`);
+assert(bucketResult.body?.file_size_limit === 8388608,
+  `Cube K evidence bucket size limit drifted: ${JSON.stringify(bucketResult.body)}`);
+assert(Array.isArray(bucketResult.body?.allowed_mime_types)
+  && ["image/jpeg", "image/png", "image/webp"].every((mime) => bucketResult.body.allowed_mime_types.includes(mime))
+  && bucketResult.body.allowed_mime_types.length === 3,
+  `Cube K evidence bucket MIME allowlist drifted: ${JSON.stringify(bucketResult.body)}`);
 
 const agentResult = await request("/rest/v1/country_agents?code=eq.CUBE-K-AGENT-EG&select=id", {
   key: serviceRoleKey,
@@ -185,6 +203,74 @@ assert(custodyResult.response.ok && custodyResult.body?.length === 1,
   `Cleared issue custody fixture is missing through Admin RLS: ${JSON.stringify(custodyResult.body)}`);
 assert(custodyResult.body[0].custodian_party_id === clearedIssue.reporting_center_party_id,
   "Issue submission and Admin clearance must not move confirmed Roll custody.");
+
+const evidenceMetadata = await rest(
+  `roll_preinstall_issue_evidence?issue_id=eq.${clearedIssue.id}&select=id&limit=1`,
+  adminToken,
+);
+assert(evidenceMetadata.response.ok && evidenceMetadata.body?.length === 1,
+  `Cube K evidence metadata fixture is missing: ${JSON.stringify(evidenceMetadata.body)}`);
+expectSqlFailure(
+  `delete from public.roll_preinstall_issue_evidence where id = ${sqlUuid(evidenceMetadata.body[0].id)};`,
+  "PG_ROLL_ISSUE_HISTORY_IMMUTABLE",
+);
+
+const pendingIssueResult = await rest(
+  "roll_preinstall_issues?status=eq.submitted&select=id&order=created_at.asc&limit=1",
+  adminToken,
+);
+assert(pendingIssueResult.response.ok && pendingIssueResult.body?.length === 1,
+  `Pending Cube K issue fixture is missing: ${JSON.stringify(pendingIssueResult.body)}`);
+await expectRpcError("mark_roll_preinstall_issue_reported_in_error", {
+  p_request_id: randomUUID(),
+  p_issue_id: pendingIssueResult.body[0].id,
+  p_reason: "bad",
+}, adminToken, "PG_ROLL_ISSUE_RESOLUTION_REASON_INVALID");
+
+const reportedErrorList = await rpc("list_roll_preinstall_issues", { p_limit: 100, p_offset: 0 }, centerToken);
+assert(reportedErrorList.response.ok, `Center issue list failed: ${JSON.stringify(reportedErrorList.body)}`);
+const reportedErrorIssue = reportedErrorList.body.find((issue) => issue.status === "reported_in_error");
+assert(reportedErrorIssue?.serial_number, "reported_in_error fixture is missing from Center history.");
+const issueAfterCorrectionId = randomUUID();
+const issueAfterCorrection = await rpc("create_roll_preinstall_issue", {
+  p_request_id: randomUUID(),
+  p_issue_id: issueAfterCorrectionId,
+  p_roll_serial: reportedErrorIssue.serial_number,
+  p_category: "other",
+  p_description: "بلاغ جديد مستقل بعد إغلاق البلاغ السابق كتسجيل بالخطأ.",
+  p_evidence_paths: [],
+}, centerToken);
+assert(issueAfterCorrection.response.ok && issueAfterCorrection.body === issueAfterCorrectionId,
+  `New issue after reported_in_error must be allowed: ${JSON.stringify(issueAfterCorrection.body)}`);
+const closeIssueAfterCorrection = await rpc("resolve_roll_preinstall_issue", {
+  p_request_id: randomUUID(),
+  p_issue_id: issueAfterCorrectionId,
+  p_outcome: "cleared_for_use",
+  p_reason: "إغلاق fixture التحقق بعد إثبات السماح ببلاغ جديد.",
+}, adminToken);
+assert(closeIssueAfterCorrection.response.ok,
+  `Could not close post-correction fixture: ${JSON.stringify(closeIssueAfterCorrection.body)}`);
+
+const returnedIssueResult = await rest(
+  "roll_preinstall_issues?status=eq.return_required&select=id,roll_id,reporting_center_party_id&order=created_at.asc&limit=1",
+  adminToken,
+);
+assert(returnedIssueResult.response.ok && returnedIssueResult.body?.length === 1,
+  `return_required fixture is missing: ${JSON.stringify(returnedIssueResult.body)}`);
+const returnedCustodyResult = await rest(
+  `roll_custody_current?roll_id=eq.${returnedIssueResult.body[0].roll_id}&select=custodian_party_id`,
+  adminToken,
+);
+assert(returnedCustodyResult.response.ok && returnedCustodyResult.body?.length === 1
+  && returnedCustodyResult.body[0].custodian_party_id !== returnedIssueResult.body[0].reporting_center_party_id,
+  "Return-required fixture must have moved custody through Recovery before historical-access verification.");
+const historicalAfterRecovery = await rpc(
+  "get_roll_preinstall_issue_detail",
+  { p_issue_id: returnedIssueResult.body[0].id },
+  centerToken,
+);
+assert(historicalAfterRecovery.response.ok && historicalAfterRecovery.body?.length === 1,
+  `Reporting Center must retain historical issue access after custody moves: ${JSON.stringify(historicalAfterRecovery.body)}`);
 
 // Exercise the defensive Production-state branch explicitly. Normal Cube J rules
 // prevent a Roll from becoming opened after its Production Order is voided, so
@@ -260,4 +346,4 @@ await expectRpcError("create_roll_preinstall_issue", {
   p_evidence_paths: [],
 }, centerToken, "PG_ROLL_ISSUE_PRODUCTION_INVALID");
 
-console.log("Cube K role, private Storage, Admin authority, custody and Production-state boundaries passed.");
+console.log("Cube K role, private Storage, Admin authority, custody, historical access, evidence immutability and Production-state boundaries passed.");
