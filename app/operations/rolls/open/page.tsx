@@ -3,10 +3,12 @@ import { RollOpeningFlow } from "@/components/rolls/roll-opening-flow";
 import { PageHeader } from "@/components/ui/page-header";
 import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
+import { getPublicSiteOrigin } from "@/lib/public-site";
 
 export default async function RollOpeningPage() {
   const profile = await requireOperationalProfile();
   if (profile.role !== "center") redirect("/access-denied");
+  const publicSiteOrigin = getPublicSiteOrigin();
 
   return (
     <>
@@ -16,7 +18,7 @@ export default async function RollOpeningPage() {
         description="سجّل لحظة فتح الرول فعليًا قبل استخدامه في التركيب. العملية دائمة ومنفصلة عن تفعيل ضمان العميل."
         actions={<TaskBackLink href="/operations/rolls" label="العودة إلى اللفات" />}
       />
-      <RollOpeningFlow />
+      <RollOpeningFlow publicSiteOrigin={publicSiteOrigin} />
     </>
   );
 }
