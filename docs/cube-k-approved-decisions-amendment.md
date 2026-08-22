@@ -40,3 +40,20 @@ Therefore:
 - Agent may participate later only in physical Recovery when its separate Cube J capability and scope rules allow it;
 - Dealer has no review authority;
 - no generic delegated quality-permission model is introduced in Cube K V1.
+
+## K-Q3 — Final issue outcomes in V1
+
+**Approved decision:**
+
+Cube K V1 has exactly two normal terminal quality outcomes:
+
+- `cleared_for_use` — Company has reviewed the issue and decided the Roll may continue toward installation and later Warranty Activation, subject to all other Activation rules;
+- `return_required` — Company has reviewed the issue and decided the Roll must not continue toward installation/Activation and requires physical return/handling through the existing Cube J opened-Roll Recovery path when the Roll is actually received.
+
+The non-terminal issue state remains `submitted` while no final Company decision exists.
+
+No additional normal lifecycle states such as `under_review`, `approved`, `rejected`, `awaiting_assignment`, or generic workflow statuses are introduced in V1.
+
+`cleared_for_use` removes the issue-specific Activation hold. `return_required` keeps the Roll blocked from Warranty Activation.
+
+Neither terminal decision moves custody automatically, deletes the issue, reverses Roll Opening, creates Warranty state, or bypasses the Cube J Recovery rules.
