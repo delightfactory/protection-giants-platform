@@ -1,5 +1,6 @@
 "use server";
 
+import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { normalizeRollSerial } from "@/lib/rolls/roll-qr";
 import {
   parseRollIssueSubmission,
@@ -179,6 +180,12 @@ export async function resolveRollPreinstallIssueCandidate(serialInput: string): 
 }
 
 export async function submitRollPreinstallIssue(formData: FormData): Promise<SubmitRollIssueResult> {
+  // Evidence upload uses a server-only Storage credential. Prove the caller is
+  // an active Center before any privileged Storage read/write; the database RPC
+  // still revalidates Opening, current custody and all lifecycle races atomically.
+  const profile = await requireOperationalProfile();
+  if (profile.role !== "center") return { ok: false, code: "PG_ROLL_ISSUE_CENTER_REQUIRED" };
+
   const requestId = String(formData.get("request_id") ?? "").trim();
   const issueId = String(formData.get("issue_id") ?? "").trim();
   const serial = normalizeRollSerial(String(formData.get("serial_number") ?? ""));
@@ -210,22 +217,14 @@ export async function submitRollPreinstallIssue(formData: FormData): Promise<Sub
       ? error.message
       : null;
 
-    // A database domain error is authoritative and must remain visible. Only a
-    // transport/unknown response is eligible for commit recovery.
     if (!domainCode) {
       const matching = await checkMatchingIssue(issueId, requestId);
       if (matching === "exists") return { ok: true, issueId };
       if (matching === "unknown") {
-        // We cannot prove whether PostgreSQL committed, so preserve the current
-        // deterministic objects. The same client request can safely retry and
-        // either bind them to the committed issue or create the issue then.
         return { ok: false, code: "PG_ROLL_ISSUE_FAILED" };
       }
     }
 
-    // Compensate only objects created by this invocation and only when a
-    // durable database outcome is known not to need them. Objects found before
-    // upload may belong to an earlier durable attempt and are never deleted.
     await cleanupEvidence(uploaded.uploadedPaths);
     return { ok: false, code: publicIssueError(error?.message, "center") };
   }
