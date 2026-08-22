@@ -180,9 +180,9 @@ export async function resolveRollPreinstallIssueCandidate(serialInput: string): 
 }
 
 export async function submitRollPreinstallIssue(formData: FormData): Promise<SubmitRollIssueResult> {
-  // Evidence upload uses a server-only Storage credential. Prove the caller is
-  // an active Center before any privileged Storage read/write; the database RPC
-  // still revalidates Opening, current custody and all lifecycle races atomically.
+  // Storage uses a server-only credential. Establish an active Center identity
+  // first, then preflight the exact Roll before any privileged Storage mutation.
+  // The database create RPC still performs the authoritative lock/revalidation.
   const profile = await requireOperationalProfile();
   if (profile.role !== "center") return { ok: false, code: "PG_ROLL_ISSUE_CENTER_REQUIRED" };
 
@@ -198,10 +198,22 @@ export async function submitRollPreinstallIssue(formData: FormData): Promise<Sub
   const parsed = await parseRollIssueSubmission(formData, issueId);
   if (!parsed.ok) return parsed;
 
-  const uploaded = await ensureEvidenceUploaded(issueId, parsed.value.images);
-  if (!uploaded.ok) return uploaded;
+  const preflight = await resolveRollPreinstallIssueCandidate(serial);
+  if (!preflight.ok) return preflight;
 
   const evidencePaths = parsed.value.images.map((image) => image.storagePath);
+  let uploadedPaths: string[] = [];
+
+  // Only a currently eligible Roll may cause a new privileged Storage write.
+  // For active/terminal existing issue states, skip upload and call the DB RPC:
+  // an exact retry can return its existing issue, while a new/conflicting request
+  // fails deterministically without staging any new objects.
+  if (preflight.candidate.eligibility === "eligible") {
+    const uploaded = await ensureEvidenceUploaded(issueId, parsed.value.images);
+    if (!uploaded.ok) return uploaded;
+    uploadedPaths = uploaded.uploadedPaths;
+  }
+
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("create_roll_preinstall_issue", {
     p_request_id: requestId,
@@ -225,7 +237,7 @@ export async function submitRollPreinstallIssue(formData: FormData): Promise<Sub
       }
     }
 
-    await cleanupEvidence(uploaded.uploadedPaths);
+    await cleanupEvidence(uploadedPaths);
     return { ok: false, code: publicIssueError(error?.message, "center") };
   }
 
