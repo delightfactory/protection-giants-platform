@@ -10,12 +10,17 @@ function assert(condition, message) {
 
 const actions = read("app/operations/rolls/issues/actions.ts");
 const newPage = read("app/operations/rolls/issues/new/page.tsx");
+const listPage = read("app/operations/rolls/issues/page.tsx");
 const detailPage = read("app/operations/rolls/issues/[id]/page.tsx");
+const detailCss = read("app/operations/rolls/issues/[id]/page.module.css");
 const operationsPage = read("app/operations/page.tsx");
 const recoveryActions = read("app/operations/rolls/recovery/actions.ts");
 const recoveryFlow = read("components/rolls/opened-roll-recovery-flow.tsx");
 const openingFlow = read("components/rolls/roll-opening-flow.tsx");
+const issueFlow = read("components/rolls/roll-preinstall-issue-flow.tsx");
+const issueFlowCss = read("components/rolls/roll-preinstall-issue-flow.module.css");
 const decisionPanel = read("components/rolls/roll-preinstall-issue-decision-panel.tsx");
+const localDateTime = read("components/ui/local-date-time.tsx");
 const issueLibrary = read("lib/rolls/preinstall-issues.ts");
 
 for (const rpcName of [
@@ -55,6 +60,22 @@ const signedUrlIndex = detailPage.indexOf("createSignedUrl(item.storage_path, 60
 assert(detailAuthIndex >= 0 && adminStorageIndex > detailAuthIndex && signedUrlIndex > adminStorageIndex,
   "Evidence signed URLs must only be created after authorized issue-detail resolution.");
 assert(detailPage.includes('profile.role !== "admin" && profile.role !== "center"'), "Issue detail route must exclude Agent and Dealer roles.");
+
+assert(issueFlowCss.includes("min-height: 48px"), "Center manual Roll/evidence controls must retain a phone-sized touch target after rendered QA.");
+assert(issueFlow.includes("imagePreviews") && issueFlow.includes("URL.createObjectURL") && issueFlow.includes("URL.revokeObjectURL"),
+  "Selected evidence images must have bounded browser previews with object-URL cleanup before submission.");
+assert(detailPage.includes("evidencePreview") && detailPage.includes("فتح بالحجم الكامل"),
+  "Admin/Center issue detail must provide inline evidence review plus an explicit full-size action.");
+assert(detailCss.includes("aspect-ratio: 4 / 3") && detailCss.includes("object-fit: cover"),
+  "Evidence review must retain a stable responsive preview surface.");
+assert(!detailPage.includes("Recovery قبل") && !detailPage.includes("يتم Recovery") && !detailPage.includes("الـhold") && !detailPage.includes("المكعبات اللاحقة"),
+  "Center-facing issue outcome copy must not expose internal Recovery/hold/cube terminology.");
+assert(issueFlow.includes("<LocalDateTime value={candidate.openedAt}"), "Issue submission candidate time must render in the user's device timezone.");
+assert(listPage.includes("<LocalDateTime value={issue.created_at}"), "Issue list times must render in the user's device timezone.");
+assert(detailPage.includes("<LocalDateTime value={issue.opened_at}") && detailPage.includes("<LocalDateTime value={event.created_at}"),
+  "Issue detail/timeline times must render in the user's device timezone.");
+assert(localDateTime.includes("useEffect") && localDateTime.includes("Intl.DateTimeFormat"),
+  "LocalDateTime must defer formatting to the browser/device instead of the hosting server timezone.");
 
 const moduleUsages = operationsPage.match(/^  issueModule,$/gm) ?? [];
 assert(moduleUsages.length === 2, "Issue module must be exposed exactly to Admin and Center module lists.");
