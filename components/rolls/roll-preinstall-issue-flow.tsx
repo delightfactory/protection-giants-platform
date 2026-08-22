@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useRef, useState, useTransition } from "react";
+import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
 import {
   resolveRollPreinstallIssueCandidate,
   submitRollPreinstallIssue,
@@ -9,6 +9,7 @@ import {
 } from "@/app/operations/rolls/issues/actions";
 import { QrScannerSheet, type ScannerDecodeOutcome } from "@/components/transfers/qr-scanner-sheet";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { normalizeRollSerial, parseRollQrPayload } from "@/lib/rolls/roll-qr";
 import styles from "./roll-preinstall-issue-flow.module.css";
 
@@ -42,12 +43,6 @@ function issueError(code: string): string {
   return errorMessages[code] ?? "تعذر إكمال البلاغ. أعد المحاولة أو راجع مسؤول النظام إذا استمرت المشكلة.";
 }
 
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(date);
-}
-
 function formatSize(bytes: number) {
   return bytes < 1024 * 1024
     ? `${Math.max(1, Math.round(bytes / 1024)).toLocaleString("en-US")} KB`
@@ -60,6 +55,7 @@ export function RollPreinstallIssueFlow({ publicSiteOrigin }: { publicSiteOrigin
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<Array<{ file: File; url: string }>>([]);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: "error" | "warning" | "success"; text: string } | null>(null);
   const [completedIssueId, setCompletedIssueId] = useState<string | null>(null);
@@ -67,6 +63,14 @@ export function RollPreinstallIssueFlow({ publicSiteOrigin }: { publicSiteOrigin
   const [isSubmitting, startSubmit] = useTransition();
   const requestIdRef = useRef<string | null>(null);
   const issueIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const nextPreviews = images.map((file) => ({ file, url: URL.createObjectURL(file) }));
+    setImagePreviews(nextPreviews);
+    return () => {
+      for (const preview of nextPreviews) URL.revokeObjectURL(preview.url);
+    };
+  }, [images]);
 
   function resetAttempt() {
     requestIdRef.current = null;
@@ -270,7 +274,7 @@ export function RollPreinstallIssueFlow({ publicSiteOrigin }: { publicSiteOrigin
             <span dir="ltr">SKU: {candidate.productCode}</span>
             <code>{candidate.serialNumber}</code>
             <span dir="ltr">Lot: {candidate.lotNumber}</span>
-            <span>تم فتحه: {formatDate(candidate.openedAt)}</span>
+            <span>تم فتحه: <LocalDateTime value={candidate.openedAt} /></span>
           </div>
 
           {candidate.eligibility === "eligible" ? (
@@ -298,12 +302,18 @@ export function RollPreinstallIssueFlow({ publicSiteOrigin }: { publicSiteOrigin
               <span className={styles.counter}>{description.trim().length.toLocaleString("en-US")} / 2000</span>
 
               <label htmlFor="issue-images">صور اختيارية</label>
-              <input id="issue-images" className="input" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => handleImages(event.target.files)} />
-              <p className={styles.help}>حتى 5 صور، بحد أقصى 8 MB للصورة. الصور ليست إلزامية.</p>
-              {images.length ? (
-                <ul className={styles.fileList}>
-                  {images.map((file, index) => (
-                    <li key={`${file.name}-${file.lastModified}-${index}`}><span>{file.name}</span><span dir="ltr">{formatSize(file.size)}</span></li>
+              <input id="issue-images" className={`input ${styles.fileInput}`} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => handleImages(event.target.files)} />
+              <p className={styles.help}>حتى 5 صور، بحد أقصى 8 MB للصورة. الصور ليست إلزامية. راجع المعاينات قبل الإرسال.</p>
+              {imagePreviews.length ? (
+                <ul className={styles.fileList} aria-label="معاينة الصور المختارة">
+                  {imagePreviews.map(({ file, url }, index) => (
+                    <li key={`${file.name}-${file.lastModified}-${index}`}>
+                      <img src={url} alt={`معاينة الصورة ${index + 1}: ${file.name}`} />
+                      <div className={styles.fileMeta}>
+                        <span>{file.name}</span>
+                        <span dir="ltr">{formatSize(file.size)}</span>
+                      </div>
+                    </li>
                   ))}
                 </ul>
               ) : null}
