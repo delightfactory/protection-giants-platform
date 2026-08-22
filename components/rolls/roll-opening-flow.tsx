@@ -40,7 +40,13 @@ function formatDate(value: string | null): string {
   }).format(date);
 }
 
-export function RollOpeningFlow({ publicSiteOrigin }: { publicSiteOrigin: string }) {
+export function RollOpeningFlow({
+  publicSiteOrigin,
+  centerName,
+}: {
+  publicSiteOrigin: string;
+  centerName: string;
+}) {
   const [serialInput, setSerialInput] = useState("");
   const [candidate, setCandidate] = useState<RollOpeningCandidate | null>(null);
   const [feedback, setFeedback] = useState<{ tone: "error" | "warning" | "success"; text: string } | null>(null);
@@ -178,6 +184,7 @@ export function RollOpeningFlow({ publicSiteOrigin }: { publicSiteOrigin: string
           </div>
           <div className={styles.identity}>
             <strong>{success.productName}</strong>
+            <span>المركز: {centerName}</span>
             <span dir="ltr">SKU: {success.productCode}</span>
             <code>{success.serialNumber}</code>
             <div className={styles.meta}>
@@ -244,6 +251,7 @@ export function RollOpeningFlow({ publicSiteOrigin }: { publicSiteOrigin: string
           </div>
 
           <div className={styles.identity}>
+            <span>المركز: {centerName}</span>
             <span dir="ltr">SKU: {candidate.productCode}</span>
             <code>{candidate.serialNumber}</code>
             <div className={styles.meta}>
