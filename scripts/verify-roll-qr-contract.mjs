@@ -40,4 +40,42 @@ for (const componentPath of [
   assert.doesNotMatch(source, /parseRollQrPayload\(payload, window\.location\.origin\)/);
 }
 
-console.log("Contextual Roll QR contract and Cube J canonical-origin reuse verified.");
+const openingActions = fs.readFileSync(
+  new URL("../app/operations/rolls/open/actions.ts", import.meta.url),
+  "utf8",
+);
+const recoveryActions = fs.readFileSync(
+  new URL("../app/operations/rolls/recovery/actions.ts", import.meta.url),
+  "utf8",
+);
+const openingPage = fs.readFileSync(
+  new URL("../app/operations/rolls/open/page.tsx", import.meta.url),
+  "utf8",
+);
+const openingFlow = fs.readFileSync(
+  new URL("../components/rolls/roll-opening-flow.tsx", import.meta.url),
+  "utf8",
+);
+
+for (const [label, source] of [
+  ["Roll Opening actions", openingActions],
+  ["Opened Roll Recovery actions", recoveryActions],
+]) {
+  assert.doesNotMatch(source, /RpcCaller|supabase\.rpc\.bind|as unknown as RpcCaller/,
+    `${label} must use generated Supabase RPC typing directly.`);
+}
+
+assert.match(openingActions, /supabase\.rpc\("resolve_roll_opening_candidate"/);
+assert.match(openingActions, /supabase\.rpc\("open_roll"/);
+assert.match(recoveryActions, /supabase\.rpc\("resolve_opened_roll_recovery_candidate"/);
+assert.match(recoveryActions, /supabase\.rpc\("recover_opened_roll"/);
+assert.match(openingActions, /PG_TRANSFER_ACTOR_INACTIVE[\s\S]*PG_ROLL_OPENING_CENTER_INACTIVE/);
+assert.match(recoveryActions, /PG_TRANSFER_ACTOR_INACTIVE[\s\S]*PG_ROLL_RECOVERY_ACTOR_INACTIVE/);
+
+assert.match(openingPage, /centerName=\{center\.name\}/,
+  "Roll Opening page must pass the authenticated Center identity into confirmation UX.");
+assert.match(openingFlow, /centerName:\s*string/);
+assert.match(openingFlow, /المركز:\s*\{centerName\}/,
+  "Roll Opening confirmation must visibly identify the acting Center.");
+
+console.log("Contextual Roll QR and Cube J post-merge client contracts verified.");
