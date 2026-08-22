@@ -40,7 +40,7 @@ function formatDate(value: string | null): string {
   }).format(date);
 }
 
-export function RollOpeningFlow() {
+export function RollOpeningFlow({ publicSiteOrigin }: { publicSiteOrigin: string }) {
   const [serialInput, setSerialInput] = useState("");
   const [candidate, setCandidate] = useState<RollOpeningCandidate | null>(null);
   const [feedback, setFeedback] = useState<{ tone: "error" | "warning" | "success"; text: string } | null>(null);
@@ -103,7 +103,7 @@ export function RollOpeningFlow() {
   }
 
   async function handleQrDecode(payload: string): Promise<ScannerDecodeOutcome> {
-    const serial = parseRollQrPayload(payload, window.location.origin);
+    const serial = parseRollQrPayload(payload, publicSiteOrigin);
     if (!serial) {
       return {
         action: "continue",
