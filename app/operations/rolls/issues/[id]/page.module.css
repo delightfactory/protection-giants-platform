@@ -1,0 +1,127 @@
+.layout {
+  display: grid;
+  gap: 1rem;
+  max-width: 900px;
+  margin-inline: auto;
+}
+
+.card {
+  display: grid;
+  gap: .85rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
+}
+
+.card h2,
+.card p {
+  margin: 0;
+}
+
+.card p {
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.identity {
+  display: grid;
+  gap: .35rem;
+  padding: .9rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.identity code {
+  direction: ltr;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+}
+
+.fact {
+  display: grid;
+  gap: .2rem;
+  padding: .75rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.fact span {
+  color: var(--text-secondary);
+  font-size: .86rem;
+}
+
+.description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: .85rem;
+  border-inline-start: 3px solid var(--line);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  line-height: 1.8;
+}
+
+.evidenceList,
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .6rem;
+}
+
+.evidenceItem,
+.timelineItem {
+  display: grid;
+  gap: .35rem;
+  padding: .75rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.evidenceMeta,
+.timelineMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem .75rem;
+  color: var(--text-secondary);
+  font-size: .86rem;
+}
+
+.outcomeNote {
+  padding: .85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: .35rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+
+@media (max-width: 640px) {
+  .facts {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    border-radius: var(--radius-md);
+    padding: .9rem;
+  }
+
+  .actions {
+    display: grid;
+  }
+}

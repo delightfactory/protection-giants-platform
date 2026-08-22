@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useRef, useState, useTransition } from "react";
 import {
   openRoll,
@@ -193,10 +194,13 @@ export function RollOpeningFlow({
             </div>
           </div>
           <div className={styles.nextNote}>
-            <strong>الخطوة التالية</strong>
-            <p>لو ظهر عيب مادي أو تصنيعي قبل التركيب، سيتم التعامل معه من مسار بلاغ ما قبل التركيب عند تفعيله. تفعيل ضمان العميل يظل خطوة مستقلة بعد التركيب.</p>
+            <strong>قبل التركيب</strong>
+            <p>إذا ظهر عيب مادي أو تصنيعي في هذا الرول قبل تفعيل ضمان العميل، أرسل بلاغ ما قبل التركيب. إرسال البلاغ يوقف التفعيل حتى قرار الشركة، بينما حدث الفتح والعهدة يظلان مستقلين.</p>
           </div>
-          <button type="button" className="button button-secondary" onClick={startAnother}>فتح رول آخر</button>
+          <div className={styles.actions}>
+            <Link href="/operations/rolls/issues/new" className="button button-primary">إرسال بلاغ ما قبل التركيب</Link>
+            <button type="button" className="button button-secondary" onClick={startAnother}>فتح رول آخر</button>
+          </div>
         </section>
       </div>
     );

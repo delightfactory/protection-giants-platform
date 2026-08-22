@@ -22,6 +22,7 @@ const exposedRecoveryErrors = new Set([
   "PG_ROLL_RECOVERY_CUSTODY_MISSING",
   "PG_ROLL_RECOVERY_ALREADY_AT_DESTINATION",
   "PG_ROLL_RECOVERY_TRANSFER_RESERVED",
+  "PG_ROLL_RECOVERY_ISSUE_PENDING",
   "PG_ROLL_RECOVERY_AGENT_CENTER_REQUIRED",
   "PG_ROLL_RECOVERY_OUTSIDE_AGENT_SCOPE",
   "PG_ROLL_RECOVERY_RECEIPT_INCONSISTENT",
@@ -38,7 +39,7 @@ export type OpenedRollRecoveryCandidate = {
   currentCustodianType: string;
   currentCustodianName: string;
   recoveryDestinationName: string;
-  eligibility: "eligible" | "transfer_reserved" | "already_at_destination";
+  eligibility: "eligible" | "transfer_reserved" | "already_at_destination" | "issue_pending";
 };
 
 export type ResolveRecoveryCandidateResult =
@@ -65,7 +66,7 @@ function isCandidateRow(value: unknown): value is {
   current_custodian_type: string;
   current_custodian_name: string;
   recovery_destination_name: string;
-  eligibility: "eligible" | "transfer_reserved" | "already_at_destination";
+  eligibility: "eligible" | "transfer_reserved" | "already_at_destination" | "issue_pending";
 } {
   if (!value || typeof value !== "object") return false;
   const row = value as Record<string, unknown>;
@@ -79,7 +80,7 @@ function isCandidateRow(value: unknown): value is {
     && typeof row.current_custodian_type === "string"
     && typeof row.current_custodian_name === "string"
     && typeof row.recovery_destination_name === "string"
-    && ["eligible", "transfer_reserved", "already_at_destination"].includes(String(row.eligibility));
+    && ["eligible", "transfer_reserved", "already_at_destination", "issue_pending"].includes(String(row.eligibility));
 }
 
 function toCandidate(row: Parameters<typeof isCandidateRow>[0]): OpenedRollRecoveryCandidate {

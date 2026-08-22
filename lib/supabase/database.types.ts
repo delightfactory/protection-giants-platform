@@ -852,6 +852,170 @@ export type Database = {
           },
         ]
       }
+      roll_preinstall_issue_events: {
+        Row: {
+          action_request_id: string
+          actor_profile_id: string
+          created_at: string
+          event_kind: string
+          id: string
+          issue_id: string
+          reason: string | null
+        }
+        Insert: {
+          action_request_id: string
+          actor_profile_id: string
+          created_at?: string
+          event_kind: string
+          id?: string
+          issue_id: string
+          reason?: string | null
+        }
+        Update: {
+          action_request_id?: string
+          actor_profile_id?: string
+          created_at?: string
+          event_kind?: string
+          id?: string
+          issue_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_preinstall_issue_events_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_preinstall_issue_events_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "roll_preinstall_issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roll_preinstall_issue_evidence: {
+        Row: {
+          created_at: string
+          id: string
+          issue_id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by_profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issue_id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by_profile_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issue_id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_by_profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_preinstall_issue_evidence_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "roll_preinstall_issues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_preinstall_issue_evidence_uploaded_by_profile_id_fkey"
+            columns: ["uploaded_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roll_preinstall_issues: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          id: string
+          reported_by_profile_id: string
+          reporting_center_party_id: string
+          request_id: string
+          resolution_reason: string | null
+          resolved_at: string | null
+          resolved_by_profile_id: string | null
+          roll_id: string
+          status: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          id: string
+          reported_by_profile_id: string
+          reporting_center_party_id: string
+          request_id: string
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          resolved_by_profile_id?: string | null
+          roll_id: string
+          status?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          reported_by_profile_id?: string
+          reporting_center_party_id?: string
+          request_id?: string
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          resolved_by_profile_id?: string | null
+          roll_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roll_preinstall_issues_reported_by_profile_id_fkey"
+            columns: ["reported_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_preinstall_issues_reporting_center_party_id_fkey"
+            columns: ["reporting_center_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_preinstall_issues_resolved_by_profile_id_fkey"
+            columns: ["resolved_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roll_preinstall_issues_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: false
+            referencedRelation: "rolls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roll_transfer_events: {
         Row: {
           action_request_id: string | null
@@ -1240,6 +1404,17 @@ export type Database = {
         }
         Returns: string
       }
+      create_roll_preinstall_issue: {
+        Args: {
+          p_category: string
+          p_description: string
+          p_evidence_paths?: string[]
+          p_issue_id: string
+          p_request_id: string
+          p_roll_serial: string
+        }
+        Returns: string
+      }
       create_roll_transfer: {
         Args: {
           p_recipient_transfer_code: string
@@ -1302,6 +1477,26 @@ export type Database = {
         Args: { p_party_type: string }
         Returns: string
       }
+      get_roll_preinstall_issue_detail: {
+        Args: { p_issue_id: string }
+        Returns: {
+          category: string
+          center_name: string
+          created_at: string
+          description: string
+          issue_id: string
+          lot_number: string
+          opened_at: string
+          product_code: string
+          product_name: string
+          resolution_reason: string
+          resolved_at: string
+          resolved_by_name: string
+          roll_id: string
+          serial_number: string
+          status: string
+        }[]
+      }
       get_roll_transfer_attention_counts: {
         Args: never
         Returns: {
@@ -1337,6 +1532,25 @@ export type Database = {
           viewer_is_admin: boolean
           viewer_is_recipient: boolean
           viewer_is_sender: boolean
+        }[]
+      }
+      list_roll_preinstall_issues: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          category: string
+          center_name: string
+          created_at: string
+          description: string
+          evidence_count: number
+          issue_id: string
+          lot_number: string
+          product_code: string
+          product_name: string
+          resolution_reason: string
+          resolved_at: string
+          roll_id: string
+          serial_number: string
+          status: string
         }[]
       }
       list_roll_transfer_items: {
@@ -1419,6 +1633,10 @@ export type Database = {
           serial_number: string
         }[]
       }
+      mark_roll_preinstall_issue_reported_in_error: {
+        Args: { p_issue_id: string; p_reason: string; p_request_id: string }
+        Returns: string
+      }
       open_roll: {
         Args: { p_request_id: string; p_roll_serial: string }
         Returns: string
@@ -1477,6 +1695,28 @@ export type Database = {
       resolve_roll_opening_candidate: {
         Args: { p_roll_serial: string }
         Returns: {
+          eligibility: string
+          lot_number: string
+          opened_at: string
+          product_code: string
+          product_name: string
+          roll_id: string
+          serial_number: string
+        }[]
+      }
+      resolve_roll_preinstall_issue: {
+        Args: {
+          p_issue_id: string
+          p_outcome: string
+          p_reason: string
+          p_request_id: string
+        }
+        Returns: string
+      }
+      resolve_roll_preinstall_issue_candidate: {
+        Args: { p_roll_serial: string }
+        Returns: {
+          center_name: string
           eligibility: string
           lot_number: string
           opened_at: string

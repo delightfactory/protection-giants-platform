@@ -21,6 +21,7 @@ const errorMessages: Record<string, string> = {
   PG_ROLL_RECOVERY_NOT_OPENED: "هذا الرول لم يُسجل كمفتوح، لذلك لا يحتاج مسار الاسترداد الاستثنائي.",
   PG_ROLL_RECOVERY_ALREADY_AT_DESTINATION: "الرول موجود بالفعل في حيازة جهة الاسترداد الحالية.",
   PG_ROLL_RECOVERY_TRANSFER_RESERVED: "الرول مرتبط بتحويل نشط. يجب حسم التحويل أولًا.",
+  PG_ROLL_RECOVERY_ISSUE_PENDING: "يوجد بلاغ ما قبل التركيب قيد مراجعة الشركة. يجب حسم البلاغ أولًا قبل نقل حيازة الرول.",
   PG_ROLL_RECOVERY_AGENT_CENTER_REQUIRED: "الوكيل لا يستطيع استخدام هذا المسار إلا لاسترداد رول مفتوح من مركز تركيب داخل شبكته.",
   PG_ROLL_RECOVERY_OUTSIDE_AGENT_SCOPE: "هذا الرول خارج نطاق شبكة الوكيل الحالي.",
   PG_ROLL_RECOVERY_PHYSICAL_RECEIPT_REQUIRED: "يجب تأكيد الاستلام المادي للرول قبل نقل الحيازة.",
@@ -85,7 +86,12 @@ export function OpenedRollRecoveryFlow({ publicSiteOrigin }: { publicSiteOrigin:
     setSerialInput(result.candidate.serialNumber);
     setCandidate(result.candidate);
 
-    if (result.candidate.eligibility === "transfer_reserved") {
+    if (result.candidate.eligibility === "issue_pending") {
+      setFeedback({
+        tone: "warning",
+        text: "يوجد بلاغ ما قبل التركيب قيد مراجعة الشركة. لا يتم نقل الحيازة قبل قرار الشركة؛ بعد قرار الإرجاع يمكن تنفيذ الاسترداد عند الاستلام الفعلي.",
+      });
+    } else if (result.candidate.eligibility === "transfer_reserved") {
       setFeedback({ tone: "warning", text: "الرول مفتوح لكن مرتبط بتحويل نشط. حسم التحويل أولًا ثم أعد الفحص." });
     } else if (result.candidate.eligibility === "already_at_destination") {
       setFeedback({ tone: "warning", text: `الرول موجود بالفعل لدى ${result.candidate.recoveryDestinationName}. لا يوجد تغيير حيازة مطلوب.` });
@@ -144,7 +150,7 @@ export function OpenedRollRecoveryFlow({ publicSiteOrigin }: { publicSiteOrigin:
 
           if (!result.ok) {
             setFeedback({ tone: "error", text: recoveryError(result.code) });
-            if (["PG_ROLL_RECOVERY_TRANSFER_RESERVED", "PG_ROLL_RECOVERY_ALREADY_AT_DESTINATION"].includes(result.code)) {
+            if (["PG_ROLL_RECOVERY_TRANSFER_RESERVED", "PG_ROLL_RECOVERY_ALREADY_AT_DESTINATION", "PG_ROLL_RECOVERY_ISSUE_PENDING"].includes(result.code)) {
               requestIdRef.current = null;
               await resolveSerial(candidate.serialNumber);
             }
