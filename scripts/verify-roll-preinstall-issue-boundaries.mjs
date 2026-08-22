@@ -297,6 +297,13 @@ const invalidRollResult = await rest(
 assert(invalidRollResult.response.ok && invalidRollResult.body?.length === 1, "Invalid Production Roll fixture is missing.");
 const invalidRoll = invalidRollResult.body[0];
 
+const voided = await rpc("void_production_order", {
+  p_order_id: invalidOrder.body,
+  p_reason: "اختبار رفض بلاغ Cube K عند حالة إنتاج غير صالحة.",
+}, adminToken);
+assert(voided.response.ok && voided.body === invalidOrder.body,
+  `Could not void invalid Production fixture before distribution: ${voided.response.status} ${JSON.stringify(voided.body)}`);
+
 const centerEntityResult = await rest("installation_centers?code=eq.CUBE-K-CENTER-A&select=id", adminToken);
 assert(centerEntityResult.response.ok && centerEntityResult.body?.length === 1, "Center A fixture is missing.");
 const centerPartyResult = await rest(
@@ -315,23 +322,13 @@ where roll_id = ${sqlUuid(invalidRoll.id)};
 insert into public.roll_custody_events (
   roll_id, custody_sequence, custodian_party_id, confirmed_at
 ) values (${sqlUuid(invalidRoll.id)}, 2, ${sqlUuid(centerPartyResult.body[0].id)}, now());
-commit;
-`);
-
-const voided = await rpc("void_production_order", {
-  p_order_id: invalidOrder.body,
-  p_reason: "اختبار رفض بلاغ Cube K عند حالة إنتاج غير صالحة.",
-}, adminToken);
-assert(voided.response.ok && voided.body === invalidOrder.body,
-  `Could not void invalid Production fixture: ${voided.response.status} ${JSON.stringify(voided.body)}`);
-
-runSql(`
 insert into public.roll_openings (
   roll_id, request_id, opened_by_profile_id, opened_by_center_party_id, opened_at
 ) values (
   ${sqlUuid(invalidRoll.id)}, ${sqlUuid(randomUUID())}, ${sqlUuid(centerUserResult.body.id)},
   ${sqlUuid(centerPartyResult.body[0].id)}, now()
 );
+commit;
 `);
 
 await expectRpcError("resolve_roll_preinstall_issue_candidate", {
