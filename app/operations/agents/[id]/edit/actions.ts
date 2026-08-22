@@ -51,3 +51,33 @@ export async function updateAgent(formData: FormData) {
   revalidatePath(`/operations/agents/${agentId}/edit`);
   redirect("/operations/agents");
 }
+
+export async function setAgentOpenedRollRecovery(formData: FormData) {
+  await requireAdminProfile();
+
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  const enabledValue = String(formData.get("enabled") ?? "").trim();
+
+  if (!uuidPattern.test(agentId)) {
+    redirect("/operations/agents");
+  }
+
+  if (enabledValue !== "true" && enabledValue !== "false") {
+    redirect(`/operations/agents/${agentId}/edit?recovery_error=invalid`);
+  }
+
+  const enabled = enabledValue === "true";
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("set_agent_opened_roll_recovery", {
+    p_agent_id: agentId,
+    p_enabled: enabled,
+  });
+
+  if (error || data !== enabled) {
+    redirect(`/operations/agents/${agentId}/edit?recovery_error=failed`);
+  }
+
+  revalidatePath("/operations/agents");
+  revalidatePath(`/operations/agents/${agentId}/edit`);
+  redirect(`/operations/agents/${agentId}/edit?recovery=${enabled ? "enabled" : "disabled"}`);
+}
