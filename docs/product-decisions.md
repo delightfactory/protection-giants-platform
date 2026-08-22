@@ -242,3 +242,31 @@ Suspending an operational party does not automatically cancel its pending Transf
 To avoid an unrecoverable reservation when an involved business party becomes operationally inactive, an active Protection Giants Admin may perform a dedicated administrative recovery cancellation of a still-pending Transfer only when the defined suspended-party recovery condition is present. The action requires an audit reason, releases the pending reservation, and does not change confirmed custody.
 
 This recovery action is not sender/recipient impersonation and must not become a general Admin ability to send, reject, receive, or otherwise act as an arbitrary Agent, Dealer, or Center.
+
+### PD-037 — Pre-install Issue submission immediately pauses Warranty Activation
+**Status:** Approved — 2026-08-22
+
+A valid Pre-install Roll Issue submitted after Roll Opening immediately places that exact Roll under a temporary Warranty Activation hold. Company confirmation is not required to start the hold, and submission alone does not mean the Roll is proven defective.
+
+`cleared_for_use` or the narrow administrative correction `reported_in_error` removes the issue-specific hold, subject to every other Activation rule. `return_required` keeps the Roll blocked from Warranty Activation. The future Warranty Activation mutation must revalidate this state atomically rather than trust UI state.
+
+### PD-038 — Company alone resolves Pre-install Issues in V1
+**Status:** Approved — 2026-08-22
+
+Only active Protection Giants Admin/Company may make the final V1 Pre-install Issue decision. Country Agents, Dealers, and Centers do not receive quality-review authority; an Agent's opened-Roll Recovery capability does not grant quality-decision power.
+
+The two normal terminal quality outcomes are `cleared_for_use` and `return_required`. A separate Admin-only `reported_in_error` terminal correction is permitted for accidental reports, requires an audit reason, preserves the original report/history, and is not treated as a quality clearance.
+
+### PD-039 — Pre-install Issue categories are fixed and intentionally small in V1
+**Status:** Approved — 2026-08-22
+
+V1 uses exactly four report categories: `manufacturing_defect`, `physical_damage`, `contamination_or_packaging`, and `other`. A human description is required and category selection never determines the final quality decision automatically.
+
+Severity matrices, root-cause taxonomies, SLA classifications, and generic QMS coding are deferred unless real operational use demonstrates a need.
+
+### PD-040 — Pre-install Issue evidence is optional private images without an in-system evidence loop
+**Status:** Approved — 2026-08-22
+
+A Center may attach optional private images when submitting a Pre-install Issue; zero images remains a valid report. V1 supports images only, not video, and issue evidence is operational evidence separate from Product assets.
+
+V1 does not add a formal `request more evidence / Center response` workflow, comments thread, assignment, or ticket-state loop. Exceptional requests for more information may occur outside the platform until operational usage proves that a dedicated in-system loop is necessary.
