@@ -1711,6 +1711,10 @@ export type Database = {
         Args: { p_issue_id: string; p_reason: string; p_request_id: string }
         Returns: string
       }
+      materialize_center_onboarding_success: {
+        Args: { p_invitation_id: string }
+        Returns: number
+      }
       notification_unread_count: { Args: never; Returns: number }
       open_roll: {
         Args: { p_request_id: string; p_roll_serial: string }
@@ -1973,4 +1977,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
