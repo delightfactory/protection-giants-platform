@@ -1,0 +1,105 @@
+.operations-notification-entry {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 43px;
+  margin-bottom: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.operations-notification-entry:hover,
+.operations-notification-entry:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.operations-notification-icon {
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+}
+
+.operations-notification-icon svg,
+.operations-mobile-notifications svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.operations-notification-badge,
+.operations-mobile-notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 21px;
+  min-height: 21px;
+  padding-inline: 5px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 9px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.operations-notification-badge {
+  margin-inline-start: auto;
+}
+
+.operations-mobile-notifications {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+.operations-mobile-notifications:hover,
+.operations-mobile-notifications:focus-visible {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.operations-mobile-notification-badge {
+  position: absolute;
+  top: -4px;
+  inset-inline-end: -4px;
+  min-width: 18px;
+  min-height: 18px;
+  padding-inline: 4px;
+  font-size: 8px;
+  box-shadow: 0 0 0 2px rgba(7, 8, 9, .96);
+}
+
+@media (max-width: 900px) {
+  .operations-notification-entry { display: none; }
+}
+
+@media (max-width: 390px) {
+  .operations-mobile-tools { gap: 3px; }
+  .operations-mobile-notifications {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+}
