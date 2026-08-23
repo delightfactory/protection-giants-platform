@@ -1,0 +1,48 @@
+name: Cube L Notification Quality
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/*cube_l_notification*.sql"
+      - "scripts/verify-notification-inbox-foundation.mjs"
+      - ".github/workflows/cube-l-notification-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: |
+          supabase start
+          supabase db reset --local --no-seed
+
+      - name: Verify Cube L Notification Inbox contract
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-inbox-foundation.mjs
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
