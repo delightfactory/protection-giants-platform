@@ -224,7 +224,9 @@ begin
     raise exception using errcode = '22023', message = 'PG_PUSH_RESULT_ID_REQUIRED';
   end if;
 
-  if p_result not in ('sent', 'subscription_gone', 'retryable_failure', 'terminal_failure') then
+  if p_result is null
+    or p_result not in ('sent', 'subscription_gone', 'retryable_failure', 'terminal_failure')
+  then
     raise exception using errcode = '22023', message = 'PG_PUSH_RESULT_INVALID';
   end if;
 
@@ -232,7 +234,12 @@ begin
     raise exception using errcode = '22023', message = 'PG_PUSH_HTTP_STATUS_INVALID';
   end if;
 
-  if v_error_code is not null and char_length(v_error_code) > 80 then
+  if v_error_code is not null
+    and (
+      char_length(v_error_code) > 80
+      or v_error_code !~ '^[a-z0-9_:-]+$'
+    )
+  then
     raise exception using errcode = '22023', message = 'PG_PUSH_ERROR_CODE_INVALID';
   end if;
 
@@ -242,7 +249,9 @@ begin
     raise exception using errcode = '22023', message = 'PG_PUSH_RESULT_STATUS_MISMATCH';
   end if;
 
-  if p_result = 'subscription_gone' and p_http_status not in (404, 410) then
+  if p_result = 'subscription_gone'
+    and (p_http_status is null or p_http_status not in (404, 410))
+  then
     raise exception using errcode = '22023', message = 'PG_PUSH_RESULT_STATUS_MISMATCH';
   end if;
 
