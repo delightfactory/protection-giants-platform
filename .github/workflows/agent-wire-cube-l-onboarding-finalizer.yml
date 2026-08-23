@@ -1,0 +1,102 @@
+name: Agent Wire Cube L Onboarding Finalizer
+
+"on":
+  push:
+    branches:
+      - agent/cube-l-onboarding-finalizer-wire
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout temporary branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply focused 3C integration
+        env:
+          TARGET_BRANCH: feature/cube-l-notifications-pwa
+          EXPECTED_HEAD: 2bb8daf202d157162188cc908285c0a5085066c7
+        run: |
+          set -euo pipefail
+          git fetch origin "${TARGET_BRANCH}"
+          ACTUAL_HEAD="$(git rev-parse "origin/${TARGET_BRANCH}")"
+          test "${ACTUAL_HEAD}" = "${EXPECTED_HEAD}"
+          git checkout -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
+
+          python - <<'PY'
+          from pathlib import Path
+
+          actions_path = Path("app/onboarding/center/actions.ts")
+          actions = actions_path.read_text()
+          old_tail = '''  revalidatePath("/operations");
+          redirect("/operations");
+          }
+          '''
+          new_tail = '''  const { error: onboardingNotificationError } = await supabaseAdmin.rpc(
+            "materialize_center_onboarding_success",
+            { p_invitation_id: invitation.id },
+          );
+          if (onboardingNotificationError) throw onboardingNotificationError;
+
+          revalidatePath("/operations");
+          redirect("/operations");
+          }
+          '''
+          if actions.count(old_tail) != 1:
+              raise SystemExit("Expected exactly one final onboarding success tail")
+          actions_path.write_text(actions.replace(old_tail, new_tail))
+
+          verifier_path = Path("scripts/verify-notification-onboarding-materialization.mjs")
+          verifier = verifier_path.read_text()
+          import_old = 'import { execFileSync } from "node:child_process";\n'
+          import_new = 'import { execFileSync } from "node:child_process";\nimport fs from "node:fs";\n'
+          if verifier.count(import_old) != 1 or 'import fs from "node:fs";' in verifier:
+              raise SystemExit("Unexpected onboarding verifier import state")
+          verifier = verifier.replace(import_old, import_new, 1)
+
+          assertion_anchor = '''function assert(condition, message) {
+            if (!condition) throw new Error(message);
+          }
+          '''
+          assertions = '''function assert(condition, message) {
+            if (!condition) throw new Error(message);
+          }
+
+          const onboardingActionSource = fs.readFileSync("app/onboarding/center/actions.ts", "utf8");
+          const exactProfileIndex = onboardingActionSource.indexOf("const exactProfile =");
+          const mismatchExitIndex = onboardingActionSource.indexOf('redirect(onboardingPath("error=profile"));', exactProfileIndex);
+          const successMaterializerIndex = onboardingActionSource.indexOf('"materialize_center_onboarding_success"');
+          const finalRevalidateIndex = onboardingActionSource.indexOf('revalidatePath("/operations");', successMaterializerIndex);
+          assert(exactProfileIndex >= 0 && mismatchExitIndex > exactProfileIndex,
+            "Center onboarding action must retain exact final Profile verification and mismatch handling.");
+          assert(successMaterializerIndex > mismatchExitIndex && finalRevalidateIndex > successMaterializerIndex,
+            "Normal onboarding notification finalizer must run only after exact Profile verification and before final success redirect.");
+          assert(successMaterializerIndex === onboardingActionSource.lastIndexOf('"materialize_center_onboarding_success"'),
+            "Center onboarding action must have exactly one normal-success materializer call; provisional invitation acceptance must not materialize success.");
+          assert(onboardingActionSource.includes("if (onboardingNotificationError) throw onboardingNotificationError;"),
+            "Onboarding notification materialization errors must not be silently ignored.");
+          '''
+          if verifier.count(assertion_anchor) != 1:
+              raise SystemExit("Expected exactly one verifier assertion helper anchor")
+          verifier_path.write_text(verifier.replace(assertion_anchor, assertions, 1))
+          PY
+
+          git diff --check
+          git add app/onboarding/center/actions.ts scripts/verify-notification-onboarding-materialization.mjs
+          test "$(git diff --cached --name-only | wc -l | tr -d ' ')" = "2"
+          test "$(git diff --cached --name-only | sort | tr '\n' ' ')" = "app/onboarding/center/actions.ts scripts/verify-notification-onboarding-materialization.mjs "
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(cube-l): wire onboarding success notification'
+          git push origin "HEAD:${TARGET_BRANCH}"
+
+      - name: Remove temporary integration branch
+        if: success()
+        run: git push origin --delete agent/cube-l-onboarding-finalizer-wire
