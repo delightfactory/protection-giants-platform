@@ -44,6 +44,9 @@ jobs:
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-notification-inbox-foundation.mjs
 
+      - name: Reset database before Transfer notification contract
+        run: supabase db reset --local --no-seed
+
       - name: Verify Cube L Transfer notification materialization
         shell: bash
         run: |
