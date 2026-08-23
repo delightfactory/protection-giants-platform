@@ -5,11 +5,13 @@ on:
     branches:
       - main
     paths:
+      - "app/onboarding/center/actions.ts"
       - "supabase/migrations/*cube_l_notification*.sql"
       - "scripts/verify-notification-inbox-foundation.mjs"
       - "scripts/verify-notification-transfer-materialization.mjs"
       - "scripts/verify-notification-center-materialization.mjs"
       - "scripts/verify-notification-onboarding-materialization.mjs"
+      - "scripts/verify-notification-onboarding-app-integration.mjs"
       - ".github/workflows/cube-l-notification-quality.yml"
 
 permissions:
@@ -27,6 +29,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Verify Cube L Center onboarding app integration
+        run: node scripts/verify-notification-onboarding-app-integration.mjs
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
