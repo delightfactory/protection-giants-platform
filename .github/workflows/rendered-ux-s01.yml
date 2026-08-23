@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - audit/ux-s01-rendered
+  pull_request:
+    branches:
+      - ux/platform-role-reachability-shell-main
   workflow_dispatch:
 
 permissions:
