@@ -12,6 +12,7 @@ on:
       - "scripts/verify-notification-center-materialization.mjs"
       - "scripts/verify-notification-onboarding-materialization.mjs"
       - "scripts/verify-notification-onboarding-app-integration.mjs"
+      - "scripts/verify-notification-preinstall-issue-materialization.mjs"
       - ".github/workflows/cube-l-notification-quality.yml"
 
 permissions:
@@ -80,6 +81,16 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-notification-onboarding-materialization.mjs
+
+      - name: Reset database before Pre-install Issue notification contract
+        run: supabase db reset --local --no-seed
+
+      - name: Verify Cube L Pre-install Issue notification materialization
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-preinstall-issue-materialization.mjs
 
       - name: Stop local stack
         if: always()
