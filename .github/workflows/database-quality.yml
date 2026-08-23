@@ -40,6 +40,8 @@ name: Database Quality
       - "scripts/verify-transfer-receipt-scale.mjs"
       - "scripts/verify-roll-opening-foundation.mjs"
       - "scripts/verify-opened-roll-recovery.mjs"
+      - "scripts/verify-roll-preinstall-issues.mjs"
+      - "scripts/verify-roll-preinstall-issue-boundaries.mjs"
       - ".github/workflows/database-quality.yml"
 
 permissions:
@@ -136,7 +138,7 @@ jobs:
           drop function public.__ci_default_function_privilege_probe();
           SQL
 
-      - name: Verify database contracts through Cube J Roll Opening and Recovery
+      - name: Verify database contracts through Cube K Pre-install Issues
         id: contract_tests
         continue-on-error: true
         shell: bash
@@ -301,6 +303,16 @@ jobs:
 
           if [ "$test_status" -eq 0 ]; then
             node scripts/verify-opened-roll-recovery.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-roll-preinstall-issues.mjs
+            test_status=$?
+          fi
+
+          if [ "$test_status" -eq 0 ]; then
+            node scripts/verify-roll-preinstall-issue-boundaries.mjs
             test_status=$?
           fi
           set -e

@@ -43,6 +43,8 @@ jobs:
           NODE_PATH="$PWD/node_modules" node /tmp/qr-reliability-test/scripts/verify-qr-reliability.js
       - name: Verify contextual Roll QR contract
         run: node --experimental-strip-types scripts/verify-roll-qr-contract.mjs
+      - name: Verify Pre-install Issue client integration contracts
+        run: node scripts/verify-roll-preinstall-issue-client-contract.mjs
       - name: Verify Transfer Send client contracts
         run: node --experimental-strip-types scripts/verify-transfer-send-client-contract.mjs
       - name: Verify Transfer Receipt client retry contracts
