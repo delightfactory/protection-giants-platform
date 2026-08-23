@@ -322,6 +322,59 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          action_path: string | null
+          attention_level: string
+          body: string
+          created_at: string
+          event_type: string
+          id: string
+          push_eligible: boolean
+          read_at: string | null
+          recipient_profile_id: string
+          source_domain: string
+          source_event_key: string
+          title: string
+        }
+        Insert: {
+          action_path?: string | null
+          attention_level: string
+          body: string
+          created_at?: string
+          event_type: string
+          id?: string
+          push_eligible?: boolean
+          read_at?: string | null
+          recipient_profile_id: string
+          source_domain: string
+          source_event_key: string
+          title: string
+        }
+        Update: {
+          action_path?: string | null
+          attention_level?: string
+          body?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          push_eligible?: boolean
+          read_at?: string | null
+          recipient_profile_id?: string
+          source_domain?: string
+          source_event_key?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational_parties: {
         Row: {
           country_agent_id: string | null
@@ -1534,6 +1587,22 @@ export type Database = {
           viewer_is_sender: boolean
         }[]
       }
+      list_notifications: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          action_path: string
+          attention_level: string
+          body: string
+          created_at: string
+          event_type: string
+          id: string
+          push_eligible: boolean
+          read_at: string
+          source_domain: string
+          source_event_key: string
+          title: string
+        }[]
+      }
       list_roll_preinstall_issues: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
@@ -1633,10 +1702,16 @@ export type Database = {
           serial_number: string
         }[]
       }
+      mark_all_notifications_read: { Args: never; Returns: number }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: string
+      }
       mark_roll_preinstall_issue_reported_in_error: {
         Args: { p_issue_id: string; p_reason: string; p_request_id: string }
         Returns: string
       }
+      notification_unread_count: { Args: never; Returns: number }
       open_roll: {
         Args: { p_request_id: string; p_roll_serial: string }
         Returns: string
