@@ -288,11 +288,11 @@ begin
       return v_delivery.status;
     end if;
 
-    raise exception using errcode = '40001', message = 'PG_PUSH_CLAIM_STALE';
+    raise exception using errcode = '22023', message = 'PG_PUSH_CLAIM_STALE';
   end if;
 
   if v_delivery.status not in ('pending', 'retry') then
-    raise exception using errcode = '40001', message = 'PG_PUSH_CLAIM_STALE';
+    raise exception using errcode = '22023', message = 'PG_PUSH_CLAIM_STALE';
   end if;
 
   v_attempt := v_delivery.attempt_count + 1;
