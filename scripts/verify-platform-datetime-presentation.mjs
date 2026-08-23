@@ -12,6 +12,7 @@ const localDateTime = read("components/ui/local-date-time.tsx");
 const transferHub = read("components/transfers/transfer-hub.tsx");
 const transferDetail = read("app/operations/transfers/[transferId]/page.tsx");
 const centerLocationCapture = read("components/center-location-capture.tsx");
+const rollsRegistry = read("app/operations/rolls/page.tsx");
 
 assert(localDateTime.includes('new Intl.DateTimeFormat("ar-EG-u-nu-latn"'),
   "LocalDateTime must use the Arabic Egypt locale with Latin digits.");
@@ -30,6 +31,7 @@ for (const [name, source] of [
   ["TransferHub", transferHub],
   ["Transfer detail", transferDetail],
   ["Center location capture", centerLocationCapture],
+  ["Roll custody registry", rollsRegistry],
 ]) {
   assert(source.includes("LocalDateTime"), `${name} must reuse LocalDateTime.`);
   assert(!source.includes("Africa/Cairo"), `${name} must not hard-code Cairo timezone for display.`);
@@ -44,5 +46,11 @@ assert(transferDetail.includes('<LocalDateTime value={event.occurred_at}'),
   "Transfer timeline timestamps must use LocalDateTime.");
 assert(centerLocationCapture.includes('<LocalDateTime value={storedLocation.capturedAt}'),
   "Center current-location timestamp must use LocalDateTime.");
+assert(rollsRegistry.includes('return value ? <LocalDateTime value={value} /> : "—";'),
+  "Roll custody/opening timestamps must use LocalDateTime through the shared formatter wrapper.");
+assert(rollsRegistry.includes("formatCustodyDate(custody?.confirmed_at)"),
+  "Roll custody confirmation timestamp must use the shared local presenter.");
+assert(rollsRegistry.includes("formatCustodyDate(opening.opened_at)"),
+  "Roll opening timestamp must use the shared local presenter.");
 
-console.log("Operational timestamp presentation contract verified for UX-S02A.");
+console.log("Operational timestamp presentation contract verified through UX-S02B.");
