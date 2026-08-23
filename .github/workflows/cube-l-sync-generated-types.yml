@@ -1,0 +1,67 @@
+name: Cube L Canonical Types Sync
+
+on:
+  push:
+    branches:
+      - feature/cube-l-notifications-pwa
+    paths:
+      - ".github/workflows/cube-l-sync-generated-types.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cube-l-notifications-pwa
+          fetch-depth: 0
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Generate canonical public database types
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase start
+          supabase db reset --local --no-seed
+          supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = "/tmp/generated.database.types.ts";
+          const content = fs.readFileSync(path, "utf8").replace(/\n*$/, "\n");
+          fs.writeFileSync(path, content);
+          NODE
+          actual_sha="$(sha256sum /tmp/generated.database.types.ts | awk '{print $1}')"
+          expected_sha="97cea5ada1145bf35cdb14be7e2b9ab9ea467adbd1b4d42b586308c732d5d514"
+          if [ "$actual_sha" != "$expected_sha" ]; then
+            echo "Generated types do not byte-match artifact 9495560282. expected=$expected_sha actual=$actual_sha"
+            exit 1
+          fi
+          cp /tmp/generated.database.types.ts lib/supabase/database.types.ts
+
+      - name: Commit exact artifact-equivalent types
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- lib/supabase/database.types.ts; then
+            echo "Canonical types are already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/supabase/database.types.ts
+          git commit -m "chore(cube-l): sync generated database types"
+          git push origin HEAD:feature/cube-l-notifications-pwa
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
