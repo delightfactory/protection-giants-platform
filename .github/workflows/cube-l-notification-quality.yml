@@ -7,7 +7,9 @@ on:
     paths:
       - "app/onboarding/center/actions.ts"
       - "app/api/notifications/push-subscription/route.ts"
+      - "app/api/internal/push-worker/route.ts"
       - "lib/notifications/push-subscription-api.ts"
+      - "lib/notifications/push-worker*.ts"
       - "supabase/migrations/*cube_l_notification*.sql"
       - "scripts/verify-notification-inbox-foundation.mjs"
       - "scripts/verify-notification-transfer-materialization.mjs"
@@ -19,6 +21,10 @@ on:
       - "scripts/verify-notification-push-worker-state.mjs"
       - "scripts/verify-notification-push-api-contract.mjs"
       - "scripts/verify-notification-push-api-security.test.mjs"
+      - "scripts/verify-notification-push-worker-transport-contract.mjs"
+      - "scripts/verify-notification-push-worker-transport.test.mjs"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/cube-l-notification-quality.yml"
 
 permissions:
@@ -36,12 +42,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
 
       - name: Verify Cube L Center onboarding app integration
         run: node scripts/verify-notification-onboarding-app-integration.mjs
 
       - name: Verify Cube L Push subscription API static security contract
         run: node scripts/verify-notification-push-api-contract.mjs
+
+      - name: Verify Cube L Push worker static transport contract
+        run: node scripts/verify-notification-push-worker-transport-contract.mjs
+
+      - name: Verify Cube L Push worker transport behavior
+        run: npx vitest run scripts/verify-notification-push-worker-transport.test.mjs --config vitest.config.mjs
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
