@@ -1,0 +1,106 @@
+name: Rendered UX-S01 Closure
+
+on:
+  push:
+    branches:
+      - audit/ux-s01-rendered
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install Playwright runtime
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: |
+          supabase start
+          supabase db reset --local --no-seed
+
+      - name: Export local application environment
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000"
+            echo "PG_AUDIT_BASE_URL=http://127.0.0.1:3000"
+          } >> "$GITHUB_ENV"
+
+      - name: Seed representative operational data
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-agent-network-foundation.mjs
+          node scripts/verify-roll-preinstall-issues.mjs
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start application
+        shell: bash
+        run: |
+          nohup npm start > /tmp/protection-giants-ux-s01.log 2>&1 &
+          echo $! > /tmp/protection-giants-ux-s01.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/login > /dev/null; then
+              echo "Application is ready."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/protection-giants-ux-s01.log || true
+          exit 1
+
+      - name: Execute focused UX-S01 rendered closure
+        run: node scripts/rendered-ux-s01-closure.mjs
+
+      - name: Print summary
+        if: always()
+        run: |
+          if [ -f artifacts/ux-s01-rendered/ux-s01-summary.md ]; then
+            cat artifacts/ux-s01-rendered/ux-s01-summary.md
+          fi
+
+      - name: Upload rendered evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-s01-rendered-evidence
+          path: |
+            artifacts/ux-s01-rendered
+            /tmp/protection-giants-ux-s01.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
