@@ -257,6 +257,7 @@ begin
 
   if p_result = 'retryable_failure'
     and p_http_status is not null
+    and p_http_status <> 429
     and (p_http_status < 500 or p_http_status > 599)
   then
     raise exception using errcode = '22023', message = 'PG_PUSH_RESULT_STATUS_MISMATCH';
@@ -267,7 +268,7 @@ begin
       p_http_status is null
       or p_http_status < 400
       or p_http_status > 499
-      or p_http_status in (404, 410)
+      or p_http_status in (404, 410, 429)
     )
   then
     raise exception using errcode = '22023', message = 'PG_PUSH_RESULT_STATUS_MISMATCH';

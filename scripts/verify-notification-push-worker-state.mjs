@@ -310,8 +310,8 @@ let state = await record({
   deliveryId: current.delivery_id,
   claimToken: current.claim_token,
   result: "retryable_failure",
-  httpStatus: 503,
-  errorCode: "provider_5xx",
+  httpStatus: 429,
+  errorCode: "provider_rate_limited",
 });
 assert(state === "retry", `Attempt 1 should retry, got ${state}.`);
 let row = deliveryForNotification(retryNotification);
@@ -323,8 +323,8 @@ const duplicateFirst = await record({
   deliveryId: current.delivery_id,
   claimToken: current.claim_token,
   result: "retryable_failure",
-  httpStatus: 503,
-  errorCode: "provider_5xx",
+  httpStatus: 429,
+  errorCode: "provider_rate_limited",
 });
 assert(duplicateFirst === "retry", "Exact result retry must be idempotent.");
 assert(deliveryForNotification(retryNotification).attempt_count === 1,
