@@ -36,6 +36,21 @@ async function settle(page) {
   });
 }
 
+async function waitForProductsReady(page, role) {
+  await page.waitForFunction(
+    ({ admin }) => {
+      const bodyText = document.body?.innerText ?? "";
+      if (bodyText.includes("جاري تحميل البيانات")) return false;
+      if (document.querySelector("h1")?.textContent?.trim() !== "المنتجات") return false;
+      if (admin) return document.querySelector('a[href="/operations/products/new"]') !== null;
+      return bodyText.includes("العرض فقط؛ إدارة المنتجات متاحة للشركة");
+    },
+    { admin: role.admin },
+    { timeout: 15000 },
+  );
+  await settle(page);
+}
+
 const browser = await chromium.launch({ headless: true });
 const captures = [];
 const failures = [];
@@ -50,13 +65,13 @@ for (const [roleName, role] of Object.entries(roles)) {
     try {
       await login(page, role);
       const response = await page.goto(`${baseUrl}/operations/products`, { waitUntil: "domcontentloaded", timeout: 20000 });
-      await settle(page);
+      await waitForProductsReady(page, role);
 
       const metrics = await page.evaluate(() => {
         const root = document.documentElement;
         const body = document.body;
         const content = document.querySelector(".operations-content");
-        const nav = document.querySelector('nav[aria-label="تنقل بوابة التشغيل"]');
+        const mobileNav = document.querySelector(".operations-mobile-nav");
         const bodyText = body?.innerText ?? "";
         return {
           h1: document.querySelector("h1")?.textContent?.trim() ?? null,
@@ -67,7 +82,7 @@ for (const [roleName, role] of Object.entries(roles)) {
           lifecycleButtons: [...document.querySelectorAll("button")].filter((button) => ["أرشفة", "إعادة تفعيل"].includes((button.textContent ?? "").trim())).length,
           overflowPx: Math.max(0, Math.max(root.scrollWidth, body?.scrollWidth ?? 0) - root.clientWidth),
           paddingBottom: content ? Number.parseFloat(getComputedStyle(content).paddingBottom) : 0,
-          navVisible: nav ? getComputedStyle(nav).display !== "none" && nav.getBoundingClientRect().height > 0 : false,
+          mobileNavVisible: mobileNav ? getComputedStyle(mobileNav).display !== "none" && mobileNav.getBoundingClientRect().height > 0 : false,
         };
       });
 
@@ -91,7 +106,7 @@ for (const [roleName, role] of Object.entries(roles)) {
 
       if (viewport.width <= 900) {
         if (metrics.paddingBottom < 92) localFailures.push(`Mobile content padding is ${metrics.paddingBottom}px, expected >=92px`);
-        if (!metrics.navVisible) localFailures.push("Expected mobile navigation is not visible");
+        if (!metrics.mobileNavVisible) localFailures.push("Expected mobile navigation is not visible");
       }
 
       const screenshot = `${roleName}__${viewport.name}__products.png`;
