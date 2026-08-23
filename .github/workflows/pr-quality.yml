@@ -59,6 +59,8 @@ jobs:
         run: node scripts/verify-notification-push-worker-transport-contract.mjs
       - name: Verify Notification Push worker transport behavior
         run: npx vitest run scripts/verify-notification-push-worker-transport.test.mjs --config vitest.config.mjs
+      - name: Verify Notification PWA lifecycle contract
+        run: node scripts/verify-notification-pwa-lifecycle-contract.mjs
       - name: Verify Transfer Send client contracts
         run: node --experimental-strip-types scripts/verify-transfer-send-client-contract.mjs
       - name: Verify Transfer Receipt client retry contracts

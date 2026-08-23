@@ -1,0 +1,33 @@
+{
+  "id": "/",
+  "name": "عمالقة الحماية",
+  "short_name": "PG",
+  "description": "منصة المنتجات والضمانات ومراكز التركيب المعتمدة لأفلام حماية الطلاء.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/operations",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#060607",
+  "theme_color": "#060607",
+  "icons": [
+    {
+      "src": "/icons/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/pwa-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

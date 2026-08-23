@@ -8,8 +8,16 @@ on:
       - "app/onboarding/center/actions.ts"
       - "app/api/notifications/push-subscription/route.ts"
       - "app/api/internal/push-worker/route.ts"
+      - "app/layout.tsx"
+      - "app/operations/layout.tsx"
+      - "components/pwa-lifecycle*.tsx"
+      - "components/pwa-lifecycle*.css"
       - "lib/notifications/push-subscription-api.ts"
       - "lib/notifications/push-worker*.ts"
+      - "public/sw.js"
+      - "public/manifest.webmanifest"
+      - "public/icons/*.png"
+      - "next.config.ts"
       - "supabase/migrations/*cube_l_notification*.sql"
       - "scripts/verify-notification-inbox-foundation.mjs"
       - "scripts/verify-notification-transfer-materialization.mjs"
@@ -23,6 +31,7 @@ on:
       - "scripts/verify-notification-push-api-security.test.mjs"
       - "scripts/verify-notification-push-worker-transport-contract.mjs"
       - "scripts/verify-notification-push-worker-transport.test.mjs"
+      - "scripts/verify-notification-pwa-lifecycle-contract.mjs"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/cube-l-notification-quality.yml"
@@ -58,6 +67,9 @@ jobs:
 
       - name: Verify Cube L Push worker transport behavior
         run: npx vitest run scripts/verify-notification-push-worker-transport.test.mjs --config vitest.config.mjs
+
+      - name: Verify Cube L PWA lifecycle contract
+        run: node scripts/verify-notification-pwa-lifecycle-contract.mjs
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
