@@ -12,6 +12,7 @@ const route = read("app/api/internal/push-worker/route.ts");
 const worker = read("lib/notifications/push-worker.ts");
 const auth = read("lib/notifications/push-worker-auth.ts");
 const contract = read("lib/notifications/push-worker-contract.ts");
+const envExample = read(".env.example");
 const packageJson = JSON.parse(read("package.json"));
 const prWorkflow = read(".github/workflows/pr-quality.yml");
 const cubeWorkflow = read(".github/workflows/cube-l-notification-quality.yml");
@@ -47,6 +48,16 @@ assert(contract.includes("pg-notification-"), "Push payload needs a stable notif
 assert(!contract.includes("topic:"), "Distinct business events must not be generically coalesced with Push Topic.");
 assert(contract.includes("PUSH_TTL_SECONDS"), "Push payload delivery must use a bounded TTL.");
 assert(contract.includes('attentionLevel === "action_required"'), "Urgency must follow attention policy, not always high.");
+
+for (const variable of [
+  "NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY",
+  "WEB_PUSH_VAPID_PRIVATE_KEY",
+  "WEB_PUSH_VAPID_SUBJECT",
+  "PUSH_WORKER_SECRET",
+]) {
+  assert(envExample.includes(`${variable}=`), `Missing ${variable} from .env.example runtime contract.`);
+}
+assert(!envExample.includes("BEGIN PRIVATE KEY"), ".env.example must never contain real private key material.");
 
 assert(packageJson.dependencies?.["web-push"] === "3.6.7", "web-push must remain pinned to 3.6.7.");
 assert(packageJson.devDependencies?.["@types/web-push"] === "3.6.4", "@types/web-push must remain pinned to 3.6.4.");
