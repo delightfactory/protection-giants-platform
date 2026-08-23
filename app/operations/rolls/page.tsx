@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterActions, FilterBar, FilterField, FilterGrid } from "@/components/ui/filter-bar";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { RecordItem, RecordList } from "@/components/ui/record-list";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -34,11 +35,7 @@ function rollsHref(search: string, orderFilter: string, page: number) {
 }
 
 function formatCustodyDate(value: string | undefined) {
-  if (!value) return "—";
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return value ? <LocalDateTime value={value} /> : "—";
 }
 
 export default async function RollsPage({ searchParams }: RollsPageProps) {
