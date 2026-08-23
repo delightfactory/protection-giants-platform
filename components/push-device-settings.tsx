@@ -33,11 +33,14 @@ const INITIAL_SNAPSHOT: DeviceSnapshot = {
   standalone: false,
 };
 
+const VAPID_PUBLIC_KEY_BYTES = 65;
+
 function base64UrlToBytes(value: string): ArrayBuffer {
-  const normalized = value.replace(/-/gu, "+").replace(/_/gu, "/");
+  const normalized = value.trim().replace(/-/gu, "+").replace(/_/gu, "/");
   const padding = "=".repeat((4 - (normalized.length % 4)) % 4);
   const binary = window.atob(`${normalized}${padding}`);
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  if (bytes.byteLength !== VAPID_PUBLIC_KEY_BYTES) throw new Error("PG_PUSH_VAPID_PUBLIC_KEY_INVALID");
   const buffer = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buffer).set(bytes);
   return buffer;
@@ -98,7 +101,7 @@ function currentEnvironment() {
     maxTouchPoints: navigator.maxTouchPoints,
   });
   const standalone = window.matchMedia("(display-mode: standalone)").matches || navigatorWithStandalone.standalone === true;
-  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const supported = window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   return { appleMobile, standalone, supported };
 }
 

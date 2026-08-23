@@ -34,9 +34,9 @@ export function isAppleMobileEnvironment(input: Readonly<{
 }
 
 export function derivePushDeviceViewState(signals: PushDeviceSignals): PushDeviceViewState {
-  if (!signals.vapidConfigured) return "not_configured";
-  if (!signals.supported) return "unsupported";
   if (signals.appleMobile && !signals.standalone) return "install_required";
+  if (!signals.supported) return "unsupported";
+  if (!signals.vapidConfigured) return "not_configured";
   if (signals.permission === "denied") return "denied";
 
   if (signals.hasBrowserSubscription) {

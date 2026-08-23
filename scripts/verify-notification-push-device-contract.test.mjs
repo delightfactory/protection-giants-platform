@@ -20,9 +20,11 @@ describe("Cube L push device state", () => {
     expect(derivePushDeviceViewState({ ...base, supported: false })).toBe("unsupported");
   });
 
-  it("requires Home Screen installation for Apple mobile before Push", () => {
+  it("prioritizes Home Screen installation for Apple mobile even before Push APIs are exposed", () => {
     expect(derivePushDeviceViewState({ ...base, appleMobile: true, standalone: false })).toBe("install_required");
+    expect(derivePushDeviceViewState({ ...base, supported: false, appleMobile: true, standalone: false })).toBe("install_required");
     expect(isAppleMobileEnvironment({ userAgent: "Mozilla/5.0 (iPhone)", platform: "iPhone", maxTouchPoints: 5 })).toBe(true);
+    expect(isAppleMobileEnvironment({ userAgent: "Mozilla/5.0 (Macintosh)", platform: "MacIntel", maxTouchPoints: 5 })).toBe(true);
   });
 
   it("never treats denied permission as enableable", () => {

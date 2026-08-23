@@ -29,6 +29,15 @@ function readPushPayload(event) {
   }
 }
 
+async function markAppBadge() {
+  if (typeof self.navigator?.setAppBadge !== "function") return;
+  try {
+    await self.navigator.setAppBadge();
+  } catch {
+    // App badging is progressive enhancement and must never block notification display.
+  }
+}
+
 self.addEventListener("push", (event) => {
   event.waitUntil((async () => {
     const payload = readPushPayload(event);
@@ -44,6 +53,7 @@ self.addEventListener("push", (event) => {
       ? payload.tag
       : undefined;
 
+    await markAppBadge();
     await self.registration.showNotification(title, {
       body,
       tag,
