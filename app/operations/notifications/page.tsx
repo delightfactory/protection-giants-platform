@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PushDeviceSettings } from "@/components/push-device-settings";
 import { PageHeader } from "@/components/ui/page-header";
 import { LocalDateTime } from "@/components/ui/local-date-time";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
@@ -64,6 +65,7 @@ export default async function NotificationsPage({
   const params = await searchParams;
   const page = validPage(first(params.page));
   const errorMessage = feedbackMessage(first(params.error));
+  const vapidPublicKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY?.trim() ?? "";
 
   const [notifications, unreadCount] = await Promise.all([
     listInboxNotifications({
@@ -86,6 +88,8 @@ export default async function NotificationsPage({
       {errorMessage ? (
         <div className={styles.feedback} role="alert">{errorMessage}</div>
       ) : null}
+
+      <PushDeviceSettings vapidPublicKey={vapidPublicKey} />
 
       <section className={styles.toolbar} aria-label="ملخص الإشعارات">
         <div className={styles.toolbarCopy}>

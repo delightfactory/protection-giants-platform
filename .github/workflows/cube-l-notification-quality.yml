@@ -12,6 +12,10 @@ on:
       - "app/operations/layout.tsx"
       - "components/pwa-lifecycle*.tsx"
       - "components/pwa-lifecycle*.css"
+      - "components/push-device-settings*.tsx"
+      - "components/push-device-settings*.css"
+      - "lib/notifications/push-device-contract.ts"
+      - "app/operations/notifications/page.tsx"
       - "lib/notifications/push-subscription-api.ts"
       - "lib/notifications/push-worker*.ts"
       - "public/sw.js"
@@ -32,6 +36,8 @@ on:
       - "scripts/verify-notification-push-worker-transport-contract.mjs"
       - "scripts/verify-notification-push-worker-transport.test.mjs"
       - "scripts/verify-notification-pwa-lifecycle-contract.mjs"
+      - "scripts/verify-notification-push-device-contract.mjs"
+      - "scripts/verify-notification-push-device-contract.test.mjs"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/cube-l-notification-quality.yml"
@@ -70,6 +76,12 @@ jobs:
 
       - name: Verify Cube L PWA lifecycle contract
         run: node scripts/verify-notification-pwa-lifecycle-contract.mjs
+
+      - name: Verify Cube L Push current-device contract
+        run: node scripts/verify-notification-push-device-contract.mjs
+
+      - name: Verify Cube L Push current-device behavior
+        run: npx vitest run scripts/verify-notification-push-device-contract.test.mjs --config vitest.config.mjs
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
