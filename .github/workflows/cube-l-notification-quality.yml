@@ -16,6 +16,7 @@ on:
       - "scripts/verify-notification-onboarding-app-integration.mjs"
       - "scripts/verify-notification-preinstall-issue-materialization.mjs"
       - "scripts/verify-notification-push-foundation.mjs"
+      - "scripts/verify-notification-push-worker-state.mjs"
       - "scripts/verify-notification-push-api-contract.mjs"
       - "scripts/verify-notification-push-api-security.test.mjs"
       - ".github/workflows/cube-l-notification-quality.yml"
@@ -26,7 +27,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -109,6 +110,16 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-notification-push-foundation.mjs
+
+      - name: Reset database before Push worker state-machine contract
+        run: supabase db reset --local --no-seed
+
+      - name: Verify Cube L Push worker claim/result state machine
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-push-worker-state.mjs
 
       - name: Stop local stack
         if: always()
