@@ -33,11 +33,14 @@ const INITIAL_SNAPSHOT: DeviceSnapshot = {
   standalone: false,
 };
 
-function base64UrlToBytes(value: string): Uint8Array {
+function base64UrlToBytes(value: string): ArrayBuffer {
   const normalized = value.replace(/-/gu, "+").replace(/_/gu, "/");
   const padding = "=".repeat((4 - (normalized.length % 4)) % 4);
   const binary = window.atob(`${normalized}${padding}`);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
 }
 
 function bytesToBase64Url(value: ArrayBuffer): string {
