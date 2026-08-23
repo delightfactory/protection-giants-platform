@@ -1,15 +1,10 @@
 import Link from "next/link";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { TransferStatus, TransferSummary } from "@/lib/transfers/receipt";
 import { transferStatusLabel } from "@/lib/transfers/receipt";
 import { transferPartyTypeLabel } from "@/lib/transfers/transfer-id";
 import styles from "./transfer-hub.module.css";
-
-const dateFormatter = new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "Africa/Cairo",
-});
 
 function statusTone(status: TransferStatus): "success" | "neutral" | "warning" | "danger" | "accent" {
   switch (status) {
@@ -166,7 +161,7 @@ export function TransferHub({
               </div>
 
               <div className={styles.cardBottom}>
-                <span className={styles.date}>{dateFormatter.format(new Date(row.created_at))}</span>
+                <LocalDateTime value={row.created_at} className={styles.date} />
                 <span className={styles.cta}>{taskLabel} ←</span>
               </div>
             </Link>
