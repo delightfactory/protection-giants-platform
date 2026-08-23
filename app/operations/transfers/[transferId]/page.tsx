@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TransferDetailActions } from "@/components/transfers/transfer-detail-actions";
 import { UnresolvedResolutionPanel } from "@/components/transfers/unresolved-resolution-panel";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
@@ -14,12 +15,6 @@ import {
 import { getTransferDetail } from "@/lib/transfers/receipt.server";
 import { transferPartyTypeLabel } from "@/lib/transfers/transfer-id";
 import styles from "@/components/transfers/transfer-detail.module.css";
-
-const dateFormatter = new Intl.DateTimeFormat("ar-EG-u-nu-latn", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "Africa/Cairo",
-});
 
 function tone(status: TransferStatus): "success" | "neutral" | "warning" | "danger" | "accent" {
   switch (status) {
@@ -79,7 +74,7 @@ export default async function TransferDetailPage({
             <div className={styles.metric}><span>بقي لدى المرسل</span><strong>{detail.released_to_sender_count}</strong></div>
           </div>
 
-          <div className={styles.meta}>أُنشئ في {dateFormatter.format(new Date(detail.created_at))}</div>
+          <div className={styles.meta}>أُنشئ في <LocalDateTime value={detail.created_at} /></div>
 
           {detail.can_receive ? (
             <div className={styles.primaryArea}>
@@ -139,7 +134,7 @@ export default async function TransferDetailPage({
                 <span className={styles.eventDot} aria-hidden="true" />
                 <div>
                   <strong>{transferTimelineLabel(event)}</strong>
-                  <time dateTime={event.occurred_at}>{dateFormatter.format(new Date(event.occurred_at))}</time>
+                  <LocalDateTime value={event.occurred_at} />
                   {event.reason ? <p>{event.reason}</p> : null}
                 </div>
               </div>

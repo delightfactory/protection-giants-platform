@@ -47,6 +47,8 @@ jobs:
         run: node scripts/verify-roll-preinstall-issue-client-contract.mjs
       - name: Verify platform role reachability UI contracts
         run: node scripts/verify-platform-role-reachability-ui.mjs
+      - name: Verify operational timestamp presentation contracts
+        run: node scripts/verify-platform-datetime-presentation.mjs
       - name: Verify Transfer Send client contracts
         run: node --experimental-strip-types scripts/verify-transfer-send-client-contract.mjs
       - name: Verify Transfer Receipt client retry contracts
