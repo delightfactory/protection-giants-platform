@@ -18,6 +18,7 @@ function pngSize(path) {
 const sw = read("public/sw.js");
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 const coordinator = read("components/pwa-lifecycle.tsx");
+const badgeSync = read("components/app-badge-sync.tsx");
 const operationsLayout = read("app/operations/layout.tsx");
 const rootLayout = read("app/layout.tsx");
 const nextConfig = read("next.config.ts");
@@ -26,6 +27,8 @@ const cubeWorkflow = read(".github/workflows/cube-l-notification-quality.yml");
 
 assert(sw.includes('self.addEventListener("push"'), "Root Service Worker must handle Push events.");
 assert(sw.includes("self.registration.showNotification"), "Every received Push must surface a persistent notification.");
+assert(sw.includes("PG_NOTIFICATION_PUSH_RECEIVED") && sw.includes("client.postMessage"),
+  "Received Push must notify open app clients so unread Inbox state can refresh.");
 assert(sw.includes('self.addEventListener("notificationclick"'), "Service Worker must handle notification clicks.");
 assert(sw.includes("self.clients.matchAll") && sw.includes("self.clients.openWindow"),
   "Notification clicks must focus/navigate an existing client or open the validated action path.");
@@ -74,6 +77,11 @@ assert(coordinator.includes("تحديث جديد متاح") && coordinator.inclu
   "User-aware update affordance is incomplete.");
 
 assert(operationsLayout.includes("PwaLifecycleCoordinator"), "PWA lifecycle coordinator must be mounted once in operations layout.");
+assert(operationsLayout.includes("AppBadgeSync"), "Operations shell must mount unread/badge synchronization.");
+assert(badgeSync.includes('navigator.serviceWorker.addEventListener("message"') &&
+  badgeSync.includes('event.data?.type === "PG_NOTIFICATION_PUSH_RECEIVED"') &&
+  badgeSync.includes("router.refresh()"),
+  "Open app clients must consume Push refresh messages and refresh server-derived unread state.");
 assert(rootLayout.includes('manifest: "/manifest.webmanifest"'), "Root metadata must advertise the stable manifest URL.");
 assert(rootLayout.includes("appleWebApp") && rootLayout.includes("apple-touch-icon.png"),
   "Apple Home Screen metadata/icon is incomplete.");

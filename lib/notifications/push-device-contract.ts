@@ -24,6 +24,10 @@ export function isPushServerState(value: unknown): value is PushServerState {
   return typeof value === "string" && pushServerStates.includes(value as PushServerState);
 }
 
+export function shouldRotatePushSubscriptionForRepair(serverState: PushServerState): boolean {
+  return serverState !== "subscribed";
+}
+
 export function isAppleMobileEnvironment(input: Readonly<{
   userAgent: string;
   platform: string;

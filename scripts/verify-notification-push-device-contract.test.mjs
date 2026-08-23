@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   derivePushDeviceViewState,
   isAppleMobileEnvironment,
+  shouldRotatePushSubscriptionForRepair,
 } from "../lib/notifications/push-device-contract";
 
 const base = {
@@ -37,5 +38,11 @@ describe("Cube L push device state", () => {
     expect(derivePushDeviceViewState({ ...base, permission: "granted", hasBrowserSubscription: true, serverState: "missing" })).toBe("repair_required");
     expect(derivePushDeviceViewState({ ...base, permission: "granted", hasBrowserSubscription: true, serverState: "disabled" })).toBe("repair_required");
     expect(derivePushDeviceViewState({ ...base, permission: "granted", hasBrowserSubscription: true, serverState: "subscribed" })).toBe("subscribed");
+  });
+
+  it("rotates a browser subscription whenever server ownership/state is not subscribed", () => {
+    expect(shouldRotatePushSubscriptionForRepair("missing")).toBe(true);
+    expect(shouldRotatePushSubscriptionForRepair("disabled")).toBe(true);
+    expect(shouldRotatePushSubscriptionForRepair("subscribed")).toBe(false);
   });
 });

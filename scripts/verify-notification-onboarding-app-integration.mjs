@@ -8,7 +8,9 @@ const actions = fs.readFileSync("app/onboarding/center/actions.ts", "utf8");
 const exactProfileIndex = actions.indexOf("const exactProfile =");
 const mismatchExitIndex = actions.indexOf('redirect(onboardingPath("error=profile"));', exactProfileIndex);
 const materializerName = '"materialize_center_onboarding_success"';
-const materializerIndex = actions.indexOf(materializerName);
+const materializerIndices = [...actions.matchAll(new RegExp(materializerName, "g"))].map((match) => match.index ?? -1);
+const reconciliationIndex = actions.indexOf("const { data: reconciliationInvitation");
+const materializerIndex = materializerIndices[1] ?? -1;
 const finalRevalidateIndex = actions.indexOf('revalidatePath("/operations");', materializerIndex);
 
 assert(
@@ -20,8 +22,19 @@ assert(
   "Normal onboarding notification must materialize only after exact Profile verification and before final success redirect.",
 );
 assert(
-  materializerIndex === actions.lastIndexOf(materializerName),
-  "Normal onboarding success materializer must be called exactly once; provisional invitation acceptance must not emit success.",
+  materializerIndices.length === 2 &&
+    reconciliationIndex >= 0 &&
+    materializerIndices[0] > reconciliationIndex &&
+    materializerIndices[0] < exactProfileIndex,
+  "Existing-Profile reconciliation/retry must idempotently repair the mandatory onboarding success notification.",
+);
+assert(
+  actions.includes('.in("status", ["pending", "accepted"])') &&
+    actions.includes("reconciliationInvitation.review_required_at === null") &&
+    actions.includes("reconciliationInvitation.failure_code === null") &&
+    actions.includes("{ p_invitation_id: reconciliationInvitation.id }") &&
+    actions.includes("if (reconciliationNotificationError) throw reconciliationNotificationError;"),
+  "Onboarding reconciliation must cover pending/accepted normal invitations without emitting the review-required path.",
 );
 assert(
   actions.includes('{ p_invitation_id: invitation.id }'),

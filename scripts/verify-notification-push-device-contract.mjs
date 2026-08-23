@@ -48,8 +48,10 @@ assert(component.includes('pushApi(browserSubscription.endpoint, "POST")') &&
   "Current-device read/disable operations are not wired to the bounded API helper.");
 assert(component.includes('credentials: "same-origin"') && component.includes('cache: "no-store"'),
   "Push device API calls must remain same-origin and uncached.");
-assert(component.includes("snapshot.serverState === \"disabled\"") && component.includes("await subscription.unsubscribe()"),
-  "Disabled server endpoints must be repaired with a fresh browser subscription.");
+assert(contract.includes('serverState !== "subscribed"') &&
+  component.includes("shouldRotatePushSubscriptionForRepair(snapshot.serverState)") &&
+  component.includes("await subscription.unsubscribe()"),
+  "Missing/disabled server states must rotate the browser subscription before repair, including cross-account privacy-safe missing state.");
 assert(component.indexOf('await pushApi(snapshot.browserSubscription.endpoint, "DELETE")') < component.indexOf("await snapshot.browserSubscription.unsubscribe()"),
   "Disable must stop server delivery before removing the local browser subscription.");
 assert(!component.includes("WEB_PUSH_VAPID_PRIVATE_KEY") && !page.includes("WEB_PUSH_VAPID_PRIVATE_KEY"),

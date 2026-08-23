@@ -38,6 +38,17 @@ async function markAppBadge() {
   }
 }
 
+async function refreshOpenClients() {
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const client of clients) {
+    try {
+      client.postMessage({ type: "PG_NOTIFICATION_PUSH_RECEIVED" });
+    } catch {
+      // Client refresh is best-effort and must never block persistent notification display.
+    }
+  }
+}
+
 self.addEventListener("push", (event) => {
   event.waitUntil((async () => {
     const payload = readPushPayload(event);
@@ -64,6 +75,7 @@ self.addEventListener("push", (event) => {
       lang: "ar",
       data: { actionPath, notificationId },
     });
+    await refreshOpenClients();
   })());
 });
 

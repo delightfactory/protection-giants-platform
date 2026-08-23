@@ -49,13 +49,42 @@ export async function completeCenterOnboarding(formData: FormData) {
       existingProfile.country_agent_id === null &&
       existingProfile.dealer_id === null
     ) {
-      const { error: reconcileError } = await supabaseAdmin
+      const { data: reconciliationInvitation, error: reconciliationReadError } = await supabaseAdmin
         .from("center_onboarding_invitations")
-        .update({ status: "accepted", accepted_at: new Date().toISOString() })
+        .select("id, status, review_required_at, failure_code")
         .eq("auth_user_id", userId)
         .eq("installation_center_id", existingProfile.installation_center_id)
-        .eq("status", "pending");
-      if (reconcileError) throw reconcileError;
+        .in("status", ["pending", "accepted"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (reconciliationReadError) throw reconciliationReadError;
+
+      if (
+        reconciliationInvitation &&
+        reconciliationInvitation.review_required_at === null &&
+        reconciliationInvitation.failure_code === null
+      ) {
+        if (reconciliationInvitation.status === "pending") {
+          const { error: reconcileError } = await supabaseAdmin
+            .from("center_onboarding_invitations")
+            .update({ status: "accepted", accepted_at: new Date().toISOString() })
+            .eq("id", reconciliationInvitation.id)
+            .eq("auth_user_id", userId)
+            .eq("installation_center_id", existingProfile.installation_center_id)
+            .eq("status", "pending")
+            .is("review_required_at", null)
+            .is("failure_code", null);
+          if (reconcileError) throw reconcileError;
+        }
+
+        const { error: reconciliationNotificationError } = await supabaseAdmin.rpc(
+          "materialize_center_onboarding_success",
+          { p_invitation_id: reconciliationInvitation.id },
+        );
+        if (reconciliationNotificationError) throw reconciliationNotificationError;
+      }
+
       redirect("/operations");
     }
 

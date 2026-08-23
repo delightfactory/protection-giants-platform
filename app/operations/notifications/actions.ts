@@ -5,10 +5,25 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const INBOX_PATH = "/operations/notifications";
+const APPLICATION_ORIGIN = "https://protection-giants.invalid";
 
-function isSafeApplicationPath(value: string | null): value is string {
-  if (!value) return false;
-  return value.startsWith("/") && !value.startsWith("//") && !value.includes("://");
+function safeApplicationPath(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (
+    !trimmed.startsWith("/") ||
+    trimmed.startsWith("//") ||
+    trimmed.includes("\\") ||
+    trimmed.includes("\0")
+  ) return null;
+
+  try {
+    const parsed = new URL(trimmed, APPLICATION_ORIGIN);
+    if (parsed.origin !== APPLICATION_ORIGIN) return null;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
 }
 
 function refreshNotificationSurfaces() {
@@ -36,7 +51,7 @@ export async function openNotificationAction(formData: FormData) {
   if (readError) redirect(`${INBOX_PATH}?error=read`);
 
   refreshNotificationSurfaces();
-  redirect(isSafeApplicationPath(notification.action_path) ? notification.action_path : INBOX_PATH);
+  redirect(safeApplicationPath(notification.action_path) ?? INBOX_PATH);
 }
 
 export async function markNotificationReadAction(formData: FormData) {

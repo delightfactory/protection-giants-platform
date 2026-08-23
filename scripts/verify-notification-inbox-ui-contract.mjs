@@ -21,9 +21,12 @@ assert(page.includes("NOTIFICATION_PAGE_SIZE"), "Inbox must preserve bounded pag
 assert(page.includes("markAllNotificationsReadAction"), "Inbox must expose mark-all-read.");
 
 assert(actions.includes('.from("notifications")'), "Open action must resolve the notification through the user's RLS-visible Inbox.");
-assert(actions.includes('startsWith("/")'), "Deep-link action must require an application-relative path.");
-assert(actions.includes('!value.startsWith("//")'), "Protocol-relative deep links must be rejected.");
-assert(actions.includes('!value.includes("://")'), "Absolute external deep links must be rejected.");
+assert(actions.includes('trimmed.startsWith("/")'), "Deep-link action must require an application-relative path.");
+assert(actions.includes('trimmed.startsWith("//")'), "Protocol-relative deep links must be rejected.");
+assert(actions.includes('trimmed.includes("\\\\")') && actions.includes('trimmed.includes("\\0")'),
+  "Malformed backslash/NUL deep links must be rejected.");
+assert(actions.includes("new URL(trimmed, APPLICATION_ORIGIN)") && actions.includes("parsed.origin !== APPLICATION_ORIGIN"),
+  "Deep-link action must parse and enforce same-origin paths, not rely on substring checks only.");
 assert(actions.includes('rpc("mark_notification_read"'), "Opening an owned notification must use the controlled read RPC.");
 
 assert(nav.includes('href="/operations/notifications"'), "Authenticated shell must expose the Inbox.");

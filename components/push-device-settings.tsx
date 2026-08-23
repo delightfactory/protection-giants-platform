@@ -5,6 +5,7 @@ import {
   derivePushDeviceViewState,
   isAppleMobileEnvironment,
   isPushServerState,
+  shouldRotatePushSubscriptionForRepair,
   type PushDeviceViewState,
   type PushServerState,
 } from "@/lib/notifications/push-device-contract";
@@ -232,7 +233,7 @@ export function PushDeviceSettings({ vapidPublicKey }: PushDeviceSettingsProps) 
     setMessage(null);
     try {
       let subscription = snapshot.browserSubscription;
-      if (subscription && snapshot.serverState === "disabled") {
+      if (subscription && shouldRotatePushSubscriptionForRepair(snapshot.serverState)) {
         await subscription.unsubscribe();
         subscription = null;
       }
