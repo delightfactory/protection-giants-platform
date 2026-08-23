@@ -1,0 +1,55 @@
+name: Cube L 5B Web Push Dependency Sync
+
+on:
+  push:
+    branches:
+      - feature/cube-l-notifications-pwa
+    paths:
+      - ".github/workflows/cube-l-5b-web-push-dependency-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cube-l-notifications-pwa
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install pinned Web Push dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --save-exact --no-audit --no-fund web-push@3.6.7
+          npm install --save-dev --save-exact --no-audit --no-fund @types/web-push@3.6.4
+          rm .github/workflows/cube-l-5b-web-push-dependency-sync.yml
+          git diff --check
+
+          node - <<'NODE'
+          const pkg = require('./package.json');
+          if (pkg.dependencies?.['web-push'] !== '3.6.7') throw new Error('web-push pin mismatch');
+          if (pkg.devDependencies?.['@types/web-push'] !== '3.6.4') throw new Error('@types/web-push pin mismatch');
+          NODE
+
+          actual="$(git diff --name-only | sort)"
+          expected="$(printf '%s\n' \
+            '.github/workflows/cube-l-5b-web-push-dependency-sync.yml' \
+            'package-lock.json' \
+            'package.json' | sort)"
+          test "$actual" = "$expected"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(cube-l): add pinned web push transport"
+          git push origin HEAD:feature/cube-l-notifications-pwa
