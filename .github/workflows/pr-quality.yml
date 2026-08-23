@@ -51,6 +51,10 @@ jobs:
         run: node scripts/verify-platform-datetime-presentation.mjs
       - name: Verify Notification Inbox UI contract
         run: node scripts/verify-notification-inbox-ui-contract.mjs
+      - name: Verify Notification Push API static security contract
+        run: node scripts/verify-notification-push-api-contract.mjs
+      - name: Verify Notification Push API interactions
+        run: npx vitest run scripts/verify-notification-push-api-security.test.mjs --config vitest.config.mjs
       - name: Verify Transfer Send client contracts
         run: node --experimental-strip-types scripts/verify-transfer-send-client-contract.mjs
       - name: Verify Transfer Receipt client retry contracts
