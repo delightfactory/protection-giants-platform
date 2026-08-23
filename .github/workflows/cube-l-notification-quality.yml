@@ -8,6 +8,7 @@ on:
       - "supabase/migrations/*cube_l_notification*.sql"
       - "scripts/verify-notification-inbox-foundation.mjs"
       - "scripts/verify-notification-transfer-materialization.mjs"
+      - "scripts/verify-notification-center-materialization.mjs"
       - ".github/workflows/cube-l-notification-quality.yml"
 
 permissions:
@@ -53,6 +54,16 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-notification-transfer-materialization.mjs
+
+      - name: Reset database before Center notification contract
+        run: supabase db reset --local --no-seed
+
+      - name: Verify Cube L Center notification materialization
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-center-materialization.mjs
 
       - name: Stop local stack
         if: always()
