@@ -279,6 +279,12 @@ export async function completeCenterOnboarding(formData: FormData) {
     redirect(onboardingPath("error=profile"));
   }
 
+  const { error: onboardingNotificationError } = await supabaseAdmin.rpc(
+    "materialize_center_onboarding_success",
+    { p_invitation_id: invitation.id },
+  );
+  if (onboardingNotificationError) throw onboardingNotificationError;
+
   revalidatePath("/operations");
   redirect("/operations");
 }
