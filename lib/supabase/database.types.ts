@@ -322,6 +322,63 @@ export type Database = {
           },
         ]
       }
+      notification_push_deliveries: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          id: string
+          last_attempt_at: string | null
+          last_error_code: string | null
+          last_http_status: number | null
+          next_attempt_at: string
+          notification_id: string
+          sent_at: string | null
+          status: string
+          subscription_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error_code?: string | null
+          last_http_status?: number | null
+          next_attempt_at?: string
+          notification_id: string
+          sent_at?: string | null
+          status?: string
+          subscription_id: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error_code?: string | null
+          last_http_status?: number | null
+          next_attempt_at?: string
+          notification_id?: string
+          sent_at?: string | null
+          status?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_push_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_push_deliveries_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "push_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           action_path: string | null
@@ -764,6 +821,53 @@ export type Database = {
             columns: ["installation_center_id"]
             isOneToOne: false
             referencedRelation: "installation_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth_secret: string
+          created_at: string
+          disabled_at: string | null
+          endpoint: string
+          id: string
+          last_failure_at: string | null
+          last_success_at: string | null
+          p256dh: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          auth_secret: string
+          created_at?: string
+          disabled_at?: string | null
+          endpoint: string
+          id?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          p256dh: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          auth_secret?: string
+          created_at?: string
+          disabled_at?: string | null
+          endpoint?: string
+          id?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          p256dh?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1476,6 +1580,14 @@ export type Database = {
         }
         Returns: string
       }
+      current_push_subscription_state: {
+        Args: { p_endpoint: string }
+        Returns: string
+      }
+      disable_push_subscription: {
+        Args: { p_endpoint: string }
+        Returns: boolean
+      }
       ensure_operational_party: {
         Args: { p_entity_id?: string; p_party_type: string }
         Returns: string
@@ -1739,6 +1851,10 @@ export type Database = {
           p_request_id: string
           p_roll_serial: string
         }
+        Returns: string
+      }
+      register_push_subscription: {
+        Args: { p_auth_secret: string; p_endpoint: string; p_p256dh: string }
         Returns: string
       }
       reject_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
