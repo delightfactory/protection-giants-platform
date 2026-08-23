@@ -13,6 +13,8 @@ const transferHub = read("components/transfers/transfer-hub.tsx");
 const transferDetail = read("app/operations/transfers/[transferId]/page.tsx");
 const centerLocationCapture = read("components/center-location-capture.tsx");
 const rollsRegistry = read("app/operations/rolls/page.tsx");
+const centerLocationAdmin = read("app/operations/centers/[id]/location/page.tsx");
+const centerApproval = read("app/operations/centers/[id]/approval/page.tsx");
 
 assert(localDateTime.includes('new Intl.DateTimeFormat("ar-EG-u-nu-latn"'),
   "LocalDateTime must use the Arabic Egypt locale with Latin digits.");
@@ -32,6 +34,8 @@ for (const [name, source] of [
   ["Transfer detail", transferDetail],
   ["Center location capture", centerLocationCapture],
   ["Roll custody registry", rollsRegistry],
+  ["Admin Center location history", centerLocationAdmin],
+  ["Center approval history", centerApproval],
 ]) {
   assert(source.includes("LocalDateTime"), `${name} must reuse LocalDateTime.`);
   assert(!source.includes("Africa/Cairo"), `${name} must not hard-code Cairo timezone for display.`);
@@ -52,5 +56,15 @@ assert(rollsRegistry.includes("formatCustodyDate(custody?.confirmed_at)"),
   "Roll custody confirmation timestamp must use the shared local presenter.");
 assert(rollsRegistry.includes("formatCustodyDate(opening.opened_at)"),
   "Roll opening timestamp must use the shared local presenter.");
+assert(centerLocationAdmin.includes('return <LocalDateTime value={value} />;'),
+  "Admin Center location current/history timestamps must use LocalDateTime.");
+assert(centerLocationAdmin.includes("formatDate(center.location_captured_at!)") && centerLocationAdmin.includes("formatDate(event.captured_at)"),
+  "Admin Center location current and history timestamps must use the shared local presenter.");
+assert(centerApproval.includes('return <LocalDateTime value={value} />;'),
+  "Center approval timestamps must use LocalDateTime.");
+assert(centerApproval.includes("formatDate(center.approved_at)")
+  && centerApproval.includes("formatDate(center.location_captured_at!)")
+  && centerApproval.includes("formatDate(event.occurred_at)"),
+  "Center approval current/location/history timestamps must use the shared local presenter.");
 
-console.log("Operational timestamp presentation contract verified through UX-S02B.");
+console.log("Operational timestamp presentation contract verified through UX-S02C.");
