@@ -1,0 +1,56 @@
+name: Cube L 5A Stale Claim Fix
+
+on:
+  push:
+    branches:
+      - feature/cube-l-notifications-pwa
+    paths:
+      - ".github/workflows/cube-l-5a-stale-claim-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/cube-l-notifications-pwa
+          fetch-depth: 0
+
+      - name: Fix stale claim SQLSTATE only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("supabase/migrations/20260823150000_cube_l_notification_push_worker_state.sql")
+          text = path.read_text()
+          old = "raise exception using errcode = '40001', message = 'PG_PUSH_CLAIM_STALE';"
+          new = "raise exception using errcode = '22023', message = 'PG_PUSH_CLAIM_STALE';"
+          count = text.count(old)
+          if count != 2:
+              raise SystemExit(f"expected exactly two stale-claim SQLSTATE targets, found {count}")
+          path.write_text(text.replace(old, new))
+          PY
+
+          rm .github/workflows/cube-l-5a-stale-claim-fix.yml
+          git diff --check
+
+          actual="$(git diff --name-only | sort)"
+          expected="$(printf '%s\n' \
+            '.github/workflows/cube-l-5a-stale-claim-fix.yml' \
+            'supabase/migrations/20260823150000_cube_l_notification_push_worker_state.sql' | sort)"
+          test "$actual" = "$expected"
+
+          test "$(git diff --unified=0 -- supabase/migrations/20260823150000_cube_l_notification_push_worker_state.sql | grep -c "^-.*40001.*PG_PUSH_CLAIM_STALE")" = "2"
+          test "$(git diff --unified=0 -- supabase/migrations/20260823150000_cube_l_notification_push_worker_state.sql | grep -c "^+.*22023.*PG_PUSH_CLAIM_STALE")" = "2"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(cube-l): fail stale push claims immediately"
+          git push origin HEAD:feature/cube-l-notifications-pwa
