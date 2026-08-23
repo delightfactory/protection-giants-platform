@@ -115,7 +115,7 @@ begin
   then
     v_event_type := 'transfer.recovery_completed';
     v_attention_level := 'info';
-    v_title := 'اكتمل استرجاع الرول';
+    v_title := 'تم استلام الرول';
     v_body := 'تم استلام الرول وإخراجه من عهدة المركز. راجع التحويل للتفاصيل.';
     v_recipient_party_id := v_transfer.sender_party_id;
 
