@@ -188,7 +188,7 @@ function allDeliveriesForSubscription(subscriptionIdValue) {
 function forceDue(deliveryId) {
   runSql(`
     update public.notification_push_deliveries
-    set next_attempt_at = now() - interval '1 second'
+    set next_attempt_at = last_attempt_at
     where id = ${sqlUuid(deliveryId)};
   `);
 }

@@ -325,9 +325,12 @@ export type Database = {
       notification_push_deliveries: {
         Row: {
           attempt_count: number
+          claim_expires_at: string | null
+          claim_token: string | null
           created_at: string
           id: string
           last_attempt_at: string | null
+          last_completed_claim_token: string | null
           last_error_code: string | null
           last_http_status: number | null
           next_attempt_at: string
@@ -338,9 +341,12 @@ export type Database = {
         }
         Insert: {
           attempt_count?: number
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
           id?: string
           last_attempt_at?: string | null
+          last_completed_claim_token?: string | null
           last_error_code?: string | null
           last_http_status?: number | null
           next_attempt_at?: string
@@ -351,9 +357,12 @@ export type Database = {
         }
         Update: {
           attempt_count?: number
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
           id?: string
           last_attempt_at?: string | null
+          last_completed_claim_token?: string | null
           last_error_code?: string | null
           last_http_status?: number | null
           next_attempt_at?: string
@@ -1550,6 +1559,23 @@ export type Database = {
         }[]
       }
       cancel_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
+      claim_notification_push_deliveries: {
+        Args: { p_limit?: number }
+        Returns: {
+          action_path: string
+          attempt_number: number
+          attention_level: string
+          auth_secret: string
+          body: string
+          claim_expires_at: string
+          claim_token: string
+          delivery_id: string
+          endpoint: string
+          notification_id: string
+          p256dh: string
+          title: string
+        }[]
+      }
       create_production_order: {
         Args: {
           p_lots: Json
@@ -1843,6 +1869,16 @@ export type Database = {
       reconcile_roll_transfer_receipt_selection: {
         Args: { p_roll_ids: string[]; p_transfer_id: string }
         Returns: string[]
+      }
+      record_notification_push_delivery_result: {
+        Args: {
+          p_claim_token: string
+          p_delivery_id: string
+          p_error_code?: string
+          p_http_status?: number
+          p_result: string
+        }
+        Returns: string
       }
       recover_opened_roll: {
         Args: {
