@@ -33,8 +33,11 @@ assert(component.includes('fetch("/api/notifications/push-subscription"'),
   "Current-device state must use the authenticated same-origin Push API.");
 assert(!component.includes("?endpoint=") && !component.includes("URLSearchParams"),
   "Push endpoint must never be put in the URL/query string.");
-assert(component.includes('method: "PUT"') && component.includes('method: "POST"') && component.includes('method: "DELETE"'),
-  "Current-device register/read/disable operations are incomplete.");
+assert(component.includes('method: "PUT"') && component.includes('method: "POST" | "DELETE"'),
+  "Current-device register/read/disable method contract is incomplete.");
+assert(component.includes('pushApi(browserSubscription.endpoint, "POST")') &&
+  component.includes('pushApi(snapshot.browserSubscription.endpoint, "DELETE")'),
+  "Current-device read/disable operations are not wired to the bounded API helper.");
 assert(component.includes('credentials: "same-origin"') && component.includes('cache: "no-store"'),
   "Push device API calls must remain same-origin and uncached.");
 assert(component.includes("snapshot.serverState === \"disabled\"") && component.includes("await subscription.unsubscribe()"),

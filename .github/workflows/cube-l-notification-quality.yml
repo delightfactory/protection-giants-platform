@@ -84,6 +84,7 @@ jobs:
         run: npx vitest run scripts/verify-notification-push-device-contract.test.mjs --config vitest.config.mjs
 
       - name: Setup Supabase CLI
+        id: supabase_cli
         uses: supabase/setup-cli@v2
         with:
           version: 2.105.0
@@ -162,5 +163,5 @@ jobs:
           node scripts/verify-notification-push-worker-state.mjs
 
       - name: Stop local stack
-        if: always()
+        if: always() && steps.supabase_cli.outcome == 'success'
         run: supabase stop --no-backup
