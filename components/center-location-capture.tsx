@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type StoredLocation = {
@@ -33,13 +34,6 @@ function formatCoordinate(value: number) {
 function formatAccuracy(value: number | null) {
   if (value === null) return "تصحيح إداري";
   return `${Math.round(value * 10) / 10} م`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 function geolocationErrorMessage(error: GeolocationPositionError) {
@@ -172,7 +166,7 @@ export function CenterLocationCapture({ initialLocation }: CenterLocationCapture
             <span dir="ltr">{formatCoordinate(storedLocation.latitude)}, {formatCoordinate(storedLocation.longitude)}</span>
             {" · "}الدقة: {formatAccuracy(storedLocation.accuracyM)}
           </p>
-          <p>آخر تسجيل: <span dir="ltr">{formatDate(storedLocation.capturedAt)}</span></p>
+          <p>آخر تسجيل: <LocalDateTime value={storedLocation.capturedAt} /></p>
         </div>
       ) : (
         <FeedbackBanner tone="warning">
