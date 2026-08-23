@@ -304,7 +304,6 @@ declare
   v_profile_id uuid;
   v_endpoint text := btrim(coalesce(p_endpoint, ''));
   v_disabled_at timestamptz;
-  v_found boolean := false;
 begin
   if (select auth.uid()) is null then
     raise exception using errcode = '42501', message = 'PG_PUSH_AUTH_REQUIRED';
@@ -322,13 +321,13 @@ begin
     raise exception using errcode = '22023', message = 'PG_PUSH_ENDPOINT_INVALID';
   end if;
 
-  select true, subscription.disabled_at
-    into v_found, v_disabled_at
+  select subscription.disabled_at
+    into v_disabled_at
   from public.push_subscriptions subscription
   where subscription.endpoint = v_endpoint
     and subscription.profile_id = v_profile_id;
 
-  if not v_found then
+  if not found then
     return 'missing';
   end if;
 
