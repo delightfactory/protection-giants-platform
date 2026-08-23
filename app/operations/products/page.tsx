@@ -5,7 +5,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { PageHeader } from "@/components/ui/page-header";
 import { RecordItem, RecordList } from "@/components/ui/record-list";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { requireAdminProfile } from "@/lib/auth/operational-profile";
+import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { setProductStatus } from "./actions";
 
@@ -24,7 +24,8 @@ type OperationsProductsPageProps = {
 };
 
 export default async function OperationsProductsPage({ searchParams }: OperationsProductsPageProps) {
-  await requireAdminProfile();
+  const profile = await requireOperationalProfile();
+  const isAdmin = profile.role === "admin";
   const { error: pageError } = await searchParams;
 
   const supabase = await createSupabaseServerClient();
@@ -40,12 +41,14 @@ export default async function OperationsProductsPage({ searchParams }: Operation
       <PageHeader
         eyebrow="البيانات المرجعية"
         title="المنتجات"
-        description="إدارة تعريف المنتج ومواصفاته الاسمية وسياسة الضمان وحالتي التشغيل والنشر."
+        description={isAdmin
+          ? "إدارة تعريف المنتج ومواصفاته الاسمية وسياسة الضمان وحالتي التشغيل والنشر."
+          : "مرجع تشغيلي لبيانات المنتجات ومواصفاتها الاسمية وسياسة الضمان. العرض فقط؛ إدارة المنتجات متاحة للشركة."}
         meta={`${products.length} منتج مسجل`}
-        actions={<Link href="/operations/products/new" className="button button-primary">إضافة منتج</Link>}
+        actions={isAdmin ? <Link href="/operations/products/new" className="button button-primary">إضافة منتج</Link> : undefined}
       />
 
-      {pageError === "lifecycle" ? (
+      {isAdmin && pageError === "lifecycle" ? (
         <FeedbackBanner tone="error">تعذر تغيير حالة المنتج. حاول مرة أخرى.</FeedbackBanner>
       ) : null}
 
@@ -53,8 +56,10 @@ export default async function OperationsProductsPage({ searchParams }: Operation
         <EmptyState
           eyebrow="المنتجات"
           title="لا توجد منتجات مسجلة بعد"
-          description="أنشئ أول تعريف منتج مكتمل ليصبح أساسًا لدورة الإنتاج والطباعة والضمان."
-          action={<Link href="/operations/products/new" className="button button-primary">إضافة منتج</Link>}
+          description={isAdmin
+            ? "أنشئ أول تعريف منتج مكتمل ليصبح أساسًا لدورة الإنتاج والطباعة والضمان."
+            : "لا توجد بيانات منتجات متاحة لحسابك حاليًا."}
+          action={isAdmin ? <Link href="/operations/products/new" className="button button-primary">إضافة منتج</Link> : undefined}
         />
       ) : (
         <RecordList label="قائمة المنتجات">
@@ -85,7 +90,7 @@ export default async function OperationsProductsPage({ searchParams }: Operation
                     {statusLabels[product.status] ?? product.status}
                   </StatusBadge>
                 }
-                actions={
+                actions={isAdmin ? (
                   <>
                     <Link href={`/operations/products/${product.id}/edit`} className="button button-ghost">تعديل</Link>
                     <form action={setProductStatus}>
@@ -104,7 +109,7 @@ export default async function OperationsProductsPage({ searchParams }: Operation
                       )}
                     </form>
                   </>
-                }
+                ) : undefined}
               />
             );
           })}

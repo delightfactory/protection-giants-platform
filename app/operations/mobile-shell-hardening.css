@@ -1,0 +1,5 @@
+@media (max-width: 900px) {
+  .operations-content {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+}
