@@ -19,12 +19,14 @@
     "pdf-lib": "1.17.1",
     "qr-scanner": "1.4.2",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "web-push": "3.6.7"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@types/web-push": "3.6.4",
     "test-renderer": "1.2.0",
     "typescript": "^5.9.0",
     "vitest": "4.1.11"

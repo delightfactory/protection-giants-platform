@@ -185,13 +185,17 @@ Every role-scoped operational module depends on RLS remaining the final data-acc
 
 ## 9. Product asset Storage — REQUIRED BEFORE PRODUCTION FILE UPLOADS
 
-The current local configuration defines a private `product-assets` bucket with:
+The `product-assets` bucket is migration-managed for hosted-environment parity by:
+
+`supabase/migrations/20260824104500_product_assets_hosted_bucket.sql`
+
+The migration converges the hosted bucket to the same baseline as `supabase/config.toml`:
 
 - `public = false`;
 - maximum file size `20MiB`;
 - allowed MIME types: JPEG, PNG, WebP, AVIF and PDF.
 
-Before production product-asset upload is enabled, confirm the hosted project has the required bucket/configuration and that Storage policies/grants match the application's product-asset access model.
+After applying the migration chain, verify the bucket exists with that configuration and that the application's server-only Storage access still succeeds. Do not recreate it manually unless migration execution itself has failed and the failure is being diagnosed.
 
 Do not make the bucket public merely to solve a signed/authenticated upload or read error.
 
@@ -261,6 +265,7 @@ This record is a deployment checklist, not a place to store credentials.
 ## Repository references
 
 - `supabase/config.toml` — committed local Supabase configuration baseline.
+- `supabase/migrations/20260824104500_product_assets_hosted_bucket.sql` — hosted private `product-assets` bucket provisioning.
 - `supabase/templates/invite.html` — canonical Center invitation template behavior.
 - `app/auth/confirm/route.ts` — controlled server-side invite confirmation route.
 - `scripts/verify-auth-config.mjs` — automated local contract for disabled public signup and controlled invite confirmation.

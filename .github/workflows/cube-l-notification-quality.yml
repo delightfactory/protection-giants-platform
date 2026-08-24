@@ -1,0 +1,167 @@
+name: Cube L Notification Quality
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/onboarding/center/actions.ts"
+      - "app/api/notifications/push-subscription/route.ts"
+      - "app/api/internal/push-worker/route.ts"
+      - "app/layout.tsx"
+      - "app/operations/layout.tsx"
+      - "components/pwa-lifecycle*.tsx"
+      - "components/pwa-lifecycle*.css"
+      - "components/push-device-settings*.tsx"
+      - "components/push-device-settings*.css"
+      - "lib/notifications/push-device-contract.ts"
+      - "app/operations/notifications/page.tsx"
+      - "lib/notifications/push-subscription-api.ts"
+      - "lib/notifications/push-worker*.ts"
+      - "public/sw.js"
+      - "public/manifest.webmanifest"
+      - "public/icons/*.png"
+      - "next.config.ts"
+      - "supabase/migrations/*cube_l_notification*.sql"
+      - "scripts/verify-notification-inbox-foundation.mjs"
+      - "scripts/verify-notification-transfer-materialization.mjs"
+      - "scripts/verify-notification-center-materialization.mjs"
+      - "scripts/verify-notification-onboarding-materialization.mjs"
+      - "scripts/verify-notification-onboarding-app-integration.mjs"
+      - "scripts/verify-notification-preinstall-issue-materialization.mjs"
+      - "scripts/verify-notification-push-foundation.mjs"
+      - "scripts/verify-notification-push-worker-state.mjs"
+      - "scripts/verify-notification-push-api-contract.mjs"
+      - "scripts/verify-notification-push-api-security.test.mjs"
+      - "scripts/verify-notification-push-worker-transport-contract.mjs"
+      - "scripts/verify-notification-push-worker-transport.test.mjs"
+      - "scripts/verify-notification-pwa-lifecycle-contract.mjs"
+      - "scripts/verify-notification-push-device-contract.mjs"
+      - "scripts/verify-notification-push-device-contract.test.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/cube-l-notification-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify Cube L Center onboarding app integration
+        run: node scripts/verify-notification-onboarding-app-integration.mjs
+
+      - name: Verify Cube L Push subscription API static security contract
+        run: node scripts/verify-notification-push-api-contract.mjs
+
+      - name: Verify Cube L Push worker static transport contract
+        run: node scripts/verify-notification-push-worker-transport-contract.mjs
+
+      - name: Verify Cube L Push worker transport behavior
+        run: npx vitest run scripts/verify-notification-push-worker-transport.test.mjs --config vitest.config.mjs
+
+      - name: Verify Cube L PWA lifecycle contract
+        run: node scripts/verify-notification-pwa-lifecycle-contract.mjs
+
+      - name: Verify Cube L Push current-device contract
+        run: node scripts/verify-notification-push-device-contract.mjs
+
+      - name: Verify Cube L Push current-device behavior
+        run: npx vitest run scripts/verify-notification-push-device-contract.test.mjs --config vitest.config.mjs
+
+      - name: Setup Supabase CLI
+        id: supabase_cli
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: |
+          supabase start
+          supabase db reset --local --no-seed
+
+      - name: Verify Cube L Notification Inbox contract
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-inbox-foundation.mjs
+
+      - name: Reset database before Transfer notification contract
+        run: supabase db reset --local --no-seed
+
+      - name: Verify Cube L Transfer notification materialization
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-transfer-materialization.mjs
+
+      - name: Reset database before Center notification contract
+        run: supabase db reset --local --no-seed
+
+      - name: Verify Cube L Center notification materialization
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-center-materialization.mjs
+
+      - name: Reset database before Onboarding notification contract
+        run: supabase db reset --local --no-seed
+
+      - name: Verify Cube L Onboarding notification materialization
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-onboarding-materialization.mjs
+
+      - name: Reset database before Pre-install Issue notification contract
+        run: supabase db reset --local --no-seed
+
+      - name: Verify Cube L Pre-install Issue notification materialization
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-preinstall-issue-materialization.mjs
+
+      - name: Reset database before Push subscription/outbox contract
+        run: supabase db reset --local --no-seed
+
+      - name: Verify Cube L Push subscription and outbox foundation
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-push-foundation.mjs
+
+      - name: Reset database before Push worker state-machine contract
+        run: supabase db reset --local --no-seed
+
+      - name: Verify Cube L Push worker claim/result state machine
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-notification-push-worker-state.mjs
+
+      - name: Stop local stack
+        if: always() && steps.supabase_cli.outcome == 'success'
+        run: supabase stop --no-backup

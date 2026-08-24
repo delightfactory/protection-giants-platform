@@ -1,0 +1,86 @@
+import { readFileSync } from "node:fs";
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+function read(path) {
+  return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+}
+
+const component = read("components/push-device-settings.tsx");
+const contract = read("lib/notifications/push-device-contract.ts");
+const page = read("app/operations/notifications/page.tsx");
+const apiRoute = read("app/api/notifications/push-subscription/route.ts");
+const badgeSync = read("components/app-badge-sync.tsx");
+const operationsLayout = read("app/operations/layout.tsx");
+const serviceWorker = read("public/sw.js");
+const prWorkflow = read(".github/workflows/pr-quality.yml");
+const cubeWorkflow = read(".github/workflows/cube-l-notification-quality.yml");
+
+assert(component.includes('"use client"'), "Push device settings must run in the browser.");
+assert(component.includes("Notification.requestPermission()"), "Explicit enable action must be able to request permission.");
+assert(component.indexOf("async function enablePush") < component.indexOf("Notification.requestPermission()"),
+  "Notification permission may only be requested inside the explicit enable action.");
+assert(component.indexOf("useEffect(() =>") < component.indexOf("async function enablePush"),
+  "Initial reconciliation must not depend on the enable action.");
+assert(!component.slice(component.indexOf("useEffect(() =>"), component.indexOf("async function enablePush")).includes("Notification.requestPermission"),
+  "Initial page/app inspection must never trigger a permission prompt.");
+assert(component.includes("Notification.permission"), "Current browser permission must be read without prompting.");
+assert(component.includes("window.isSecureContext"), "Push enablement must be gated by a secure browsing context.");
+assert(component.includes("VAPID_PUBLIC_KEY_BYTES = 65") && component.includes("bytes.byteLength !== VAPID_PUBLIC_KEY_BYTES"),
+  "Browser VAPID public key must be validated as an uncompressed 65-byte key.");
+assert(component.includes("navigatorWithStandalone.standalone") && component.includes("display-mode: standalone"),
+  "iPhone/iPad Home Screen detection must support installed display mode.");
+assert(component.includes("beforeinstallprompt") && component.includes("installPrompt.prompt()"),
+  "PWA installation prompt must be captured and invoked only from a user action.");
+assert(component.includes("إضافة إلى الشاشة الرئيسية"), "Apple Home Screen guidance is missing.");
+assert(fetchOrder(contract, 'signals.appleMobile && !signals.standalone', '!signals.supported'),
+  "Apple Home Screen guidance must be resolved before generic unsupported Push capability.");
+assert(component.includes('fetch("/api/notifications/push-subscription"'),
+  "Current-device state must use the authenticated same-origin Push API.");
+assert(!component.includes("?endpoint=") && !component.includes("URLSearchParams"),
+  "Push endpoint must never be put in the URL/query string.");
+assert(component.includes('method: "PUT"') && component.includes('method: "POST" | "DELETE"'),
+  "Current-device register/read/disable method contract is incomplete.");
+assert(component.includes('pushApi(browserSubscription.endpoint, "POST")') &&
+  component.includes('pushApi(snapshot.browserSubscription.endpoint, "DELETE")'),
+  "Current-device read/disable operations are not wired to the bounded API helper.");
+assert(component.includes('credentials: "same-origin"') && component.includes('cache: "no-store"'),
+  "Push device API calls must remain same-origin and uncached.");
+assert(contract.includes('serverState !== "subscribed"') &&
+  component.includes("shouldRotatePushSubscriptionForRepair(snapshot.serverState)") &&
+  component.includes("await subscription.unsubscribe()"),
+  "Missing/disabled server states must rotate the browser subscription before repair, including cross-account privacy-safe missing state.");
+assert(component.indexOf('await pushApi(snapshot.browserSubscription.endpoint, "DELETE")') < component.indexOf("await snapshot.browserSubscription.unsubscribe()"),
+  "Disable must stop server delivery before removing the local browser subscription.");
+assert(!component.includes("WEB_PUSH_VAPID_PRIVATE_KEY") && !page.includes("WEB_PUSH_VAPID_PRIVATE_KEY"),
+  "The VAPID private key must never enter browser/page code.");
+assert(page.includes("PushDeviceSettings") && page.includes("NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY"),
+  "Notification Inbox must surface current-device Push settings with only the public VAPID key.");
+assert(contract.includes("install_required") && contract.includes("repair_required") && contract.includes("denied"),
+  "Push device state model is missing required lifecycle states.");
+assert(apiRoute.includes("current_push_subscription_state") && apiRoute.includes("register_push_subscription") && apiRoute.includes("disable_push_subscription"),
+  "Browser UI must remain backed by the bounded subscription RPC route.");
+
+assert(serviceWorker.includes("self.navigator.setAppBadge()") && serviceWorker.includes("self.registration.showNotification"),
+  "Background Push badging must be progressive enhancement and never replace visible notification display.");
+assert(badgeSync.includes("setAppBadge(count)") && badgeSync.includes("clearAppBadge"),
+  "Foreground app badge must reconcile to the durable Inbox unread count.");
+assert(operationsLayout.includes("AppBadgeSync") && operationsLayout.includes("notificationUnreadCount ?? 0"),
+  "Operations shell must synchronize supported app badges from Inbox unread state.");
+
+for (const workflow of [prWorkflow, cubeWorkflow]) {
+  assert(workflow.includes("verify-notification-push-device-contract.mjs"),
+    "Push device static contract must run in all Cube L application gates.");
+  assert(workflow.includes("verify-notification-push-device-contract.test.mjs"),
+    "Push device behavioral state tests must run in all Cube L application gates.");
+}
+
+console.log("Cube L current-device Push permission/repair contract passed.");
+
+function fetchOrder(source, first, second) {
+  const firstIndex = source.indexOf(first);
+  const secondIndex = source.indexOf(second);
+  return firstIndex >= 0 && secondIndex >= 0 && firstIndex < secondIndex;
+}

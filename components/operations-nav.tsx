@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { signOut } from "@/lib/auth/actions";
 import type { OperationalProfile } from "@/lib/auth/operational-profile";
 import { BrandLockup } from "@/components/ui/brand-lockup";
@@ -13,9 +14,20 @@ const roleLabels = {
 
 type OperationsNavProps = {
   profile: OperationalProfile;
+  notificationUnreadCount: number | null;
 };
 
-export function OperationsNav({ profile }: OperationsNavProps) {
+function visibleUnreadCount(count: number | null) {
+  if (!count || count <= 0) return null;
+  return count > 99 ? "99+" : String(count);
+}
+
+export function OperationsNav({ profile, notificationUnreadCount }: OperationsNavProps) {
+  const unreadBadge = visibleUnreadCount(notificationUnreadCount);
+  const notificationLabel = unreadBadge
+    ? `الإشعارات، ${notificationUnreadCount} غير مقروء`
+    : "الإشعارات";
+
   return (
     <>
       <aside className="operations-sidebar">
@@ -30,6 +42,12 @@ export function OperationsNav({ profile }: OperationsNavProps) {
             <span>{roleLabels[profile.role]}</span>
           </span>
         </div>
+
+        <Link href="/operations/notifications" className="operations-notification-entry" aria-label={notificationLabel}>
+          <span className="operations-notification-icon" aria-hidden="true"><Icon name="notifications" /></span>
+          <span>الإشعارات</span>
+          {unreadBadge ? <span className="operations-notification-badge" aria-hidden="true">{unreadBadge}</span> : null}
+        </Link>
 
         <OperationsNavLinks role={profile.role} variant="desktop" />
 
@@ -53,6 +71,15 @@ export function OperationsNav({ profile }: OperationsNavProps) {
         </div>
         <div className="operations-mobile-tools">
           <BrandLockup href="/operations" compact className="operations-mobile-brand" />
+          <Link
+            href="/operations/notifications"
+            className="operations-mobile-notifications"
+            aria-label={notificationLabel}
+            title="الإشعارات"
+          >
+            <Icon name="notifications" />
+            {unreadBadge ? <span className="operations-mobile-notification-badge" aria-hidden="true">{unreadBadge}</span> : null}
+          </Link>
           <form action={signOut}>
             <button type="submit" className="operations-mobile-signout" aria-label="تسجيل الخروج" title="تسجيل الخروج">
               <Icon name="logout" />

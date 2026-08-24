@@ -322,6 +322,125 @@ export type Database = {
           },
         ]
       }
+      notification_push_deliveries: {
+        Row: {
+          attempt_count: number
+          claim_expires_at: string | null
+          claim_token: string | null
+          created_at: string
+          id: string
+          last_attempt_at: string | null
+          last_completed_claim_token: string | null
+          last_error_code: string | null
+          last_http_status: number | null
+          next_attempt_at: string
+          notification_id: string
+          sent_at: string | null
+          status: string
+          subscription_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          claim_expires_at?: string | null
+          claim_token?: string | null
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_completed_claim_token?: string | null
+          last_error_code?: string | null
+          last_http_status?: number | null
+          next_attempt_at?: string
+          notification_id: string
+          sent_at?: string | null
+          status?: string
+          subscription_id: string
+        }
+        Update: {
+          attempt_count?: number
+          claim_expires_at?: string | null
+          claim_token?: string | null
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_completed_claim_token?: string | null
+          last_error_code?: string | null
+          last_http_status?: number | null
+          next_attempt_at?: string
+          notification_id?: string
+          sent_at?: string | null
+          status?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_push_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_push_deliveries_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "push_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          action_path: string | null
+          attention_level: string
+          body: string
+          created_at: string
+          event_type: string
+          id: string
+          push_eligible: boolean
+          read_at: string | null
+          recipient_profile_id: string
+          source_domain: string
+          source_event_key: string
+          title: string
+        }
+        Insert: {
+          action_path?: string | null
+          attention_level: string
+          body: string
+          created_at?: string
+          event_type: string
+          id?: string
+          push_eligible?: boolean
+          read_at?: string | null
+          recipient_profile_id: string
+          source_domain: string
+          source_event_key: string
+          title: string
+        }
+        Update: {
+          action_path?: string | null
+          attention_level?: string
+          body?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          push_eligible?: boolean
+          read_at?: string | null
+          recipient_profile_id?: string
+          source_domain?: string
+          source_event_key?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational_parties: {
         Row: {
           country_agent_id: string | null
@@ -711,6 +830,53 @@ export type Database = {
             columns: ["installation_center_id"]
             isOneToOne: false
             referencedRelation: "installation_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth_secret: string
+          created_at: string
+          disabled_at: string | null
+          endpoint: string
+          id: string
+          last_failure_at: string | null
+          last_success_at: string | null
+          p256dh: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          auth_secret: string
+          created_at?: string
+          disabled_at?: string | null
+          endpoint: string
+          id?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          p256dh: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          auth_secret?: string
+          created_at?: string
+          disabled_at?: string | null
+          endpoint?: string
+          id?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          p256dh?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1393,6 +1559,23 @@ export type Database = {
         }[]
       }
       cancel_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
+      claim_notification_push_deliveries: {
+        Args: { p_limit?: number }
+        Returns: {
+          action_path: string
+          attempt_number: number
+          attention_level: string
+          auth_secret: string
+          body: string
+          claim_expires_at: string
+          claim_token: string
+          delivery_id: string
+          endpoint: string
+          notification_id: string
+          p256dh: string
+          title: string
+        }[]
+      }
       create_production_order: {
         Args: {
           p_lots: Json
@@ -1422,6 +1605,14 @@ export type Database = {
           p_roll_ids: string[]
         }
         Returns: string
+      }
+      current_push_subscription_state: {
+        Args: { p_endpoint: string }
+        Returns: string
+      }
+      disable_push_subscription: {
+        Args: { p_endpoint: string }
+        Returns: boolean
       }
       ensure_operational_party: {
         Args: { p_entity_id?: string; p_party_type: string }
@@ -1534,6 +1725,22 @@ export type Database = {
           viewer_is_sender: boolean
         }[]
       }
+      list_notifications: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          action_path: string
+          attention_level: string
+          body: string
+          created_at: string
+          event_type: string
+          id: string
+          push_eligible: boolean
+          read_at: string
+          source_domain: string
+          source_event_key: string
+          title: string
+        }[]
+      }
       list_roll_preinstall_issues: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
@@ -1633,10 +1840,20 @@ export type Database = {
           serial_number: string
         }[]
       }
+      mark_all_notifications_read: { Args: never; Returns: number }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: string
+      }
       mark_roll_preinstall_issue_reported_in_error: {
         Args: { p_issue_id: string; p_reason: string; p_request_id: string }
         Returns: string
       }
+      materialize_center_onboarding_success: {
+        Args: { p_invitation_id: string }
+        Returns: number
+      }
+      notification_unread_count: { Args: never; Returns: number }
       open_roll: {
         Args: { p_request_id: string; p_roll_serial: string }
         Returns: string
@@ -1653,6 +1870,16 @@ export type Database = {
         Args: { p_roll_ids: string[]; p_transfer_id: string }
         Returns: string[]
       }
+      record_notification_push_delivery_result: {
+        Args: {
+          p_claim_token: string
+          p_delivery_id: string
+          p_error_code?: string
+          p_http_status?: number
+          p_result: string
+        }
+        Returns: string
+      }
       recover_opened_roll: {
         Args: {
           p_confirm_physical_receipt: boolean
@@ -1660,6 +1887,10 @@ export type Database = {
           p_request_id: string
           p_roll_serial: string
         }
+        Returns: string
+      }
+      register_push_subscription: {
+        Args: { p_auth_secret: string; p_endpoint: string; p_p256dh: string }
         Returns: string
       }
       reject_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
@@ -1898,4 +2129,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
