@@ -270,3 +270,85 @@ Severity matrices, root-cause taxonomies, SLA classifications, and generic QMS c
 A Center may attach optional private images when submitting a Pre-install Issue; zero images remains a valid report. V1 supports images only, not video, and issue evidence is operational evidence separate from Product assets.
 
 V1 does not add a formal `request more evidence / Center response` workflow, comments thread, assignment, or ticket-state loop. Exceptional requests for more information may occur outside the platform until operational usage proves that a dedicated in-system loop is necessary.
+
+### PD-041 — Warranty Activation creates one Warranty with its own Warranty Number
+**Status:** Approved — 2026-08-25
+
+Successful V1 Warranty Activation creates the durable customer Warranty record directly; there is no separate generic mutable Activation workflow object.
+
+Every created Warranty receives a database-generated human-readable **Warranty Number** using the `PG-W-NNNNNNNN` family. It is a stable operational/customer reference, not a secret. It is globally unique, never reused, and remains permanently reserved even if the Warranty is later corrected to `voided_in_error`.
+
+Database sequence gaps are acceptable. The Warranty Number is distinct from SKU, Roll serial, ERP serial, Transfer ID and the future secure public Warranty token. This decision supersedes earlier generic references to an “Activation Code” where those references meant the human-facing Warranty-instance identifier.
+
+### PD-042 — Mistaken activation uses audited void-in-error, never deletion or silent reassignment
+**Status:** Approved — 2026-08-25
+
+A demonstrably false/wrong-Roll activation may be transitioned by active Protection Giants Admin to `voided_in_error` with a mandatory reason and immutable audit evidence. The historical Warranty row and Warranty Number remain retained.
+
+The Roll may be activated again only through a new request after every current Activation eligibility rule is revalidated. The new Warranty receives a new Warranty Number. There is no restore-to-issued action, no Warranty Number reuse, and no automatic Transfer/Recovery/reactivation side effect.
+
+This is an audit correction, not a replacement/reinstall entitlement.
+
+### PD-043 — PPF Warranty coverage begins at authoritative successful Activation time in V1
+**Status:** Approved — 2026-08-25
+
+The V1 Warranty term begins at the authoritative database timestamp of successful Activation. Expiry is derived from that timestamp plus the snapshotted Product warranty duration using calendar-month arithmetic.
+
+The Center does not enter or backdate an installation date in V1, and there is no mandatory maximum delay between Roll Opening and Activation. A future requirement to start coverage from another physical-installation date requires a new explicit Product Decision.
+
+### PD-044 — Warranty snapshots physical Product identity, current policy, and installing Center identity
+**Status:** Approved — 2026-08-25
+
+The Warranty snapshots the Product code/name/version identity from the immutable Production Order snapshot belonging to the physical Roll, while warranty duration/coverage/care are snapshotted from one consistent current Product policy state at Activation time.
+
+The installer is not entered as free text. It is the authenticated active Center that holds confirmed current custody. The Warranty stores both the stable activating Center party id and an immutable activating Center-name snapshot so later Center renaming does not rewrite the historical issuance record.
+
+An already-produced legitimate Roll is not blocked merely because the Product is later archived/unpublished, but incomplete warranty policy content blocks Activation recoverably until Admin completes it.
+
+### PD-045 — V1 customer Warranty data remains intentionally minimal
+**Status:** Approved — 2026-08-25
+
+Normal Activation requires customer full name and phone; email is optional.
+
+The legacy reference system also collected postal address lines, country, state and postal code. Those fields are not carried into normal V1 Activation because no current Warranty lifecycle requirement justifies the additional collection/PII burden.
+
+No generic customer table, customer account, CRM/deduplication subsystem or mandatory OTP is introduced by Cube M.
+
+### PD-046 — V1 vehicle identity uses conservative VIN/chassis validation
+**Status:** Approved — 2026-08-25
+
+Normal Activation requires vehicle make, vehicle model and VIN/chassis identifier. Model year, plate number and vehicle color are optional.
+
+VIN/chassis is normalized uppercase and accepts 6–40 ASCII letters/digits with no whitespace rather than enforcing only the modern 17-character VIN form. VIN/chassis is not globally unique across all Warranties and is never used as a public-access secret.
+
+### PD-047 — Center users cannot edit or undo an issued Warranty
+**Status:** Approved — 2026-08-25
+
+After successful Activation the Center cannot directly edit, delete, void or reassign the Warranty.
+
+Active Protection Giants Admin has only two bounded support paths in Cube M: correct customer/vehicle details with a mandatory reason and audit event, or mark an activation `voided_in_error` under PD-042.
+
+Roll identity, Warranty Number, installing Center identity/name snapshot, activation actor/time, Product/policy snapshots and coverage timestamps remain immutable through the customer/vehicle correction path.
+
+### PD-048 — Effective Warranty closes the pre-Warranty Issue/Recovery path
+**Status:** Approved — 2026-08-25
+
+An effective issued Warranty blocks creation of a new Pre-install Roll Issue for that Roll and blocks Cube J Opened Roll Recovery.
+
+The Warranty Activation mutation, Pre-install Issue mutation and Opened Roll Recovery mutation must preserve their established physical-Roll lock discipline so concurrent attempts produce one deterministic valid winner rather than contradictory committed states.
+
+If a Warranty is later `voided_in_error`, only the Warranty-specific block is removed; all ordinary Cube J/K eligibility rules still apply.
+
+### PD-049 — Later Center/Product metadata changes do not silently rewrite an issued Warranty
+**Status:** Approved — 2026-08-25
+
+After issuance, changes to Center network approval, Center location, later Center suspension, later Center name, Product publication/archive state or later Product policy/content do not silently rewrite or cancel the historical customer Warranty.
+
+Customer coverage remains based on the issuance snapshots until a future explicitly approved Claims/Replacement lifecycle establishes a customer-Warranty consequence.
+
+### PD-050 — Public Warranty security identity is separate from Warranty Number
+**Status:** Approved — 2026-08-25
+
+Cube M does not create the public Warranty authorization credential. The later Public Warranty Access / Verification cube owns a cryptographically strong, non-enumerable public token and stable public Warranty URL.
+
+The approved future vehicle, Warranty-card and invoice QR copies must point to that secure public identity. SKU, Roll serial, ERP serial, Transfer ID and the non-secret Warranty Number must not be used as substitutes for the public authorization token.

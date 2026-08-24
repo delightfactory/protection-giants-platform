@@ -7,11 +7,10 @@ Official repository for the Protection Giants warranty, roll tracking, installat
 The platform is developed incrementally in small, complete, testable building blocks. Each block must be stable before the next layer is added.
 
 Start every development/review session with:
-- `docs/pre-cube-k-canonical-status-amendment.md` — latest authoritative planning/status boundary after Cube J closure and Cube K specification freeze;
-- `docs/post-cube-j-canonical-status-amendment.md` — authoritative implementation status after completion and post-merge audit of Cube J;
-- `docs/post-transfer-stage-canonical-status-amendment.md` — authoritative status after completion of the Transfer stage and historical boundary before Cube J;
+- `docs/pre-cube-m-canonical-status-amendment.md` — latest authoritative planning/status boundary before Cube M implementation;
+- `docs/cube-m-warranty-activation-spec.md` — frozen Product-Owner-approved Cube M implementation contract;
 - `docs/canonical-project-context.md` — durable project context, decision precedence and historical supersession notes;
-- `docs/product-decisions.md` — approved business decisions;
+- `docs/product-decisions.md` — approved business decisions, including Cube M PD-041 through PD-050;
 - `docs/development-governance.md` — mandatory engineering/closure rules;
 - `docs/gap-closure-roadmap.md` — dependency boundaries and historical sequencing baseline, subject to later status amendments;
 - the applicable current spec/amendment for the cube being changed;
@@ -24,13 +23,17 @@ For completed Cube E print/QR behavior, also read:
 - `docs/cube-e-outer-roll-label-print-foundation-spec.md`;
 - `docs/cube-e-pending-physical-print-validation.md`.
 
-**Cube J — Roll Opening / Claiming is complete on `main`.** Its functional merge is `e4554be58cac3f0fb1add40ef4a3448d65333d55`, and its bounded post-merge hardening was merged as `382aecbebb53a52f6f6be75defd01cd78ff6975d`. Its frozen contract remains in `docs/cube-j-roll-opening-claiming-spec.md`.
+**Cube J — Roll Opening / Claiming is complete on `main`.** Its frozen contract remains in `docs/cube-j-roll-opening-claiming-spec.md`.
 
-**Cube K — Pre-install Roll Issue Reporting has a frozen, product-owner-approved specification** in `docs/cube-k-pre-install-roll-issue-spec.md`. The current next critical software step is implementation of that specification from the latest `main`; the earlier draft study is historical and must not be treated as a competing implementation contract.
+**Cube K — Pre-install Roll Issue Reporting is implemented and closed on `main`.** Its frozen contract remains in `docs/cube-k-pre-install-roll-issue-spec.md`.
 
-Cube I — Remaining Production-owned Label Package remains valid later/parallel work, but it is not the current critical operational step. Activation/Warranty labels remain blocked on their own identity/lifecycle decisions.
+**Cube L — Notifications + Web Push + PWA is implemented and merged through PR #74.** The merged baseline is `31b8f6321c5d0a9b51aab29147345d96410eaf81`.
 
-Older documents such as `docs/scope-guardrails.md`, the pre-F Transfer context/specification documents, the post-Transfer immediate-next-step wording, older roadmap status sections, and the Cube K draft study remain useful for their original scope and design history, but any wording superseded by a later Product Decision, normative amendment, canonical-context note, latest canonical-status amendment, or current frozen cube specification must not be treated as current status authority.
+**Cube M — Warranty Activation is the next critical implementation step.** Its Product-Owner-approved frozen contract is `docs/cube-m-warranty-activation-spec.md`. Implementation must begin from a fresh branch created from the latest merged `main` after the specification PR is merged; the specification branch must not be reused as the implementation branch.
+
+Cube I — Remaining Production-owned Label Package remains valid later/parallel work, but it is not the current critical operational step. Public Warranty access follows Cube M, and customer Warranty QR/vehicle-card-invoice labels follow only after the secure public Warranty identity is frozen.
+
+Older documents such as `docs/scope-guardrails.md`, pre-F Transfer context/specification documents, older post-Transfer immediate-next-step wording, earlier pre-Cube-K status wording, older roadmap status sections, and draft studies remain useful for their original scope and design history, but any wording superseded by a later Product Decision, normative amendment, canonical-context note, latest canonical-status amendment, or current frozen cube specification must not be treated as current status authority.
 
 ## Current implementation scope
 
