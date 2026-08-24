@@ -1710,6 +1710,41 @@ export type Database = {
       }
     }
     Functions: {
+      activate_roll_warranty: {
+        Args: {
+          p_customer_email: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_request_id: string
+          p_roll_serial: string
+          p_vehicle_color: string
+          p_vehicle_make: string
+          p_vehicle_model: string
+          p_vehicle_plate: string
+          p_vehicle_vin: string
+          p_vehicle_year: number
+        }
+        Returns: {
+          activated_at: string
+          activating_center_name: string
+          coverage_expires_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          product_code: string
+          product_name: string
+          product_version: string
+          record_state: string
+          vehicle_color: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_vin: string
+          vehicle_year: number
+          warranty_id: string
+          warranty_number: string
+        }[]
+      }
       admin_cancel_pending_roll_transfer: {
         Args: { p_reason: string; p_transfer_id: string }
         Returns: string
@@ -2152,6 +2187,25 @@ export type Database = {
           entity_code: string
           entity_type: string
           party_id: string
+        }[]
+      }
+      resolve_warranty_activation_candidate: {
+        Args: { p_roll_serial: string }
+        Returns: {
+          acting_center_name: string
+          acting_center_party_id: string
+          blocking_issue_state: string
+          eligibility: string
+          existing_warranty_id: string
+          existing_warranty_number: string
+          lot_number: string
+          opened_at: string
+          product_code: string
+          product_name: string
+          product_version: string
+          roll_id: string
+          serial_number: string
+          warranty_months: number
         }[]
       }
       revoke_center_network_approval: {
