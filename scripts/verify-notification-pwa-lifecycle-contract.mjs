@@ -61,6 +61,12 @@ assert(coordinator.includes('navigator.serviceWorker.register("/sw.js", { scope:
   "Operations shell must register the stable root Service Worker.");
 assert(coordinator.includes("registration.waiting") && coordinator.includes("updatefound"),
   "Coordinator must detect waiting workers without blocking startup.");
+assert(coordinator.includes("PROMPT_LEASE_SETTLE_MS") && coordinator.includes("promptClaimInFlight"),
+  "Prompt lease contention must settle and deduplicate in-flight claims.");
+assert(coordinator.includes("ownsPromptLease(tabId)"),
+  "Prompt rendering must re-confirm lease ownership after the settle interval.");
+assert(coordinator.includes("event.key === LEASE_KEY"),
+  "A tab must hide its prompt when another tab acquires the prompt lease.");
 assert(coordinator.includes("BroadcastChannel") && coordinator.includes("localStorage"),
   "Multi-tab update coordination needs BroadcastChannel plus a storage fallback.");
 assert(coordinator.includes('navigator.serviceWorker.addEventListener("controllerchange"'),

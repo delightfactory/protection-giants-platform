@@ -9,6 +9,7 @@ const EVENT_KEY = "pg-pwa-update-event";
 const DEFER_KEY = "pg-pwa-update-deferred-until";
 const RELOAD_GUARD_KEY = "pg-pwa-update-reloaded";
 const PROMPT_LEASE_MS = 60_000;
+const PROMPT_LEASE_SETTLE_MS = 100;
 const DEFER_MS = 15 * 60_000;
 const MIN_UPDATE_CHECK_MS = 30 * 60_000;
 
@@ -45,6 +46,11 @@ function claimPromptLease(tabId: string): boolean {
   return confirmed?.owner === tabId;
 }
 
+function ownsPromptLease(tabId: string): boolean {
+  const lease = parseJson<PromptLease>(window.localStorage.getItem(LEASE_KEY));
+  return lease?.owner === tabId && lease.expiresAt > Date.now();
+}
+
 function releasePromptLease(tabId: string) {
   const lease = parseJson<PromptLease>(window.localStorage.getItem(LEASE_KEY));
   if (lease?.owner === tabId) window.localStorage.removeItem(LEASE_KEY);
@@ -76,6 +82,7 @@ export function PwaLifecycleCoordinator() {
     const tabId = tabIdRef.current;
     const channel = typeof BroadcastChannel === "function" ? new BroadcastChannel(CHANNEL_NAME) : null;
     let disposed = false;
+    let promptClaimInFlight: Promise<void> | null = null;
 
     const publish = (type: LifecycleMessage["type"]) => {
       const message: LifecycleMessage = { type, sender: tabId, at: Date.now() };
@@ -87,8 +94,38 @@ export function PwaLifecycleCoordinator() {
       const worker = registrationRef.current?.waiting;
       if (!worker || !navigator.serviceWorker.controller) return;
       waitingRef.current = worker;
-      if (deferUntil() > Date.now()) return;
-      if (claimPromptLease(tabId)) setShowUpdate(true);
+      if (deferUntil() > Date.now()) {
+        setShowUpdate(false);
+        return;
+      }
+      if (promptClaimInFlight) return;
+
+      promptClaimInFlight = (async () => {
+        if (!claimPromptLease(tabId)) return;
+
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, PROMPT_LEASE_SETTLE_MS);
+        });
+
+        const stillWaiting = registrationRef.current?.waiting;
+        if (
+          disposed ||
+          !stillWaiting ||
+          !navigator.serviceWorker.controller ||
+          deferUntil() > Date.now()
+        ) {
+          return;
+        }
+
+        if (ownsPromptLease(tabId)) {
+          waitingRef.current = stillWaiting;
+          setShowUpdate(true);
+        } else {
+          setShowUpdate(false);
+        }
+      })().finally(() => {
+        promptClaimInFlight = null;
+      });
     };
 
     const noteWaitingWorker = (worker: ServiceWorker) => {
@@ -139,6 +176,10 @@ export function PwaLifecycleCoordinator() {
     const onStorage = (event: StorageEvent) => {
       if (event.key === EVENT_KEY) onLifecycleMessage(parseJson<LifecycleMessage>(event.newValue));
       if (event.key === DEFER_KEY && deferUntil() > Date.now()) setShowUpdate(false);
+      if (event.key === LEASE_KEY) {
+        const lease = parseJson<PromptLease>(event.newValue);
+        if (lease && lease.owner !== tabId && lease.expiresAt > Date.now()) setShowUpdate(false);
+      }
     };
 
     const onVisibilityChange = () => {
