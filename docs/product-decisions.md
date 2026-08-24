@@ -71,7 +71,7 @@ Exact print layout and complete label count are finalized during print-template 
 ### PD-012 — Public Center directory distinguishes registered and approved Centers
 **Status:** Approved; clarified 2026-08-12
 
-The public Center directory/map may show operationally active registered Centers that have a valid published geographic location. Approved Centers receive a distinct Protection Giants approval badge/pin state; ordinary registered Centers remain visibly distinguishishable as registered but not approved.
+The public Center directory/map may show operationally active registered Centers that have a valid published geographic location. Approved Centers receive a distinct Protection Giants approval badge/pin state; ordinary registered Centers remain visibly distinguishable as registered but not approved.
 
 Suspended Centers are not published. Public presentation uses a narrow controlled public projection and must not expose private Auth or internal network data.
 
