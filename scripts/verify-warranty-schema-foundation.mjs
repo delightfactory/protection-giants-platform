@@ -82,14 +82,14 @@ for (const role of ["anon", "authenticated", "service_role"]) {
     );
   `);
   assert(
-    privileges === "false,false,false,false,false,false,false,false",
+    privileges === "f,f,f,f,f,f,f,f",
     `${role} must have no direct Cube M table privileges in increment 1; received ${privileges}`,
   );
 
   const sequenceUsage = querySql(`
     select has_sequence_privilege('${role}', 'private.warranty_number_seq', 'USAGE');
   `);
-  assert(sequenceUsage === "false", `${role} must not have direct Warranty Number sequence usage.`);
+  assert(sequenceUsage === "f", `${role} must not have direct Warranty Number sequence usage.`);
 }
 
 const warrantyConstraintNames = new Set(
@@ -109,6 +109,22 @@ for (const required of [
   "warranties_vehicle_vin_shape",
 ]) {
   assert(warrantyConstraintNames.has(required), `Missing Cube M Warranty constraint: ${required}`);
+}
+
+const eventConstraintNames = new Set(
+  querySql(`
+    select conname
+    from pg_catalog.pg_constraint
+    where conrelid = 'public.warranty_events'::regclass
+    order by conname;
+  `).split("\n").filter(Boolean),
+);
+for (const required of [
+  "warranty_events_kind_allowed",
+  "warranty_events_reason_shape",
+  "warranty_events_change_snapshot_shape",
+]) {
+  assert(eventConstraintNames.has(required), `Missing Cube M Warranty event constraint: ${required}`);
 }
 
 const indexNames = new Set(
@@ -367,6 +383,22 @@ expectSqlFailure(`
   set event_kind = 'details_corrected', reason = 'Illegal history edit.'
   where warranty_id = ${sqlUuid(warrantyAId)};
 `, "PG_WARRANTY_HISTORY_IMMUTABLE");
+
+expectSqlFailure(`
+  insert into public.warranty_events (
+    warranty_id,
+    action_request_id,
+    event_kind,
+    actor_profile_id,
+    reason
+  ) values (
+    ${sqlUuid(warrantyBId)},
+    ${sqlUuid(randomUUID())},
+    'details_corrected',
+    ${sqlUuid(centerProfileId)},
+    'Missing change snapshot.'
+  );
+`, "warranty_events_change_snapshot_shape");
 
 expectSqlFailure(`
   insert into public.warranties (
