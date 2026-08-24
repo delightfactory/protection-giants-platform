@@ -1,9 +1,9 @@
 name: Cube M Sync Generated Types
 
 "on":
-  push:
+  pull_request:
     branches:
-      - feature/cube-m-warranty-activation
+      - main
     paths:
       - "supabase/**"
       - "scripts/verify-warranty-schema-foundation.mjs"
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   sync-types:
-    if: github.actor != 'github-actions[bot]'
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
