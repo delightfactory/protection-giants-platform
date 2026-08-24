@@ -3,7 +3,24 @@ import type { Database } from "@/lib/supabase/database.types";
 
 export const NOTIFICATION_PAGE_SIZE = 30;
 
-export type InboxNotification = Database["public"]["Functions"]["list_notifications"]["Returns"][number];
+type GeneratedInboxNotification =
+  Database["public"]["Functions"]["list_notifications"]["Returns"][number];
+
+export type InboxNotification = Omit<GeneratedInboxNotification, "action_path" | "read_at"> & {
+  action_path: string | null;
+  read_at: string | null;
+};
+
+function normalizeInboxNotification(row: GeneratedInboxNotification): InboxNotification {
+  // The generated RPC contract is preserved verbatim. The SQL return shape is
+  // nullable at runtime, so widen only these two fields at the server boundary.
+  const nullableRow = row as unknown as InboxNotification;
+  return {
+    ...row,
+    action_path: nullableRow.action_path,
+    read_at: nullableRow.read_at,
+  };
+}
 
 export async function listInboxNotifications({
   limit = NOTIFICATION_PAGE_SIZE,
@@ -19,7 +36,7 @@ export async function listInboxNotifications({
   });
 
   if (error) throw new Error(`Unable to list notifications: ${error.code}`);
-  return data ?? [];
+  return (data ?? []).map(normalizeInboxNotification);
 }
 
 export async function getNotificationUnreadCount(): Promise<number> {

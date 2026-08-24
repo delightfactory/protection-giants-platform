@@ -1728,14 +1728,14 @@ export type Database = {
       list_notifications: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
-          action_path: string | null
+          action_path: string
           attention_level: string
           body: string
           created_at: string
           event_type: string
           id: string
           push_eligible: boolean
-          read_at: string | null
+          read_at: string
           source_domain: string
           source_event_key: string
           title: string
