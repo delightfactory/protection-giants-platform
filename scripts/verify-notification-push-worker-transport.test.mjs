@@ -61,6 +61,10 @@ describe("Cube L Push worker transport contract", () => {
     expect(safePushActionPath("https://evil.example/phish")).toBe("/operations/notifications");
     expect(safePushActionPath("//evil.example/phish")).toBe("/operations/notifications");
     expect(safePushActionPath("javascript:alert(1)")).toBe("/operations/notifications");
+    expect(safePushActionPath(null)).toBe("/operations/notifications");
+    expect(buildPushPayload({ ...baseClaim, action_path: null }).actionPath).toBe(
+      "/operations/notifications",
+    );
   });
 
   it("uses deliberate bounded TTL, timeout and attention-based urgency", () => {
