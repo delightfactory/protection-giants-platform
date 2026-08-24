@@ -18,7 +18,7 @@ export type PushWorkerClaimPresentation = Readonly<{
   notification_id: string;
   title: string;
   body: string;
-  action_path: string;
+  action_path: string | null;
   attention_level: string;
 }>;
 
@@ -41,8 +41,9 @@ function compactText(value: string, maxCodePoints: number): string {
   return `${codePoints.slice(0, Math.max(1, maxCodePoints - 1)).join("")}…`;
 }
 
-export function safePushActionPath(value: string): string {
+export function safePushActionPath(value: string | null): string {
   const fallback = "/operations/notifications";
+  if (!value) return fallback;
   const trimmed = value.trim();
   if (!trimmed.startsWith("/") || trimmed.startsWith("//") || trimmed.includes("\0")) {
     return fallback;
