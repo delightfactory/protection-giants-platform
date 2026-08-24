@@ -1,0 +1,58 @@
+name: Cube M Warranty Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/**"
+      - "scripts/verify-warranty-schema-foundation.mjs"
+      - "lib/supabase/database.types.ts"
+      - ".github/workflows/cube-m-warranty-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  warranty-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Lint local database
+        run: supabase db lint --local --level warning --fail-on error
+
+      - name: Create bounded existing-domain fixtures
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-roll-opening-foundation.mjs
+
+      - name: Verify Cube M Warranty schema foundation
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-warranty-schema-foundation.mjs
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
