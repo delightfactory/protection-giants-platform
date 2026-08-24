@@ -344,7 +344,7 @@ const expiredDetail = one(await rpc("get_internal_warranty_detail", {
 }, centerAToken), "Expired Warranty detail state");
 assert(expiredDetail.derived_state === "expired", "Warranty detail must derive expiry from timestamps.");
 
-runSql(`update public.installation_centers set status = 'inactive' where id = ${sqlUuid(centerB.id)};`);
+runSql(`update public.installation_centers set status = 'suspended' where id = ${sqlUuid(centerB.id)};`);
 await expectRpcError("list_internal_warranties", {}, centerBToken, "PG_WARRANTY_CENTER_INACTIVE");
 runSql(`update public.installation_centers set status = 'active' where id = ${sqlUuid(centerB.id)};`);
 

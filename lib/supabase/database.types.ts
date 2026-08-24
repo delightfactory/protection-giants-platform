@@ -1889,6 +1889,39 @@ export type Database = {
         Args: { p_party_type: string }
         Returns: string
       }
+      get_internal_warranty_detail: {
+        Args: { p_warranty_id: string }
+        Returns: {
+          activated_at: string
+          activating_center_name: string
+          activating_center_party_id: string
+          admin_void_reason: string
+          care_instructions: string
+          coverage_expires_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          derived_state: string
+          product_code: string
+          product_id: string
+          product_name: string
+          product_version: string
+          record_state: string
+          roll_id: string
+          roll_serial: string
+          vehicle_color: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_vin: string
+          vehicle_year: number
+          voided_at: string
+          warranty_coverage: string
+          warranty_id: string
+          warranty_months: number
+          warranty_number: string
+        }[]
+      }
       get_roll_preinstall_issue_detail: {
         Args: { p_issue_id: string }
         Returns: {
@@ -1944,6 +1977,30 @@ export type Database = {
           viewer_is_admin: boolean
           viewer_is_recipient: boolean
           viewer_is_sender: boolean
+        }[]
+      }
+      list_internal_warranties: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_record_state?: string
+          p_search?: string
+        }
+        Returns: {
+          activated_at: string
+          activating_center_name: string
+          coverage_expires_at: string
+          customer_name: string
+          derived_state: string
+          product_code: string
+          product_name: string
+          record_state: string
+          roll_serial: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_vin: string
+          warranty_id: string
+          warranty_number: string
         }[]
       }
       list_notifications: {
