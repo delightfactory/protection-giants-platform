@@ -211,7 +211,13 @@ create table public.warranty_events (
   constraint warranty_events_change_snapshot_shape
     check (
       (event_kind = 'activated' and change_snapshot is null)
-      or event_kind in ('details_corrected', 'voided_in_error')
+      or (
+        event_kind = 'details_corrected'
+        and change_snapshot is not null
+        and jsonb_typeof(change_snapshot) = 'object'
+        and change_snapshot <> '{}'::jsonb
+      )
+      or (event_kind = 'voided_in_error' and change_snapshot is null)
     )
 );
 
