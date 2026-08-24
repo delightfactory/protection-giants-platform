@@ -146,6 +146,23 @@ for (const required of [
   assert(indexNames.has(required), `Missing Cube M Warranty index: ${required}`);
 }
 
+const eventIndexNames = new Set(
+  querySql(`
+    select indexname
+    from pg_catalog.pg_indexes
+    where schemaname = 'public'
+      and tablename = 'warranty_events'
+    order by indexname;
+  `).split("\n").filter(Boolean),
+);
+for (const required of [
+  "warranty_events_warranty_timeline_idx",
+  "warranty_events_one_activation_idx",
+  "warranty_events_one_void_idx",
+]) {
+  assert(eventIndexNames.has(required), `Missing Cube M Warranty event index: ${required}`);
+}
+
 const triggerNames = new Set(
   querySql(`
     select tgname
@@ -262,6 +279,20 @@ runSql(`
 `);
 
 expectSqlFailure(`
+  insert into public.warranty_events (
+    warranty_id,
+    action_request_id,
+    event_kind,
+    actor_profile_id
+  ) values (
+    ${sqlUuid(warrantyAId)},
+    ${sqlUuid(randomUUID())},
+    'activated',
+    ${sqlUuid(centerProfileId)}
+  );
+`, "warranty_events_one_activation_idx");
+
+expectSqlFailure(`
   insert into public.warranties (
     request_id, roll_id, warranty_number,
     activated_by_profile_id, activating_center_party_id, activating_center_name_snapshot,
@@ -317,7 +348,37 @@ runSql(`
     void_reason = 'Foundation test void.',
     voided_at = now()
   where id = ${sqlUuid(warrantyAId)};
+
+  insert into public.warranty_events (
+    warranty_id,
+    action_request_id,
+    event_kind,
+    actor_profile_id,
+    reason
+  ) values (
+    ${sqlUuid(warrantyAId)},
+    ${sqlUuid(randomUUID())},
+    'voided_in_error',
+    ${sqlUuid(centerProfileId)},
+    'Foundation test void.'
+  );
 `);
+
+expectSqlFailure(`
+  insert into public.warranty_events (
+    warranty_id,
+    action_request_id,
+    event_kind,
+    actor_profile_id,
+    reason
+  ) values (
+    ${sqlUuid(warrantyAId)},
+    ${sqlUuid(randomUUID())},
+    'voided_in_error',
+    ${sqlUuid(centerProfileId)},
+    'Duplicate foundation void event.'
+  );
+`, "warranty_events_one_void_idx");
 
 expectSqlFailure(`
   update public.warranties
