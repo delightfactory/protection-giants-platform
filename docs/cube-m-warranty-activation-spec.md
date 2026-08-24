@@ -1,6 +1,7 @@
 # Cube M — Warranty Activation
 
-**Status:** Specification candidate for Product Owner approval — 2026-08-24  
+**Status:** APPROVED / FROZEN — Product Owner approval completed 2026-08-25  
+**Version:** 1.0  
 **Baseline:** `main` at `31b8f6321c5d0a9b51aab29147345d96410eaf81`  
 **Depends on:** Product Foundation, Production Order/Lot/Roll Foundation, confirmed Roll Custody, completed Transfer stage, Cube J Roll Opening / Claiming, Cube K Pre-install Roll Issue Reporting, and the existing Auth/Operational Party foundation.  
 **Consumes but does not redefine:** Cube L Notifications/PWA infrastructure.
@@ -13,7 +14,7 @@ Cube M creates the first real customer Warranty from one legitimately opened phy
 
 It records one durable business fact:
 
-> an authenticated active Installation Center that currently holds an eligible opened Roll has activated the customer Warranty for that Roll using customer/vehicle data and a consistent Product warranty-policy snapshot at the atomic activation transition.
+> an authenticated active Installation Center that currently holds an eligible opened Roll has activated the customer Warranty for that Roll using validated customer/vehicle data, the physical Product identity belonging to that Roll, and the Warranty policy valid at the atomic activation transition.
 
 Warranty Activation is the transition from the pre-install operational Roll lifecycle into the customer Warranty lifecycle.
 
@@ -25,62 +26,65 @@ The cube must be operationally complete inside its boundary: Center and Admin ca
 
 ## 2. Inherited approved rules
 
-Cube M preserves these existing decisions:
+Cube M preserves these existing project decisions:
 
-1. one physical PPF Roll can create at most one effective customer Warranty;
+1. one physical PPF Roll can create at most one **effective** customer Warranty;
 2. Roll Opening and Warranty Activation are separate events;
 3. normal Activation uses customer + vehicle data including VIN/chassis identity;
 4. customer account, OTP, photos, videos and invoice upload are not mandatory in V1;
 5. Protection Giants network approval is **not** an Activation gate;
 6. activating Center must be operationally active and current confirmed custodian;
-7. parent Production Order must remain generated/non-voided;
-8. immutable Cube J Opening must exist;
+7. parent Production Order must remain `generated` / non-voided;
+8. immutable Cube J Opening must already exist;
 9. Cube K `submitted` issue blocks Activation immediately;
 10. any historical Cube K `return_required` blocks Activation;
 11. `cleared_for_use` and `reported_in_error` do not themselves block Activation;
 12. Warranty policy is snapshotted at Warranty creation;
 13. public Warranty access/token/QR remains later scope;
-14. Activation/Warranty identity must not reuse SKU, Roll serial, ERP serial or Transfer ID.
+14. Warranty identity must not reuse SKU, Roll serial, ERP serial or Transfer ID;
+15. direct client mutation is not an acceptable substitute for authoritative lifecycle RPCs.
 
 ---
 
-## 3. Candidate Cube M product decisions
-
-These M-D decisions become approved only after Product Owner review of this specification.
+## 3. Approved Cube M product decisions
 
 ### M-D1 — Successful Activation creates the Warranty; no separate Activation workflow object
 
 V1 does not create a second mutable Activation workflow/table.
 
-The successful atomic mutation creates one `warranties` record. That record is the durable result of Activation.
+The successful atomic mutation creates one `warranties` row. That row is the durable result of Activation.
 
-At the same transition the Warranty receives one stable human-readable **Activation Code**.
+At the same transition the Warranty receives one stable human-readable **Warranty Number**.
 
-The Activation Code:
+The Warranty Number:
 
-- is allocated only after all eligibility checks pass;
-- is globally unique and never reused, even after an Admin `voided_in_error` correction;
-- is an operational/customer reference, not a password/OTP/public-access secret;
+- is allocated by the database only after ordinary eligibility validation has passed far enough to attempt issuance;
+- is globally unique;
+- is never reused, including after `voided_in_error`;
+- may have gaps because database sequence values can be consumed by failed/rolled-back transactions; gaps are acceptable and are not an error;
+- is an operational/customer reference, not a password, OTP or public-access secret;
 - must never be replaced by SKU, Roll serial, ERP serial or Transfer ID;
 - must never become the future public Warranty authorization token.
 
-Recommended V1 format:
+Frozen V1 format:
 
-`PG-A-YYYYMMDD-########`
+`PG-W-NNNNNNNN`
 
-using a database sequence whose allocated values remain permanently reserved.
+where `NNNNNNNN` is a zero-padded global monotonic sequence with a minimum display width of eight digits.
 
-The later Public Warranty cube owns the separate non-enumerable public token/URL.
+The later Public Warranty cube owns the separate cryptographically strong/non-enumerable public token/URL.
 
 ### M-D2 — One Roll has at most one effective issued Warranty
 
 A Roll cannot have two simultaneously effective `issued` Warranty rows.
 
-A narrow Admin-only `voided_in_error` state exists only for a demonstrably mistaken activation. The historical row remains forever but is no longer an effective customer Warranty.
+A narrow Admin-only `voided_in_error` state exists only for a demonstrably mistaken activation. The historical row and its Warranty Number remain permanently retained but are no longer an effective customer Warranty.
 
-After void-in-error, a new Activation is possible only through a **new request** and only if every current eligibility rule passes again.
+After void-in-error, a new Activation is possible only through a **new request** and only if every current Activation eligibility rule passes again.
 
-This is an audit correction, not a second-Warranty entitlement, replacement or reinstall workflow.
+The new Warranty receives a **new Warranty Number**. The old number is never reused or redirected to the new Warranty.
+
+This exception is an audit correction, not a second-Warranty entitlement, replacement or reinstall workflow.
 
 ### M-D3 — Warranty term starts at successful Activation time in V1
 
@@ -89,7 +93,7 @@ V1 uses the authoritative database `activated_at` timestamp as the coverage star
 `coverage_expires_at` is computed atomically from:
 
 - `activated_at`; and
-- snapshotted `default_warranty_months`.
+- snapshotted Product `default_warranty_months`.
 
 Use calendar-month arithmetic, not a fixed `30 × months` day approximation.
 
@@ -101,15 +105,13 @@ V1 deliberately avoids editable/backdated installation-date arithmetic and cross
 
 The Warranty must preserve the physical Product identity that actually belongs to the Roll **and** the Warranty policy valid at Activation.
 
-Therefore:
-
 **Product identity snapshot comes from the immutable Production Order snapshot associated with the Roll**, at minimum:
 
 - Product code/SKU snapshot;
 - Product name snapshot;
 - Product version snapshot where present.
 
-This keeps the Warranty aligned with the physical produced Roll even if Product marketing/name data changes later.
+This keeps the Warranty aligned with the physical produced Roll even if current Product marketing/name data later changes.
 
 **Warranty policy snapshot comes from the current Product row at Activation time**, at minimum:
 
@@ -117,13 +119,13 @@ This keeps the Warranty aligned with the physical produced Roll even if Product 
 - warranty coverage text;
 - care instructions.
 
-The Product row must be read consistently/locked sufficiently so concurrent Product editing cannot produce a mixed policy snapshot.
+The Product row must be read/locked consistently so concurrent Product editing cannot produce a mixed policy snapshot.
 
-An already-produced legitimate Roll must not become stranded merely because its Product is later archived or unpublished. Product active/publication state is therefore not independently an Activation gate.
+An already-produced legitimate Roll must not become stranded merely because its Product is later archived or unpublished. Product active/publication state is therefore not independently an Activation gate for an existing operational Roll.
 
-However, policy duration/coverage/care must be complete. Missing policy content blocks Activation with a recoverable `policy_incomplete` result because Product non-physical warranty content remains administratively correctable after production.
+However, duration/coverage/care must be complete. Missing policy content blocks Activation with recoverable `policy_incomplete`; Admin can complete the Product Warranty policy and the Center can retry.
 
-### M-D5 — Customer data is a Warranty snapshot, not a customer subsystem
+### M-D5 — Customer data is a minimal Warranty snapshot, not a customer subsystem
 
 Required:
 
@@ -134,11 +136,13 @@ Optional:
 
 - customer email.
 
+The legacy reference system also collected address lines, country, state and postal code. Review found no current V1 lifecycle need that justifies carrying those fields forward. They are therefore deliberately excluded from normal Cube M Activation.
+
 Do not create a generic `customers` table, CRM, deduplication engine or customer login identity in this cube.
 
 The same customer may legitimately own multiple Warranties on different Rolls/vehicles.
 
-### M-D6 — Vehicle data is a Warranty snapshot
+### M-D6 — Vehicle data is a minimal Warranty snapshot
 
 Required:
 
@@ -152,35 +156,56 @@ Optional:
 - plate number;
 - vehicle color.
 
-VIN/chassis is not globally unique: one vehicle may later have more than one independently warranted PPF installation if product rules allow it.
+VIN/chassis is not globally unique: one vehicle may legitimately receive more than one independently warranted installation if later lifecycle/product rules permit it.
 
-V1 must validate conservatively rather than reject legitimate regional/imported chassis identifiers merely because they are not a modern 17-character VIN.
+V1 validates conservatively rather than rejecting legitimate regional/imported chassis identifiers merely because they are not a modern 17-character VIN.
 
-Recommended stored contract:
+Frozen persisted contract:
 
 - normalized uppercase;
 - 6–40 ASCII letters/digits;
 - no whitespace;
 - never used as an authentication secret.
 
-### M-D7 — No evidence/OTP/invoice requirement for normal Activation
+### M-D7 — Installer identity comes from authenticated Center truth, not free text
 
-Normal Activation does not require photo/video evidence, invoice upload, customer OTP, customer account, payment or accounting data.
+The legacy system asked the operator to type `installer_name`. Cube M must not repeat that trust weakness.
 
-Cube K continues to own Pre-install evidence.
+The activating installer is derived from the authenticated active Center that owns current confirmed custody.
 
-### M-D8 — Core issuance identity is immutable; only two bounded Admin support corrections exist
+Warranty persistence stores both:
 
-Center cannot edit/delete/undo a successful Warranty.
+- stable `activating_center_party_id`; and
+- immutable `activating_center_name_snapshot` captured at issuance.
+
+The party id preserves durable relational identity. The name snapshot preserves what the installing Center was called at the time of issuance if its current name later changes.
+
+The user does not type or choose an arbitrary installer business name during Activation.
+
+### M-D8 — No evidence/OTP/invoice requirement for normal Activation
+
+Normal Activation does not require:
+
+- photo/video evidence;
+- invoice upload;
+- customer OTP;
+- customer account;
+- payment/accounting data.
+
+Cube K continues to own Pre-install Issue evidence.
+
+### M-D9 — Core issuance identity is immutable; only two bounded Admin support corrections exist
+
+Center cannot edit, delete or undo a successful Warranty.
 
 Immutable core fields include:
 
 - Roll;
-- Activation Code;
-- activating Center;
+- Warranty Number;
+- activating Center party and Center-name snapshot;
 - activation actor/time;
 - Product identity snapshot;
-- policy snapshot;
+- Warranty-policy snapshot;
 - coverage timestamps.
 
 Admin receives only:
@@ -190,29 +215,29 @@ Admin receives only:
 
 Wrong Roll/false Activation is corrected by void-in-error, never by silently changing `roll_id`.
 
-### M-D9 — Later operational metadata changes do not silently cancel customer coverage
+### M-D10 — Later operational metadata changes do not silently cancel customer coverage
 
 After issuance:
 
 - network-approval change does not invalidate Warranty;
 - Center location change does not invalidate Warranty;
 - later Center suspension does not silently cancel customer coverage;
-- later Product edits/archive do not rewrite the snapshots;
+- later Product edits/archive do not rewrite snapshots;
 - Activation does not move custody;
 - Opening remains immutable.
 
 Any future cancellation/replacement/reinstall consequence belongs to an explicitly approved later lifecycle.
 
-### M-D10 — Notifications remain low-noise and never business state
+### M-D11 — Notifications remain low-noise and never business state
 
 Normal self-success does not Push-notify the actor who just activated the Warranty.
 
 Cube M may materialize only useful asynchronous Admin-support events through existing Cube L infrastructure:
 
-- details corrected -> informational Inbox to active Profiles of activating Center;
-- voided-in-error -> warning/action-relevant Inbox to active Profiles of activating Center.
+- customer/vehicle details corrected → informational Inbox notification to active Profiles of the activating Center;
+- `voided_in_error` → warning/action-relevant Inbox notification to active Profiles of the activating Center.
 
-Notification/Push content must remain privacy-safe and must not put customer phone/VIN/other sensitive Warranty detail on a lock screen.
+Notification/Push content must remain privacy-safe and must not put customer phone, VIN or other sensitive Warranty detail on a lock screen.
 
 Push failure can never affect Warranty state.
 
@@ -223,10 +248,11 @@ Push failure can never affect Warranty state.
 Cube M owns:
 
 - Warranty persistence;
-- Activation Code allocation;
+- Warranty Number allocation;
 - one-effective-Warranty-per-Roll invariant;
 - customer/vehicle snapshots;
-- Product identity + policy snapshots;
+- activating Center identity/name snapshot;
+- Product identity + Warranty-policy snapshots;
 - Center candidate resolver;
 - atomic Activation mutation;
 - J/K reverse guards after Warranty exists;
@@ -276,7 +302,7 @@ For `issued`:
 - `active` while current time < `coverage_expires_at`;
 - `expired` after term elapses.
 
-Do not create cron jobs merely to rewrite active -> expired.
+Do not create cron jobs merely to rewrite active → expired.
 
 `voided_in_error` always presents as voided regardless of time.
 
@@ -292,54 +318,55 @@ Conceptual shape:
 
 ```text
 warranties
-- id                         UUID PRIMARY KEY
-- request_id                 UUID NOT NULL UNIQUE
-- roll_id                    UUID NOT NULL -> rolls.id
-- activation_code            TEXT NOT NULL UNIQUE
-- record_state               TEXT NOT NULL DEFAULT 'issued'
+- id                              UUID PRIMARY KEY
+- request_id                      UUID NOT NULL UNIQUE
+- roll_id                         UUID NOT NULL -> rolls.id
+- warranty_number                 TEXT NOT NULL UNIQUE
+- record_state                    TEXT NOT NULL DEFAULT 'issued'
 
-- activated_by_profile_id    UUID NOT NULL -> profiles.id
-- activating_center_party_id UUID NOT NULL -> operational_parties.id
-- activated_at               TIMESTAMPTZ NOT NULL
-- coverage_expires_at        TIMESTAMPTZ NOT NULL
+- activated_by_profile_id         UUID NOT NULL -> profiles.id
+- activating_center_party_id      UUID NOT NULL -> operational_parties.id
+- activating_center_name_snapshot TEXT NOT NULL
+- activated_at                    TIMESTAMPTZ NOT NULL
+- coverage_expires_at             TIMESTAMPTZ NOT NULL
 
-- product_id                 UUID NOT NULL -> products.id
-- product_code_snapshot      TEXT NOT NULL
-- product_name_snapshot      TEXT NOT NULL
-- product_version_snapshot   TEXT NULL
-- warranty_months_snapshot   SMALLINT NOT NULL
-- warranty_coverage_snapshot TEXT NOT NULL
-- care_instructions_snapshot TEXT NOT NULL
+- product_id                      UUID NOT NULL -> products.id
+- product_code_snapshot           TEXT NOT NULL
+- product_name_snapshot           TEXT NOT NULL
+- product_version_snapshot        TEXT NULL
+- warranty_months_snapshot        SMALLINT NOT NULL
+- warranty_coverage_snapshot      TEXT NOT NULL
+- care_instructions_snapshot      TEXT NOT NULL
 
-- customer_name              TEXT NOT NULL
-- customer_phone             TEXT NOT NULL
-- customer_email             TEXT NULL
+- customer_name                   TEXT NOT NULL
+- customer_phone                  TEXT NOT NULL
+- customer_email                  TEXT NULL
 
-- vehicle_make               TEXT NOT NULL
-- vehicle_model              TEXT NOT NULL
-- vehicle_year               SMALLINT NULL
-- vehicle_plate              TEXT NULL
-- vehicle_color              TEXT NULL
-- vehicle_vin                TEXT NOT NULL
+- vehicle_make                    TEXT NOT NULL
+- vehicle_model                   TEXT NOT NULL
+- vehicle_year                    SMALLINT NULL
+- vehicle_plate                   TEXT NULL
+- vehicle_color                   TEXT NULL
+- vehicle_vin                     TEXT NOT NULL
 
-- voided_by_profile_id       UUID NULL -> profiles.id
-- void_reason                TEXT NULL
-- voided_at                  TIMESTAMPTZ NULL
+- voided_by_profile_id            UUID NULL -> profiles.id
+- void_reason                     TEXT NULL
+- voided_at                       TIMESTAMPTZ NULL
 
-- created_at                 TIMESTAMPTZ NOT NULL DEFAULT now()
-- updated_at                 TIMESTAMPTZ NOT NULL DEFAULT now()
+- created_at                      TIMESTAMPTZ NOT NULL DEFAULT now()
+- updated_at                      TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
 Constraints must enforce:
 
 - `record_state in ('issued', 'voided_in_error')`;
 - void metadata all-null for `issued`, complete for `voided_in_error`;
-- coverage expiry after activation;
+- `coverage_expires_at > activated_at`;
 - warranty duration within existing Product policy limits;
-- nonblank bounded policy snapshot;
+- nonblank bounded Product/policy/Center snapshots;
 - bounded normalized customer/vehicle fields;
 - VIN/chassis contract from M-D6;
-- canonical Activation Code format;
+- canonical Warranty Number format;
 - no direct client mutation.
 
 One-effective-Warranty rule:
@@ -348,9 +375,17 @@ One-effective-Warranty rule:
 UNIQUE (roll_id) WHERE record_state = 'issued'
 ```
 
-Historical voided rows and Activation Codes stay permanently retained.
+Historical voided rows and Warranty Numbers stay permanently retained.
 
-### 6.2 `warranty_events`
+### 6.2 Warranty Number sequence
+
+Use a dedicated database sequence owned by the Warranty domain.
+
+Formatting occurs inside authoritative issuance logic. Sequence values are never manually entered and never recycled.
+
+A sequence gap caused by a failed transaction is acceptable. Correctness requires uniqueness/traceability, not gap-free numbering.
+
+### 6.3 `warranty_events`
 
 Conceptual shape:
 
@@ -375,9 +410,9 @@ Allowed V1 kinds:
 Rules:
 
 - append-only;
-- activation event in same transaction as Warranty creation;
+- activation event in the same transaction as Warranty creation;
 - correction/void reasons required and bounded;
-- correction event stores only the before/after fields needed to prove the change;
+- correction event stores only before/after fields needed to prove the change;
 - Admin can inspect full support audit;
 - Center-facing detail may show sanitized correction history without internal support notes.
 
@@ -399,7 +434,7 @@ Return minimum safe preflight data:
 - Product identity from Production snapshot;
 - Lot where useful;
 - Opening timestamp;
-- authenticated Center identity;
+- authenticated acting Center identity;
 - current warranty-duration summary;
 - blocking issue state;
 - existing visible Warranty reference where appropriate;
@@ -423,7 +458,7 @@ Preflight never replaces final mutation revalidation.
 
 ## 8. Final Center Activation eligibility
 
-All must hold in one transaction:
+All must hold in one authoritative transaction:
 
 1. authenticated caller;
 2. active Profile;
@@ -441,7 +476,8 @@ All must hold in one transaction:
 14. current Product warranty duration is valid;
 15. current Product warranty coverage is nonblank;
 16. current Product care instructions are nonblank;
-17. customer/vehicle payload is valid.
+17. Center name snapshot source is nonblank;
+18. customer/vehicle payload is valid.
 
 Network approval, public listing/location badge, QR possession, serial knowledge, Transfer ID and Product publication state are not independent authorization predicates.
 
@@ -477,18 +513,19 @@ It must:
 6. lock parent Production Order;
 7. lock current Roll custody;
 8. revalidate Production/current Center custody;
-9. reject reservation;
+9. reject active reservation;
 10. verify Opening;
 11. inspect Cube K issue state;
 12. reject `submitted` / any historical `return_required`;
 13. reject existing effective Warranty;
 14. read physical Product identity from the Roll's immutable Production Order snapshot;
-15. read/lock current Product warranty policy consistently;
-16. allocate Activation Code;
-17. insert one `issued` Warranty with all snapshots;
-18. compute expiry using authoritative activation time + calendar-month policy duration;
-19. append `activated` event;
-20. return safe minimal result.
+15. read/lock current Product Warranty policy consistently;
+16. capture stable Center party + Center-name snapshot;
+17. allocate Warranty Number;
+18. insert one `issued` Warranty with all snapshots;
+19. compute expiry using authoritative activation time + calendar-month policy duration;
+20. append `activated` event;
+21. return safe minimal result.
 
 ### 9.1 Lock-order compatibility
 
@@ -498,27 +535,62 @@ Cube K established the physical-Roll order:
 
 Cube M preserves it.
 
-This serializes:
+This lock order must remain compatible with Cube J/K mutation paths and serialize the physical Roll before Warranty issuance decisions.
 
-- Issue submission vs Activation;
-- Recovery vs Activation;
-- Production lifecycle vs Activation;
-- entity suspension vs Activation;
-- concurrent Activations for one Roll.
+Product-policy locking occurs after the physical-Roll lifecycle locks and must not introduce a reverse Product-edit dependency.
 
-Product policy locking occurs after the physical-Roll lifecycle locks and must not introduce a reverse Product-edit dependency.
+### 9.2 Required race outcomes
+
+#### Activation vs Pre-install Issue submission
+
+From the same valid pre-state:
+
+- Issue commits first → Activation observes the hold and fails;
+- Activation commits first → later Issue creation observes effective Warranty and fails.
+
+Both cannot succeed.
+
+#### Activation vs Opened Roll Recovery
+
+From the same valid pre-state:
+
+- Recovery commits first → custody no longer satisfies activating Center and Activation fails;
+- Activation commits first → Recovery observes effective Warranty and fails.
+
+Both cannot succeed.
+
+#### Activation vs another Activation
+
+At most one effective `issued` Warranty may result.
+
+Matching idempotent retry returns the same Warranty. Different requests race to one winner; loser gets deterministic `already_activated`.
+
+#### Activation vs Center/Profile suspension
+
+Mutation revalidates actor/Center lifecycle under the established lock discipline. A stale page cannot authorize Activation after suspension wins.
+
+#### Activation vs Product-policy edit
+
+The policy snapshot must be one coherent Product state. It must never combine duration from one edit with coverage/care from another.
 
 ---
 
 ## 10. Idempotency
 
-Same `request_id` + same actor + same Roll + same normalized customer/vehicle payload returns the existing result.
+Same `request_id` + same actor + same Roll + same normalized customer/vehicle payload returns the existing Warranty result.
 
-Same request ID with changed actor/Roll/payload -> deterministic request conflict.
+Same request ID with changed actor/Roll/payload → deterministic request conflict.
 
-Different request against an already-issued Roll -> `already_activated`.
+Different request against an already-issued Roll → `already_activated`.
 
-If original Warranty is later voided-in-error, retrying the **old** request must never recreate/reactivate it. Legitimate reactivation requires a new request and complete current eligibility revalidation.
+If the original Warranty is later `voided_in_error`, retrying the **old** request must return/reference that historical result and must never recreate/reactivate it.
+
+Legitimate reactivation requires:
+
+- a new request id;
+- all current eligibility checks;
+- a new Warranty row;
+- a new Warranty Number.
 
 ---
 
@@ -526,14 +598,14 @@ If original Warranty is later voided-in-error, retrying the **old** request must
 
 Once Warranty schema exists, `create_roll_preinstall_issue(...)` must add its previously deferred Warranty guard.
 
-After taking the same Production Order -> current custody locks, issue creation rejects if an effective `issued` Warranty exists.
+After taking the established Production Order → current custody locks, issue creation rejects if an effective `issued` Warranty exists.
 
-Required race outcome:
+Required outcome:
 
-- Issue commits first -> Activation fails on hold;
-- Activation commits first -> Issue creation fails on Warranty.
+- Issue commits first → Activation fails on hold;
+- Activation commits first → Issue creation fails on Warranty.
 
-`voided_in_error` does not itself block a later issue if every ordinary Cube K rule passes.
+`voided_in_error` removes only the Warranty-specific block. Any later Issue still requires every ordinary Cube K rule, including no historical `return_required`.
 
 ---
 
@@ -573,9 +645,18 @@ May change only:
 - customer name/phone/email;
 - vehicle make/model/year/plate/color/VIN.
 
-Must never change Roll, Activation Code, Center, activation actor/time, Product/policy snapshots, coverage dates or record state.
+Must never change:
 
-Locks Warranty row, validates replacement payload and appends one `details_corrected` event atomically.
+- Roll;
+- Warranty Number;
+- activating Center party/name snapshot;
+- activation actor/time;
+- Product identity snapshot;
+- Warranty-policy snapshot;
+- coverage dates;
+- record state.
+
+The RPC locks the Warranty row, validates replacement payload and appends one `details_corrected` event atomically.
 
 ### 13.2 Void activation recorded in error
 
@@ -597,12 +678,14 @@ Must:
 - transition only to `voided_in_error`;
 - store actor/time/reason;
 - append matching event;
-- never delete/reuse Activation Code;
-- never alter Opening, custody or issue history.
+- never delete/reuse Warranty Number;
+- never alter Opening, custody or Issue history;
+- never automatically create a replacement Warranty;
+- never automatically start Transfer/Recovery.
 
 There is no restore-to-issued action.
 
-Future Claims implementation must later harden this support action once Claim records exist; Cube M does not invent placeholder Claim state today.
+Future Claims implementation must harden this support action once Claim records exist. Cube M does not invent placeholder Claim state today.
 
 ---
 
@@ -623,8 +706,8 @@ Active Center may:
 Active Admin may:
 
 - list/read all Warranties;
-- use bounded exact/controlled search such as Activation Code, Roll, VIN/chassis or phone;
-- perform the two support corrections;
+- use bounded exact/controlled search such as Warranty Number, Roll, VIN/chassis or phone;
+- perform the two bounded support corrections;
 - inspect full audit.
 
 ### Agent / Dealer
@@ -635,7 +718,7 @@ Hierarchy membership is not a reason to expose customer name, phone, VIN or Warr
 
 ### Public / anon
 
-No Warranty table read and no public lookup in Cube M.
+No Warranty-table read and no public lookup in Cube M.
 
 Public access later goes only through a separate secure public projection/token contract.
 
@@ -647,7 +730,7 @@ Critical writes are RPC-only. Direct INSERT/UPDATE/DELETE is denied. Service-rol
 
 ## 15. Internal Warranty surfaces
 
-Recommended routes:
+Frozen routes:
 
 - `/operations/warranties`;
 - `/operations/warranties/activate`;
@@ -659,12 +742,13 @@ Mobile-first, newest-first, paginated.
 
 Useful fields:
 
-- Activation Code;
+- Warranty Number;
 - customer name;
 - vehicle make/model;
 - VIN/chassis;
 - Product;
 - Roll serial;
+- activating Center where role permits;
 - activation time;
 - derived active/expired/voided state.
 
@@ -676,7 +760,7 @@ Admin receives broader bounded search/filter. Do not create an unbounded custome
 
 ### Stage 1 — Identify Roll
 
-Reuse the existing contextual Roll QR scanner/parser and manual serial fallback. No second scanner/QR identity.
+Reuse the existing contextual Roll QR scanner/parser and manual serial fallback. No second scanner framework and no new Roll QR identity.
 
 ### Stage 2 — Eligibility
 
@@ -691,19 +775,30 @@ Show:
 
 Blocked states must explain the real next action:
 
-- issue pending -> wait for Protection Giants decision; link to visible issue detail;
-- policy incomplete -> Protection Giants/Admin must complete Product warranty terms;
-- already activated -> open existing visible Warranty;
-- return required -> follow existing return/recovery path;
+- issue pending → wait for Protection Giants decision; link to visible issue detail;
+- policy incomplete → Protection Giants/Admin must complete Product Warranty terms;
+- already activated → open existing visible Warranty;
+- return required → follow the existing return/recovery handling applicable to that Roll;
 - no fake disabled workflow controls.
 
 ### Stage 3 — Customer/vehicle form
 
-Collect only M-D5/M-D6 data. Use suitable mobile input modes. No evidence section.
+Collect only M-D5/M-D6 data.
+
+Do not ask for:
+
+- customer postal address;
+- country/state merely because the legacy form did;
+- installer business name;
+- Product selection independent from the Roll;
+- installation date;
+- evidence/OTP/invoice.
+
+Use suitable mobile input modes and clear validation.
 
 ### Stage 4 — Review + irreversible confirmation
 
-Show acting Center, Product/Roll, customer, vehicle/VIN and warranty duration.
+Show acting Center, Product/Roll, customer, vehicle/VIN and Warranty duration.
 
 State clearly that this creates the customer Warranty for this Roll and ordinary Center Undo is unavailable.
 
@@ -715,9 +810,10 @@ Primary CTA example:
 
 Show:
 
-- Activation Code;
+- Warranty Number;
 - customer/vehicle summary;
 - Product/Roll;
+- installing Center;
 - activation time;
 - expiry;
 - internal Warranty detail access.
@@ -743,10 +839,10 @@ Warranty detail separates normal read from exceptional support actions.
 Destructive confirmation must state:
 
 - history is retained;
-- effective Warranty ends because activation was recorded in error;
-- Activation Code remains reserved;
+- effective Warranty ends because Activation was recorded in error;
+- Warranty Number remains permanently reserved;
 - no automatic Transfer/Recovery/reactivation occurs;
-- any later Activation must pass full current eligibility.
+- any later Activation must pass full current eligibility and receives a different Warranty Number.
 
 No Center Undo button.
 
@@ -779,7 +875,7 @@ Stable service codes should include at least:
 - `PG_WARRANTY_CORRECTION_REASON_INVALID`;
 - `PG_WARRANTY_ALREADY_VOIDED`.
 
-UI maps them to concise Arabic operational messages, never raw PostgreSQL text.
+UI maps these to concise Arabic operational messages and never exposes raw PostgreSQL text.
 
 ---
 
@@ -797,67 +893,83 @@ Must cover at least:
 6. voided Production fails;
 7. active reservation fails;
 8. archived/unpublished Product does not itself strand a legitimate produced Roll;
-9. incomplete policy fails recoverably.
+9. incomplete policy fails recoverably;
+10. user cannot supply an arbitrary installer Center name;
+11. Center party + Center-name snapshot come from authenticated Center truth.
 
 ### Cube K
 
-10. `submitted` blocks;
-11. historical `return_required` blocks;
-12. `cleared_for_use` allows when other rules pass;
-13. `reported_in_error` allows when other rules pass;
-14. Activation vs issue submission serializes to one winner;
-15. effective Warranty blocks new issue;
-16. after void-in-error, issue still requires all ordinary K rules.
+12. `submitted` blocks;
+13. historical `return_required` blocks;
+14. `cleared_for_use` allows when all other rules pass;
+15. `reported_in_error` allows when all other rules pass;
+16. Activation vs Issue submission serializes to one winner;
+17. effective Warranty blocks new Issue;
+18. after void-in-error, Issue still requires all ordinary K rules.
 
 ### Cube J
 
-17. effective Warranty blocks Recovery;
-18. Activation vs Recovery serializes to one winner;
-19. void-in-error removes only the Warranty-specific Recovery block.
+19. effective Warranty blocks Recovery;
+20. Activation vs Recovery serializes to one winner;
+21. void-in-error removes only the Warranty-specific Recovery block.
 
-### One-Warranty/idempotency
+### One-Warranty / idempotency / Warranty Number
 
-20. one Roll cannot have two issued Warranties;
-21. matching retry returns same Warranty;
-22. changed request payload conflicts;
-23. two concurrent requests produce one issued Warranty;
-24. old request retry after void never resurrects;
-25. reactivation after void requires new request + full revalidation.
+22. one Roll cannot have two issued Warranties;
+23. matching retry returns same Warranty;
+24. changed request payload conflicts;
+25. two concurrent requests produce one issued Warranty;
+26. old request retry after void never resurrects;
+27. reactivation after void requires new request + full revalidation;
+28. reactivation receives a new Warranty Number;
+29. Warranty Number is globally unique and never reused;
+30. sequence gaps are accepted and do not break lookup/idempotency.
 
 ### Snapshot integrity
 
-26. Product code/name/version snapshot matches the Roll's Production Order snapshot;
-27. duration/coverage/care are one consistent current Product-policy snapshot;
-28. concurrent Product policy edit cannot create mixed terms;
-29. later Product edit/archive does not mutate Warranty snapshot;
-30. calendar-month expiry arithmetic uses authoritative activation time.
+31. Product code/name/version snapshot matches the Roll's Production Order snapshot;
+32. duration/coverage/care are one consistent current Product-policy snapshot;
+33. concurrent Product-policy edit cannot create mixed terms;
+34. later Product edit/archive does not mutate Warranty snapshot;
+35. activating Center name is snapshotted at issuance;
+36. later Center rename does not rewrite historical Center-name snapshot;
+37. calendar-month expiry arithmetic uses authoritative activation time.
+
+### Customer/vehicle boundary
+
+38. customer name + phone required;
+39. email optional;
+40. postal address/country/state/ZIP are not Activation requirements;
+41. make/model/VIN required;
+42. year/plate/color optional;
+43. VIN/chassis normalization and 6–40 character contract enforced;
+44. VIN is not globally unique.
 
 ### Support/audit
 
-31. Admin correction only changes allowed customer/vehicle fields;
-32. Center/Agent/Dealer correction denied;
-33. immutable core cannot change;
-34. correction is idempotent and event-backed;
-35. void is one-way/audited/idempotent;
-36. direct update/delete denied;
-37. Activation Code never reused.
+45. Admin correction only changes allowed customer/vehicle fields;
+46. Center/Agent/Dealer correction denied;
+47. immutable core cannot change;
+48. correction is idempotent and event-backed;
+49. void is one-way/audited/idempotent;
+50. direct update/delete denied.
 
 ### Privacy
 
-38. activating Center reads its Center history;
-39. unrelated Center cannot read it;
-40. Agent/Dealer receive no customer-Warranty PII access;
-41. Admin reads all;
-42. anon/public cannot read Warranty;
-43. service-role/Data API boundaries remain explicit;
-44. generated Supabase types match rebuilt schema.
+51. activating Center reads its Center history;
+52. unrelated Center cannot read it;
+53. Agent/Dealer receive no customer-Warranty PII access;
+54. Admin reads all;
+55. anon/public cannot read Warranty;
+56. service-role/Data API boundaries remain explicit;
+57. generated Supabase types match rebuilt schema.
 
 ### Regression
 
-45. all Cube J Opening/Recovery contracts pass;
-46. all Cube K Issue contracts pass;
-47. Transfer/Custody one-holder invariants pass;
-48. Notification/Push failure cannot roll back Warranty/support state.
+58. all Cube J Opening/Recovery contracts pass;
+59. all Cube K Issue contracts pass;
+60. Transfer/Custody one-holder invariants pass;
+61. Notification/Push failure cannot roll back Warranty/support state.
 
 ---
 
@@ -868,10 +980,11 @@ Before Cube M closure:
 - fresh Supabase migration rebuild;
 - DB lint;
 - regenerated exact database types;
-- TypeScript;
+- TypeScript checks;
 - production build;
 - PR Quality + Database Quality on exact final head;
-- mobile rendered identify -> form -> review -> activate -> detail flow;
+- permanent Cube M database verification script;
+- mobile rendered identify → form → review → activate → detail flow;
 - QR/manual fallback reuse;
 - lost-response/idempotent retry check;
 - Admin correction/void rendered verification;
@@ -883,24 +996,25 @@ Before Cube M closure:
 
 ## 21. Implementation sequence — small increments
 
-After Product Owner approval, start a **fresh implementation branch from then-current `main`**, not from this spec branch.
+After this frozen specification is merged, implementation starts from a **fresh implementation branch from then-current `main`**, never from the specification branch.
 
 1. **Warranty schema foundation**
    - `warranties`;
-   - Activation Code sequence/constraints;
+   - Warranty Number sequence/constraints;
    - `warranty_events`;
    - RLS/direct-mutation denial.
 
 2. **Atomic Activation engine**
-   - candidate;
+   - candidate resolver;
    - Center mutation;
+   - Center identity/name snapshot;
    - Product identity/policy snapshots;
    - idempotency;
    - one-effective-Warranty rule;
-   - races.
+   - race coverage.
 
 3. **J/K reverse guards**
-   - issue-after-Activation block;
+   - Issue-after-Activation block;
    - Recovery-after-Activation block;
    - concurrency regressions.
 
@@ -938,9 +1052,14 @@ Cube M is Done only when:
 - active Center can create exactly one effective Warranty for an eligible opened Roll it currently holds;
 - network approval is not required;
 - customer/vehicle/VIN data are captured without customer-account subsystem;
+- legacy address/country/state/ZIP fields are not carried forward without a demonstrated need;
+- installer identity is derived from authenticated Center truth and Center name is snapshotted;
 - physical Product identity comes from Production snapshot;
 - Product Warranty policy is atomically snapshotted from current policy;
-- Activation Code is unique/stable and separate from future public security token;
+- Warranty Number is unique/stable/non-secret and separate from future public security token;
+- Warranty Number is never reused after void-in-error;
+- reactivation after a false activation uses a new request and new Warranty Number;
+- Warranty term begins at authoritative successful Activation time;
 - Cube K hold/return rules are enforced atomically;
 - effective Warranty blocks later Pre-install Issue creation;
 - effective Warranty blocks Cube J Recovery;
@@ -950,7 +1069,7 @@ Cube M is Done only when:
 - false/wrong-Roll activation has audited void-in-error without deleting history or permanently stranding the Roll;
 - Center/Admin can find and inspect internal Warranty records;
 - Agent/Dealer/public do not receive customer PII access;
-- later Product/Center approval/location changes do not silently rewrite/cancel issued coverage;
+- later Product/Center approval/location/name changes do not silently rewrite/cancel issued coverage;
 - no public token, QR print, Claims, replacement or customer-account scope leaked in;
 - exact-head quality gates and integrated J/K/M review are green.
 
@@ -977,6 +1096,31 @@ Only after that public identity is frozen should the Warranty QR/print slice imp
 - Warranty card;
 - invoice.
 
-Those QR copies point to the approved public Warranty identity, never to SKU, Roll serial, ERP serial, Transfer ID or the non-secret Activation Code as an authorization credential.
+Those QR copies point to the approved public Warranty identity, never to SKU, Roll serial, ERP serial, Transfer ID or the non-secret Warranty Number as an authorization credential.
 
 Cube I remaining Production-owned labels remain separate and can proceed independently when its physical label matrix is ready.
+
+---
+
+## 24. Legacy-reference review result
+
+The legacy repository was reviewed only as historical functional evidence.
+
+Useful legacy clues retained in the new design:
+
+- customer name/phone/email existed;
+- VIN and vehicle identity existed;
+- installer identity was customer-facing;
+- Warranty had an installation/coverage start concept.
+
+Legacy behaviors deliberately **not** copied:
+
+- free-text installer business name → replaced by authenticated Center identity + name snapshot;
+- free Product selection during Activation → Product derives from exact Roll lineage;
+- editable/implicit installation-date model → authoritative Activation timestamp starts coverage in V1;
+- address/country/state/postal fields → excluded because no current V1 lifecycle requirement justifies them;
+- 17-character-only VIN assumption → replaced by approved conservative chassis contract;
+- verification using VIN + Roll serial → Public Warranty later receives a separate secure token;
+- generic Product `activation_count` → not carried forward for PPF because approved rule is one effective Warranty per physical Roll.
+
+The legacy repository remains non-authoritative for schema, security, concurrency and architecture.
