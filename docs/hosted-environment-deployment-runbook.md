@@ -167,7 +167,11 @@ SMTP credentials must remain outside the repository.
 
 ### `product-assets`
 
-A hosted environment must contain a private bucket matching the repository baseline:
+The bucket is provisioned by the committed migration:
+
+`supabase/migrations/20260824104500_product_assets_hosted_bucket.sql`
+
+After the migration chain is applied, verify the hosted bucket matches the repository baseline:
 
 - bucket: `product-assets`
 - public: **false**
@@ -179,7 +183,7 @@ A hosted environment must contain a private bucket matching the repository basel
   - `image/avif`
   - `application/pdf`
 
-Do not make this bucket public to solve upload/read issues. Fix policies or signed/authenticated access instead.
+Do not create or tune this bucket manually during normal deployment; fix the migration if reproducibility is broken. Do not make the bucket public to solve upload/read issues. Fix signed/server-side access instead.
 
 ### `roll-preinstall-issue-evidence`
 
@@ -344,7 +348,7 @@ Use this order to avoid circular configuration mistakes:
 3. Review Security Advisor findings.
 4. Verify Data API/RLS/grants.
 5. Configure Auth provider policy.
-6. Verify/create required private Storage buckets.
+6. Verify migration-managed private Storage buckets and their configuration.
 7. Create/configure the Vercel production environment.
 8. Add production Supabase and application environment variables.
 9. Establish final production hostname routing.
@@ -397,6 +401,7 @@ Record the following without secrets:
 ## Repository references
 
 - `supabase/config.toml` — local Supabase configuration baseline.
+- `supabase/migrations/20260824104500_product_assets_hosted_bucket.sql` — hosted `product-assets` bucket provisioning.
 - `supabase/templates/invite.html` — canonical Center invite template.
 - `.env.example` — hosted runtime variable contract.
 - `docs/production-supabase-readiness.md` — deeper Supabase production checklist.
