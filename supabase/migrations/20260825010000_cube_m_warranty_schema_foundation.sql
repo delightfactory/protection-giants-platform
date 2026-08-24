@@ -224,6 +224,14 @@ create table public.warranty_events (
 create index warranty_events_warranty_timeline_idx
   on public.warranty_events (warranty_id, created_at, id);
 
+create unique index warranty_events_one_activation_idx
+  on public.warranty_events (warranty_id)
+  where event_kind = 'activated';
+
+create unique index warranty_events_one_void_idx
+  on public.warranty_events (warranty_id)
+  where event_kind = 'voided_in_error';
+
 comment on table public.warranties is
   'Cube M customer Warranty created by successful Roll activation. Core issuance identity/policy/Center snapshots are immutable; only bounded support corrections are allowed.';
 comment on table public.warranty_events is
