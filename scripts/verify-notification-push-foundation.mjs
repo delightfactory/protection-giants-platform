@@ -150,7 +150,9 @@ function deliveryRows(notificationId) {
       'subscription_id', delivery.subscription_id,
       'status', delivery.status,
       'attempt_count', delivery.attempt_count,
-      'last_error_code', delivery.last_error_code
+      'last_error_code', delivery.last_error_code,
+      'claim_token', delivery.claim_token,
+      'claim_expires_at', delivery.claim_expires_at
     ) order by delivery.subscription_id)::text, '[]')
     from public.notification_push_deliveries delivery
     where delivery.notification_id = ${sqlUuid(notificationId)};
@@ -395,6 +397,58 @@ const futureNotificationId = insertNotification({
 rows = deliveryRows(futureNotificationId);
 assert(rows.length === 2 && rows.every((row) => row.status === "pending"),
   "Re-enabled device must participate normally in future Push-eligible notifications.");
+
+// Disabling a device with an active worker lease must still terminalize only
+// that device's queued deliveries and clear the lease columns required by the
+// terminal-unclaimed invariant. Keep the second device leased to prove it is
+// not affected by the owner's disable operation.
+const leasedDisableNotificationId = insertNotification({
+  profileIdValue: adminAId,
+  pushEligible: true,
+  sourceKey: `push-foundation:${randomUUID()}:disable-leased-device`,
+});
+rows = deliveryRows(leasedDisableNotificationId);
+assert(rows.length === 2 && rows.every((row) => row.status === "pending"),
+  "Leased-disable regression fixture must start with two pending deliveries.");
+runSql(`
+  update public.notification_push_deliveries
+  set claim_token = ${sqlUuid(randomUUID())}, claim_expires_at = now() + interval '5 minutes'
+  where notification_id = ${sqlUuid(leasedDisableNotificationId)}
+    and subscription_id = ${sqlUuid(subscriptionOneId)};
+  update public.notification_push_deliveries
+  set status = 'retry', attempt_count = 1, last_attempt_at = now(), last_error_code = 'test_retry',
+      claim_token = ${sqlUuid(randomUUID())}, claim_expires_at = now() + interval '5 minutes'
+  where notification_id = ${sqlUuid(leasedDisableNotificationId)}
+    and subscription_id = ${sqlUuid(subscriptionTwoId)};
+`);
+rows = deliveryRows(leasedDisableNotificationId);
+assert(rows.find((row) => row.subscription_id === subscriptionOneId)?.status === "pending"
+  && rows.find((row) => row.subscription_id === subscriptionOneId)?.claim_token
+  && rows.find((row) => row.subscription_id === subscriptionOneId)?.claim_expires_at,
+  `Pending leased delivery fixture was not established: ${JSON.stringify(rows)}`);
+assert(rows.find((row) => row.subscription_id === subscriptionTwoId)?.status === "retry"
+  && rows.find((row) => row.subscription_id === subscriptionTwoId)?.claim_token
+  && rows.find((row) => row.subscription_id === subscriptionTwoId)?.claim_expires_at,
+  `Retry leased delivery fixture was not established: ${JSON.stringify(rows)}`);
+
+const disableLeasedOne = await rpc("disable_push_subscription", { p_endpoint: endpointOne }, adminAToken);
+assert(disableLeasedOne.response.ok && disableLeasedOne.body === true,
+  `Disabling a device with leased deliveries failed: ${disableLeasedOne.response.status} ${JSON.stringify(disableLeasedOne.body)}`);
+const disabledLeasedState = await rpc("current_push_subscription_state", { p_endpoint: endpointOne }, adminAToken);
+assert(disabledLeasedState.response.ok && disabledLeasedState.body === "disabled",
+  "Subscription with leased deliveries did not become disabled.");
+rows = deliveryRows(leasedDisableNotificationId);
+const disabledPendingLease = rows.find((row) => row.subscription_id === subscriptionOneId);
+const unaffectedRetryLease = rows.find((row) => row.subscription_id === subscriptionTwoId);
+assert(disabledPendingLease?.status === "dead"
+  && disabledPendingLease.last_error_code === "subscription_disabled"
+  && disabledPendingLease.claim_token === null
+  && disabledPendingLease.claim_expires_at === null,
+  `Disabled leased delivery was not safely terminalized: ${JSON.stringify(rows)}`);
+assert(unaffectedRetryLease?.status === "retry"
+  && unaffectedRetryLease.claim_token
+  && unaffectedRetryLease.claim_expires_at,
+  `Another subscription's leased delivery was affected by disable: ${JSON.stringify(rows)}`);
 
 // Active Profile and active bound-entity semantics are inherited from the same
 // helper used by the durable Inbox authorization contract.
