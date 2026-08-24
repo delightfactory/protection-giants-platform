@@ -1,4 +1,4 @@
-// Hosted PWA update-lifecycle acceptance marker: 2026-08-24-r2.
+// Hosted PWA update-lifecycle acceptance marker: 2026-08-24-r3.
 
 const DEFAULT_ACTION_PATH = "/operations/notifications";
 const DEFAULT_TITLE = "عمالقة الحماية";
