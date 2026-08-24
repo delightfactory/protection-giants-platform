@@ -7,6 +7,7 @@ name: Cube M Warranty Quality
     paths:
       - "supabase/**"
       - "scripts/verify-warranty-schema-foundation.mjs"
+      - "scripts/verify-warranty-activation-engine.mjs"
       - "lib/supabase/database.types.ts"
       - ".github/workflows/cube-m-warranty-quality.yml"
 
@@ -14,9 +15,9 @@ permissions:
   contents: read
 
 jobs:
-  warranty-foundation:
+  warranty-quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,6 +53,12 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-warranty-schema-foundation.mjs
+
+      - name: Verify Cube M atomic activation engine
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-warranty-activation-engine.mjs
 
       - name: Stop local stack
         if: always()
