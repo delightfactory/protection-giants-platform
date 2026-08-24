@@ -8,6 +8,7 @@ name: Cube M Warranty Quality
       - "supabase/**"
       - "scripts/verify-warranty-schema-foundation.mjs"
       - "scripts/verify-warranty-activation-engine.mjs"
+      - "scripts/verify-warranty-read-layer.mjs"
       - "lib/supabase/database.types.ts"
       - ".github/workflows/cube-m-warranty-quality.yml"
 
@@ -59,6 +60,12 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-warranty-activation-engine.mjs
+
+      - name: Verify Cube M internal Warranty read layer
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-warranty-read-layer.mjs
 
       - name: Stop local stack
         if: always()
