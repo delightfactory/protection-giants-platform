@@ -149,6 +149,7 @@ export default async function RollPrintPackPage({ params, searchParams }: RollPr
           <div><dt>حالة الأمر</dt><dd>{source.order.status === "generated" ? "Generated" : source.order.status}</dd></div>
           <div><dt>GTIN</dt><dd dir="ltr">{source.product.gtin ?? "—"}</dd></div>
           <div><dt>إجمالي Rolls</dt><dd dir="ltr">{source.order.totalRolls.toLocaleString("en-US")}</dd></div>
+          <div><dt>Warranty Identity</dt><dd>{plan ? "مكتملة لكل اللفات" : "لم يكتمل Preflight"}</dd></div>
           <div><dt>قطع لكل Roll</dt><dd dir="ltr">5</dd></div>
         </dl>
         {!source.product.gtin ? (
