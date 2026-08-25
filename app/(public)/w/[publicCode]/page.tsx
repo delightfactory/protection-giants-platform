@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import styles from "./page.module.css";
 import {
   resolvePublicWarranty,
   type PublicWarrantyView,
@@ -89,28 +90,28 @@ function stateCopy(view: Exclude<PublicWarrantyView, { kind: "not_found" }>) {
 
 function WarrantyFacts({ view }: { view: Extract<PublicWarrantyView, { kind: "active" | "expired" }> }) {
   return (
-    <dl className="warranty-public-facts" aria-label="بيانات الضمان">
-      <div className="warranty-public-fact warranty-public-fact-reference">
+    <dl className={styles.facts} aria-label="بيانات الضمان">
+      <div className={`${styles.fact} ${styles.reference}`}>
         <dt>رقم الضمان</dt>
         <dd><bdi dir="ltr">{view.warrantyNumber}</bdi></dd>
       </div>
-      <div className="warranty-public-fact">
+      <div className={styles.fact}>
         <dt>المنتج</dt>
         <dd dir="auto">{view.productName}</dd>
       </div>
-      <div className="warranty-public-fact">
+      <div className={styles.fact}>
         <dt>تاريخ التفعيل</dt>
         <dd>{formatWarrantyDate(view.activatedAt)}</dd>
       </div>
-      <div className="warranty-public-fact">
+      <div className={styles.fact}>
         <dt>نهاية التغطية</dt>
         <dd>{formatWarrantyDate(view.coverageExpiresAt)}</dd>
       </div>
-      <div className="warranty-public-fact">
+      <div className={styles.fact}>
         <dt>مركز التركيب</dt>
         <dd dir="auto">{view.activatingCenterName}</dd>
       </div>
-      <div className="warranty-public-fact">
+      <div className={styles.fact}>
         <dt>السيارة</dt>
         <dd dir="auto">
           {view.vehicleMake} {view.vehicleModel}
@@ -123,7 +124,7 @@ function WarrantyFacts({ view }: { view: Extract<PublicWarrantyView, { kind: "ac
 
 function ProductIdentity({ productName }: { productName: string }) {
   return (
-    <div className="warranty-public-product">
+    <div className={styles.product}>
       <span>المنتج المسجل</span>
       <strong dir="auto">{productName}</strong>
     </div>
@@ -144,11 +145,11 @@ export default async function PublicWarrantyPage({ params }: PublicWarrantyPageP
     || view.kind === "unavailable_for_warranty";
 
   return (
-    <section className="warranty-public-page" aria-labelledby="warranty-public-title">
-      <div className="warranty-public-wrap">
-        <article className={`warranty-public-panel is-${copy.tone}`}>
-          <header className="warranty-public-header">
-            <div className="warranty-public-heading">
+    <section className={styles.page} aria-labelledby="warranty-public-title">
+      <div className={styles.wrap}>
+        <article className={`${styles.panel} ${styles[copy.tone]}`}>
+          <header className={styles.header}>
+            <div className={styles.heading}>
               <span className="eyebrow">{copy.eyebrow}</span>
               <h1 id="warranty-public-title">{copy.title}</h1>
               <p>{copy.description}</p>
@@ -159,8 +160,8 @@ export default async function PublicWarrantyPage({ params }: PublicWarrantyPageP
           {hasWarranty ? <WarrantyFacts view={view} /> : null}
           {hasProduct ? <ProductIdentity productName={view.productName} /> : null}
 
-          <footer className="warranty-public-trust">
-            <span className="warranty-public-trust-mark" aria-hidden="true">PG</span>
+          <footer className={styles.trust}>
+            <span className={styles.trustMark} aria-hidden="true">PG</span>
             <p>
               يتم عرض هذه الحالة مباشرة من سجل Protection Giants الرسمي عبر رابط الضمان المرتبط بالرول.
             </p>
