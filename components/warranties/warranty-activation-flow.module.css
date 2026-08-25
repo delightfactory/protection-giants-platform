@@ -2,12 +2,14 @@
   display: grid;
   gap: 1rem;
   min-width: 0;
+  max-width: 860px;
+  margin-inline: auto;
 }
 
 .steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: .5rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -15,20 +17,21 @@
 
 .steps li {
   min-width: 0;
-  padding: 0.75rem 0.6rem;
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.85rem;
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  font-size: 0.82rem;
+  padding: .75rem .55rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: .82rem;
   font-weight: 700;
   text-align: center;
 }
 
 .steps li[data-active="true"] {
-  border-color: var(--accent-border);
-  background: var(--accent-soft);
-  color: var(--text-strong);
+  border-color: var(--line);
+  background: var(--surface-1);
+  color: inherit;
+  box-shadow: var(--shadow-panel);
 }
 
 .card,
@@ -37,16 +40,16 @@
   gap: 1rem;
   min-width: 0;
   padding: 1rem;
-  border: 1px solid var(--border-subtle);
-  border-radius: 1rem;
-  background: var(--surface-card);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
 }
 
 .cardHeading,
 .candidateHeader {
   display: grid;
-  gap: 0.35rem;
+  gap: .35rem;
   min-width: 0;
 }
 
@@ -63,19 +66,19 @@
 .blockedBox p,
 .irreversibleBox p {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   line-height: 1.75;
 }
 
 .eyebrow {
-  color: var(--text-muted);
-  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-size: .78rem;
   font-weight: 800;
 }
 
 .scanButton {
   width: 100%;
-  min-height: 48px;
+  min-height: 52px;
 }
 
 .manualForm,
@@ -87,15 +90,15 @@
 .manualForm > label,
 .fieldsGrid label {
   display: grid;
-  gap: 0.4rem;
-  color: var(--text-muted);
-  font-size: 0.88rem;
+  gap: .4rem;
+  color: var(--text-secondary);
+  font-size: .88rem;
   font-weight: 700;
 }
 
 .manualRow {
   display: grid;
-  gap: 0.65rem;
+  gap: .65rem;
 }
 
 .manualRow input,
@@ -103,7 +106,7 @@
 .fieldsGrid input,
 .actions button,
 .actions a {
-  min-height: 44px;
+  min-height: 48px;
 }
 
 .candidateHeader code,
@@ -115,9 +118,10 @@
 
 .candidateHeader code {
   display: block;
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.65rem;
-  background: var(--surface-soft);
+  padding: .65rem .75rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
   direction: ltr;
   text-align: left;
 }
@@ -126,23 +130,24 @@
 .reviewGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0.7rem;
+  gap: .7rem;
   margin: 0;
 }
 
 .summaryGrid > div,
 .reviewGrid > div {
   min-width: 0;
-  padding: 0.75rem;
-  border-radius: 0.75rem;
-  background: var(--surface-soft);
+  padding: .75rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
 }
 
 .summaryGrid dt,
 .reviewGrid dt {
-  margin-bottom: 0.25rem;
-  color: var(--text-muted);
-  font-size: 0.76rem;
+  margin-bottom: .25rem;
+  color: var(--text-secondary);
+  font-size: .76rem;
   font-weight: 700;
 }
 
@@ -150,7 +155,6 @@
 .reviewGrid dd {
   margin: 0;
   overflow-wrap: anywhere;
-  color: var(--text-strong);
   font-weight: 700;
   line-height: 1.55;
 }
@@ -159,9 +163,9 @@
 .blockedBox,
 .irreversibleBox {
   display: grid;
-  gap: 0.45rem;
-  padding: 0.9rem;
-  border-radius: 0.85rem;
+  gap: .45rem;
+  padding: .9rem;
+  border-radius: var(--radius-md);
 }
 
 .readyBox {
@@ -177,7 +181,7 @@
 
 .detailsForm fieldset {
   display: grid;
-  gap: 0.8rem;
+  gap: .8rem;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -185,8 +189,7 @@
 }
 
 .detailsForm legend {
-  margin-bottom: 0.65rem;
-  color: var(--text-strong);
+  margin-bottom: .65rem;
   font-size: 1rem;
   font-weight: 800;
 }
@@ -194,7 +197,7 @@
 .fieldsGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0.8rem;
+  gap: .8rem;
 }
 
 .fullField {
@@ -204,7 +207,7 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: .65rem;
 }
 
 .actions > * {
@@ -221,22 +224,23 @@
   width: 3.25rem;
   height: 3.25rem;
   margin-inline: auto;
+  border: 1px solid var(--success-border);
   border-radius: 999px;
   background: var(--success-soft);
-  color: var(--success-strong);
+  color: var(--success);
   font-size: 1.6rem;
   font-weight: 900;
 }
 
 .warrantyNumber {
-  padding: 0.9rem;
-  border: 1px dashed var(--accent-border);
-  border-radius: 0.8rem;
-  background: var(--accent-soft);
-  font-family: var(--font-mono, monospace);
+  padding: .9rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-family: monospace;
   font-size: clamp(1.05rem, 5vw, 1.35rem);
   font-weight: 900;
-  letter-spacing: 0.04em;
+  letter-spacing: .04em;
   text-align: center;
 }
 
