@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import styles from "./page.module.css";
 import {
@@ -159,6 +160,22 @@ export default async function PublicWarrantyPage({ params }: PublicWarrantyPageP
 
           {hasWarranty ? <WarrantyFacts view={view} /> : null}
           {hasProduct ? <ProductIdentity productName={view.productName} /> : null}
+
+          {view.kind === "active" || view.kind === "expired" ? (
+            <div className={styles.claimAction}>
+              <div>
+                <strong>{view.kind === "active" ? "تحتاج مساعدة تحت الضمان؟" : "لديك مطالبة مسجلة؟"}</strong>
+                <p>
+                  {view.kind === "active"
+                    ? "يمكنك إرسال مطالبة ضمان بعد التحقق من رقم الهاتف المسجل."
+                    : "يمكنك متابعة المطالبات السابقة بعد التحقق من رقم الهاتف المسجل."}
+                </p>
+              </div>
+              <Link href={`/w/${publicCode}/claim`}>
+                {view.kind === "active" ? "طلب خدمة الضمان" : "متابعة المطالبات"}
+              </Link>
+            </div>
+          ) : null}
 
           <footer className={styles.trust}>
             <span className={styles.trustMark} aria-hidden="true">PG</span>
