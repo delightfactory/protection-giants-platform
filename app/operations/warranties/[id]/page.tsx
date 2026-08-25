@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { AdminWarrantySupport } from "@/components/warranties/admin-warranty-support";
+import { WarrantyAuditTimeline } from "@/components/warranties/warranty-audit-timeline";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
@@ -43,6 +44,19 @@ export default async function WarrantyDetailPage({ params }: WarrantyDetailPageP
 
   if (!data || data.length !== 1) notFound();
   const warranty = data[0];
+
+  let warrantyAudit = null;
+  if (isAdmin) {
+    const { data: auditData, error: auditError } = await supabase.rpc("get_internal_warranty_audit", {
+      p_warranty_id: warranty.warranty_id,
+    });
+    if (auditError) {
+      if (auditError.message === "PG_WARRANTY_NOT_FOUND") notFound();
+      if (auditError.message === "PG_WARRANTY_ADMIN_REQUIRED") redirect("/access-denied");
+      throw auditError;
+    }
+    warrantyAudit = auditData ?? [];
+  }
 
   return (
     <>
@@ -124,6 +138,8 @@ export default async function WarrantyDetailPage({ params }: WarrantyDetailPageP
             <p>{warranty.care_instructions}</p>
           </div>
         </section>
+
+        {isAdmin && warrantyAudit ? <WarrantyAuditTimeline events={warrantyAudit} /> : null}
 
         {isAdmin && warranty.record_state === "issued" ? (
           <AdminWarrantySupport
