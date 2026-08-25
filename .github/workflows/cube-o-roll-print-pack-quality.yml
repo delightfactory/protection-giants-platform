@@ -37,6 +37,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify Cube O O2 permanent Warranty QR label contract
+        run: npx vitest run scripts/verify-cube-o-warranty-qr-label.test.ts
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
