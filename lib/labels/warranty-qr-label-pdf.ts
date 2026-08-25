@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 
 import { buildQrVectorGeometry, type QrVectorGeometry } from "../qr/qr-vector";
 import type { WarrantyQrLabelViewModel } from "./warranty-qr-label-plan";
@@ -30,7 +30,7 @@ function printable(value: string, field: string): string {
 
 function drawFittedText(
   page: PDFPage,
-  font: Awaited<ReturnType<PDFDocument["embedFont"]>>,
+  font: PDFFont,
   text: string,
   xPt: number,
   yPt: number,
