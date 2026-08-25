@@ -14,6 +14,7 @@ assert(page.includes('title="Roll Print Pack"'), "Operations print page must ide
 assert(page.includes("RollPrintPackPreview"), "Operations print page must render the grouped Pack preview.");
 assert(page.includes("buildRollPrintPackPlan"), "Operations print page must build the grouped Pack plan.");
 assert(page.includes("loadRollWarrantyPrintIdentities"), "Operations print page must load permanent Warranty identities through the bounded server source.");
+assert(page.includes("Warranty Identity") && page.includes("مكتملة لكل اللفات"), "Preflight must expose Warranty identity readiness to the operator.");
 assert(!page.includes("<OuterRollLabelPreview"), "Operations print page must not retain the old Outer-only preview surface.");
 assert(page.includes("Outer ×2") && page.includes("Warranty ×3"), "Operations print page must state the exact five-piece Pack contract.");
 
