@@ -1,0 +1,471 @@
+.page {
+  padding: clamp(22px, 5vw, 48px) 0 clamp(64px, 10vw, 96px);
+}
+
+.wrap {
+  width: min(calc(100% - 20px), 760px);
+  margin-inline: auto;
+}
+
+.panel {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(20px, 5vw, 34px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-raised);
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.headingBlock,
+.sectionHeading {
+  display: grid;
+  gap: 7px;
+}
+
+.headingBlock h1,
+.contextHeader h1,
+.sectionHeading h2,
+.closedNotice h2,
+.successBox h2,
+.historySection h2 {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.28;
+}
+
+.headingBlock h1,
+.contextHeader h1 {
+  font-size: clamp(27px, 6vw, 39px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.sectionHeading h2,
+.closedNotice h2,
+.successBox h2,
+.historySection h2 {
+  font-size: clamp(20px, 4.8vw, 27px);
+  font-weight: 780;
+}
+
+.headingBlock p,
+.contextHeader p,
+.sectionHeading p,
+.closedNotice p,
+.successBox p,
+.evidenceHeading p,
+.confirmBox p,
+.quietNotice {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.eyebrow {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.productLine {
+  width: fit-content;
+  margin-top: 5px;
+  padding: 6px 10px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.verifyForm,
+.claimForm {
+  display: grid;
+  gap: 18px;
+  margin-top: 26px;
+}
+
+.verifyForm label,
+.claimForm label,
+.evidenceBlock {
+  display: grid;
+  gap: 8px;
+}
+
+.verifyForm label,
+.claimForm label > span,
+.evidenceHeading > div > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.verifyForm input,
+.claimForm input,
+.claimForm select,
+.claimForm textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  outline: none;
+  background: var(--surface-0);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.claimForm textarea {
+  min-height: 126px;
+  resize: vertical;
+  line-height: 1.7;
+}
+
+.verifyForm input:focus,
+.claimForm input:focus,
+.claimForm select:focus,
+.claimForm textarea:focus {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.primaryButton,
+.ghostButton,
+.fileButton,
+.uploadList button {
+  min-height: 46px;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primaryButton {
+  width: 100%;
+  border: 1px solid var(--accent-border);
+  background: var(--accent);
+  color: var(--accent-contrast, #090909);
+}
+
+.ghostButton {
+  min-width: 98px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-0);
+  color: var(--text-secondary);
+}
+
+.primaryButton:disabled,
+.ghostButton:disabled,
+.fileButton:has(input:disabled),
+.uploadList button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.errorText {
+  margin: 0;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 42%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger) 9%, transparent);
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.65;
+}
+
+.quietNotice {
+  margin-top: 18px;
+  padding: 13px;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-0);
+}
+
+.contextHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.contextHeader > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.warrantyStrip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  margin-top: 24px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-0);
+}
+
+.warrantyStrip span {
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.warrantyStrip strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.claimCard {
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-0);
+}
+
+.claimCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.claimCardHeader > div {
+  display: grid;
+  gap: 4px;
+}
+
+.claimCardHeader strong {
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  letter-spacing: 0.03em;
+}
+
+.statusChip {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.claimFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.claimFacts div {
+  min-width: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-subtle);
+}
+
+.claimFacts dt {
+  color: var(--text-tertiary);
+  font-size: 9px;
+}
+
+.claimFacts dd {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.customerDescription {
+  margin: 15px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.75;
+}
+
+.evidenceBlock {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-0);
+}
+
+.evidenceHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.evidenceHeading strong {
+  font-family: Arial, sans-serif;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.fileButton {
+  display: grid;
+  place-items: center;
+  margin-top: 4px;
+  border: 1px dashed var(--line-strong);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+}
+
+.fileButton input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.uploadList {
+  display: grid;
+  gap: 8px;
+  margin: 3px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.uploadList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 11px;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+}
+
+.uploadList li > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.uploadList strong {
+  max-width: 100%;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uploadState,
+.uploadError {
+  font-size: 9px;
+}
+
+.uploadState { color: var(--success); }
+.uploadError { color: var(--danger); }
+
+.uploadList button {
+  min-width: 64px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-tertiary);
+}
+
+.confirmBox,
+.closedNotice,
+.successBox {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-0);
+}
+
+.successBox,
+.closedNotice {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.successBox strong {
+  font-family: Arial, sans-serif;
+  color: var(--accent);
+  font-size: clamp(23px, 6vw, 31px);
+  letter-spacing: 0.04em;
+}
+
+.historySection {
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line-subtle);
+}
+
+.historySection .stack {
+  margin-top: 14px;
+}
+
+@media (max-width: 620px) {
+  .page { padding-top: 18px; }
+
+  .panel {
+    padding: 19px 16px 22px;
+    border-radius: var(--radius-lg);
+  }
+
+  .contextHeader {
+    flex-direction: column;
+  }
+
+  .ghostButton {
+    width: 100%;
+  }
+
+  .warrantyStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .warrantyStrip strong + span {
+    margin-top: 6px;
+  }
+
+  .claimFacts {
+    grid-template-columns: 1fr;
+  }
+
+  .claimCardHeader {
+    flex-direction: column;
+  }
+
+  .statusChip {
+    align-self: flex-start;
+  }
+
+  .evidenceHeading {
+    gap: 10px;
+  }
+}
