@@ -47,6 +47,8 @@ jobs:
         run: node scripts/verify-roll-preinstall-issue-client-contract.mjs
       - name: Verify Warranty Center Activation UI contract
         run: node scripts/verify-warranty-center-ui-contract.mjs
+      - name: Verify Warranty Admin Support UI contract
+        run: node scripts/verify-warranty-admin-support-ui-contract.mjs
       - name: Verify platform role reachability UI contracts
         run: node scripts/verify-platform-role-reachability-ui.mjs
       - name: Verify operational timestamp presentation contracts
