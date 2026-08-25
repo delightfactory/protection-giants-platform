@@ -3,7 +3,6 @@ import {
   type OuterRollLabelPlan,
   type OuterRollLabelViewModel,
 } from "./outer-roll-label-plan";
-import type { RollWarrantyPrintIdentity } from "./roll-print-pack-source.server";
 import {
   buildWarrantyQrLabelModel,
   materializeWarrantyQrLabelCopies,
@@ -11,6 +10,11 @@ import {
 } from "./warranty-qr-label-plan";
 
 export const ROLL_PRINT_PACK_LABEL_PIECES = 5 as const;
+
+export type RollPrintPackWarrantyIdentity = {
+  rollId: string;
+  publicCode: string;
+};
 
 export type RollPrintPackOuterCopy = {
   copyNumber: 1 | 2;
@@ -53,7 +57,7 @@ export class RollPrintPackPlanError extends Error {
 
 export function buildRollPrintPackPlan(input: {
   outerPlan: OuterRollLabelPlan;
-  warrantyIdentities: ReadonlyMap<string, RollWarrantyPrintIdentity>;
+  warrantyIdentities: ReadonlyMap<string, RollPrintPackWarrantyIdentity>;
 }): RollPrintPackPlan {
   const usedRollIds = new Set<string>();
   const chunks: RollPrintPackChunk[] = input.outerPlan.chunks.map((outerChunk) => {
