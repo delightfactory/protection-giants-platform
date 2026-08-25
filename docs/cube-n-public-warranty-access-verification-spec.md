@@ -179,11 +179,13 @@ No suggestion to try Warranty Numbers, VINs or serial permutations is displayed.
 
 High-entropy identity, fixed-shape validation, no manual search and a narrow resolver are the V1 anti-enumeration controls. Cube N does not add a bespoke analytics or rate-limit subsystem without demonstrated need.
 
-### 6.4 Indexing and caching
+### 6.4 Indexing, referrers, logging and caching
 
 Warranty bearer URLs are not search-engine content.
 
-The public Warranty surface must be `noindex, nofollow`, avoid leaking the code through outbound referrers, and avoid shared/stale caching that could display old Warranty state after activation/correction/voiding/expiry.
+The public Warranty surface must be `noindex, nofollow`, send a `no-referrer` policy, and avoid shared/stale caching that could display old Warranty state after activation/correction/voiding/expiry.
+
+Application code must not deliberately log, echo into diagnostics, analytics, client errors, or outbound links the full public code. Infrastructure-level privileged request logging is not expanded into a product tracking feature by Cube N.
 
 ---
 
@@ -195,16 +197,24 @@ The resolver never points the code permanently at one Warranty row.
 
 ### 7.1 State precedence
 
-If one effective `issued` Warranty exists for the Roll, that Warranty is authoritative for public customer presentation regardless of later ordinary operational metadata changes to the Roll, Product or Center.
+The resolver evaluates one deterministic precedence order:
 
-Only when no effective issued Warranty exists does the resolver consider whether the Roll is merely unactivated, has only voided mistaken activations, or is terminally unavailable for Warranty activation.
+1. if exactly one effective `issued` Warranty exists, that Warranty is authoritative and resolves to `active` or `expired` from its coverage timestamps;
+2. otherwise, if the Roll is terminally unavailable for Warranty activation under the existing authoritative lifecycle, resolve `unavailable_for_warranty`;
+3. otherwise, if at least one historical Warranty is `voided_in_error`, resolve `no_current_warranty_after_void`;
+4. otherwise resolve `not_activated`;
+5. any contradictory state that prevents those rules from producing one authoritative result fails closed as an internal inconsistency.
+
+Once one effective `issued` Warranty exists, later ordinary operational metadata changes to the Roll, Product or Center do not override customer Warranty presentation.
+
+This order makes terminal unavailability take precedence over a historical mistaken/voided activation when no effective Warranty currently exists, avoiding overlapping public states.
 
 ### 7.2 `not_activated`
 
 Condition:
 
 - valid public code resolves to a real Roll;
-- no Warranty has ever been effectively issued for the Roll;
+- no effective issued Warranty exists and no historical Warranty is `voided_in_error`;
 - the current lifecycle does not make the Roll terminally unavailable for Warranty activation.
 
 Public presentation:
@@ -224,6 +234,7 @@ Transient internal holds do not need to be exposed publicly as their operational
 Condition:
 
 - no effective issued Warranty currently exists;
+- the Roll is not terminally unavailable for Warranty activation;
 - at least one historical Warranty for the Roll is `voided_in_error`.
 
 Public presentation:
@@ -349,7 +360,7 @@ Example lifecycle:
 2. A mistaken Activation creates Warranty `W1`.
 3. Admin marks `W1` `voided_in_error`; `W1` and its Warranty Number remain historical audit evidence.
 4. Public code `C` remains unchanged.
-5. Until a new valid activation exists, `C` shows no current Warranty without exposing `W1` details.
+5. Until a new valid activation exists, `C` shows no current Warranty without exposing `W1` details, unless the Roll has independently become terminally unavailable for Warranty activation.
 6. A later legitimate Activation creates Warranty `W2` with a new Warranty Number.
 7. The same `C` now resolves to `W2`.
 
@@ -503,7 +514,9 @@ At minimum, Cube N automated evidence must prove:
 13. multiple/contradictory effective Warranty data fails closed rather than guessing;
 14. `/r/<serial>` contextual Roll behavior remains unchanged;
 15. no customer lookup form, Claims button, analytics subsystem or QR print implementation enters this cube;
-16. phone-focused public UI smoke coverage passes together with coherent tablet/desktop behavior.
+16. phone-focused public UI smoke coverage passes together with coherent tablet/desktop behavior;
+17. resolver precedence is deterministic when historical void state and terminal Roll unavailability coexist;
+18. application/public-page behavior does not deliberately leak the public code through referrers, diagnostics or outbound links.
 
 Expected repository gates:
 
