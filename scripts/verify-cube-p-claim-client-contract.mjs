@@ -40,8 +40,9 @@ assert(
   access.includes("claim_expired_warranty_claim_draft_cleanup_candidates")
     && access.includes("finalize_expired_warranty_claim_draft_cleanup")
     && access.includes(".list(candidate.draft_id")
-    && access.includes(".remove(actualPaths)"),
-  "Successful verification must run bounded best-effort stale draft cleanup against the actual private Storage folder, including unregistered upload orphans.",
+    && access.includes(".remove(actualPaths)")
+    && access.includes("objects ?? []).length >= CLEANUP_STORAGE_LIST_LIMIT"),
+  "Successful verification must run bounded batch-draining stale draft cleanup against the actual private Storage folder, including unregistered upload orphans.",
 );
 
 assert(actions.includes("uploadWarrantyClaimEvidence") && actions.includes("removeWarrantyClaimEvidence"),
@@ -69,16 +70,21 @@ assert(
     && actions.includes("registerDraftEvidence(access, evidence)"),
   "Both fresh and pre-existing content-addressed Storage objects must be registered in the locked private draft before they are accepted by the client.",
 );
+assert(
+  actions.includes('"unregister_customer_warranty_claim_draft_evidence"')
+    && actions.includes('"finalize_customer_warranty_claim_draft_evidence_removal"'),
+  "Evidence removal helpers must be wired to the private draft reserve/finalize RPCs.",
+);
 
 const removeFunctionIndex = actions.indexOf("export async function removeWarrantyClaimEvidence");
-const unregisterIndex = actions.indexOf('"unregister_customer_warranty_claim_draft_evidence"', removeFunctionIndex);
+const reserveCallIndex = actions.indexOf("reserveDraftEvidenceRemoval(access, storagePath)", removeFunctionIndex);
 const storageRemoveIndex = actions.indexOf(".remove([storagePath])", removeFunctionIndex);
-const finalizeRemovalIndex = actions.indexOf('"finalize_customer_warranty_claim_draft_evidence_removal"');
+const finalizeCallIndex = actions.indexOf("finalizeDraftEvidenceRemoval(access, storagePath)", removeFunctionIndex);
 assert(
   removeFunctionIndex >= 0
-    && unregisterIndex > removeFunctionIndex
-    && storageRemoveIndex > unregisterIndex
-    && finalizeRemovalIndex >= 0,
+    && reserveCallIndex > removeFunctionIndex
+    && storageRemoveIndex > reserveCallIndex
+    && finalizeCallIndex > storageRemoveIndex,
   "Evidence removal must reserve delete_pending in DB before Storage deletion and finalize registry removal only after physical deletion succeeds.",
 );
 assert(actions.includes("delete_pending metadata") && actions.includes("stale-draft cleanup"),
