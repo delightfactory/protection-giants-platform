@@ -75,7 +75,7 @@ export type WarrantyClaimUploadResult =
   | { ok: false; code: string };
 
 export type WarrantyClaimSubmitResult =
-  | { ok: true; claimId: string; claimNumber: string }
+  | { ok: true; claimNumber: string }
   | { ok: false; code: string };
 
 export function isWarrantyClaimCategory(value: string): value is WarrantyClaimCategory {
