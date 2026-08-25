@@ -86,8 +86,32 @@ function sqlUuid(value) {
   return `'${value}'::uuid`;
 }
 
-function claimPayload(fixture, { requestId = randomUUID(), draftId = randomUUID(), suffix }) {
+async function prepareClaimPayload(
+  fixture,
+  { requestId = randomUUID(), draftId = randomUUID(), suffix },
+) {
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  const opened = await rpc("open_customer_warranty_claim_draft", {
+    p_draft_id: draftId,
+    p_warranty_id: fixture.warrantyId,
+    p_verified_phone_normalized: fixture.normalizedPhone,
+    p_expires_at: expiresAt,
+  });
+  assert(opened.response.ok && opened.body === draftId,
+    `Could not open ${suffix} Claim draft: ${opened.response.status} ${JSON.stringify(opened.body)}`);
+
   const digest = createHash("sha256").update(`${draftId}|${suffix}`, "utf8").digest("hex");
+  const storagePath = `${draftId}/${digest}.jpg`;
+  const registered = await rpc("register_customer_warranty_claim_draft_evidence", {
+    p_draft_id: draftId,
+    p_warranty_id: fixture.warrantyId,
+    p_storage_path: storagePath,
+    p_mime_type: "image/jpeg",
+    p_size_bytes: 128,
+  });
+  assert(registered.response.ok && registered.body === true,
+    `Could not register ${suffix} staged evidence: ${registered.response.status} ${JSON.stringify(registered.body)}`);
+
   return {
     p_request_id: requestId,
     p_warranty_id: fixture.warrantyId,
@@ -98,7 +122,7 @@ function claimPayload(fixture, { requestId = randomUUID(), draftId = randomUUID(
     p_affected_area: "غطاء المحرك",
     p_description: `اختبار تزامن Cube P — ${suffix} مع وصف كافٍ للمطالبة.`,
     p_evidence: [{
-      storage_path: `${draftId}/${digest}.jpg`,
+      storage_path: storagePath,
       mime_type: "image/jpeg",
       size_bytes: 128,
     }],
@@ -131,7 +155,7 @@ const order = await rpc("create_production_order", {
   p_request_id: randomUUID(),
   p_product_id: product.id,
   p_production_date: "2026-08-25",
-  p_lots: [{ quantity: 4, source_reference: "CUBE-P-RACES" }],
+  p_lots: [{ quantity: 5, source_reference: "CUBE-P-RACES" }],
   p_source_reference: "CUBE-P-RACES",
   p_notes: "Cube P concurrency fixtures",
 }, adminToken, anonKey);
@@ -142,8 +166,8 @@ const rollsResult = await rest(
   `rolls?production_order_id=eq.${encodeURIComponent(order.body)}&select=id,serial_number&order=serial_number.asc`,
   adminToken,
 );
-assert(rollsResult.response.ok && Array.isArray(rollsResult.body) && rollsResult.body.length === 4,
-  `Cube P races require four fresh Rolls: ${rollsResult.response.status} ${JSON.stringify(rollsResult.body)}`);
+assert(rollsResult.response.ok && Array.isArray(rollsResult.body) && rollsResult.body.length === 5,
+  `Cube P races require five fresh Rolls: ${rollsResult.response.status} ${JSON.stringify(rollsResult.body)}`);
 
 for (const roll of rollsResult.body) {
   runSql(`
@@ -222,7 +246,11 @@ for (let index = 0; index < rollsResult.body.length; index += 1) {
   const fixture = fixtures[0];
   const requestId = randomUUID();
   const draftId = randomUUID();
-  const payload = claimPayload(fixture, { requestId, draftId, suffix: "same-request" });
+  const payload = await prepareClaimPayload(fixture, {
+    requestId,
+    draftId,
+    suffix: "same-request",
+  });
   const [left, right] = await Promise.all([
     rpc("create_customer_warranty_claim", payload),
     rpc("create_customer_warranty_claim", payload),
@@ -241,9 +269,11 @@ for (let index = 0; index < rollsResult.body.length; index += 1) {
 // exactly one open Claim win, with a deterministic PG_CLAIM_OPEN_EXISTS loser.
 {
   const fixture = fixtures[1];
+  const payloadA = await prepareClaimPayload(fixture, { suffix: "different-request-a" });
+  const payloadB = await prepareClaimPayload(fixture, { suffix: "different-request-b" });
   const [left, right] = await Promise.all([
-    rpc("create_customer_warranty_claim", claimPayload(fixture, { suffix: "different-request-a" })),
-    rpc("create_customer_warranty_claim", claimPayload(fixture, { suffix: "different-request-b" })),
+    rpc("create_customer_warranty_claim", payloadA),
+    rpc("create_customer_warranty_claim", payloadB),
   ]);
   const successes = [left, right].filter((result) => result.response.ok);
   const failures = [left, right].filter((result) => !result.response.ok);
@@ -259,7 +289,7 @@ for (let index = 0; index < rollsResult.body.length; index += 1) {
 // The forbidden state is a voided Warranty with a newly open Claim.
 {
   const fixture = fixtures[2];
-  const claim = claimPayload(fixture, { suffix: "claim-versus-void" });
+  const claim = await prepareClaimPayload(fixture, { suffix: "claim-versus-void" });
   const [claimResult, voidResult] = await Promise.all([
     rpc("create_customer_warranty_claim", claim),
     rpc("void_warranty_in_error", {
@@ -297,12 +327,12 @@ for (let index = 0; index < rollsResult.body.length; index += 1) {
 
 // Race 3 — Claim submit versus legitimate phone correction. Correction remains
 // valid in either ordering. The Claim may commit only if its old-phone context
-// won the Warranty row first; otherwise it must fail stale. After correction,
+// wins the Warranty row first; otherwise it must fail stale. After correction,
 // only the corrected phone verifies.
 {
   const fixture = fixtures[3];
   const correctedPhone = "+201066699977";
-  const claim = claimPayload(fixture, { suffix: "claim-versus-phone-correction" });
+  const claim = await prepareClaimPayload(fixture, { suffix: "claim-versus-phone-correction" });
   const [claimResult, correctionResult] = await Promise.all([
     rpc("create_customer_warranty_claim", claim),
     rpc("correct_warranty_details", {
@@ -352,4 +382,47 @@ for (let index = 0; index < rollsResult.body.length; index += 1) {
     `Phone-correction race left an inconsistent Claim count: claimOk=${claimResult.response.ok} open=${openCount}`);
 }
 
-console.log("Cube P Claim concurrency/idempotency races verified.");
+// Race 4 — final submit versus a second-tab evidence removal. The draft row is
+// the physical-evidence serialization anchor. Exactly one operation may reserve
+// the staged image: Claim success closes the draft and removal fails closed, or
+// removal marks delete_pending and Claim submit rejects the now-missing staged set.
+{
+  const fixture = fixtures[4];
+  const claim = await prepareClaimPayload(fixture, { suffix: "claim-versus-remove" });
+  const storagePath = claim.p_evidence[0].storage_path;
+
+  const [claimResult, removeReservation] = await Promise.all([
+    rpc("create_customer_warranty_claim", claim),
+    rpc("unregister_customer_warranty_claim_draft_evidence", {
+      p_draft_id: claim.p_draft_id,
+      p_warranty_id: fixture.warrantyId,
+      p_storage_path: storagePath,
+    }),
+  ]);
+
+  assert([claimResult.response.ok, removeReservation.response.ok].filter(Boolean).length === 1,
+    `Claim/remove race must have exactly one winner: claim=${claimResult.response.status} ${JSON.stringify(claimResult.body)} remove=${removeReservation.response.status} ${JSON.stringify(removeReservation.body)}`);
+
+  if (claimResult.response.ok) {
+    assert(removeReservation.body?.message === "PG_CLAIM_DRAFT_CLOSED",
+      `Removal loser must observe submitted draft tombstone: ${JSON.stringify(removeReservation.body)}`);
+    const row = one(claimResult, "Claim/remove submit winner");
+    assert(querySql(`select count(*) from public.warranty_claim_evidence where claim_id = ${sqlUuid(row.claim_id)}`) === "1",
+      "Submit winner must preserve exactly one immutable Claim evidence row.");
+    assert(querySql(`select state from private.warranty_claim_drafts where id = ${sqlUuid(claim.p_draft_id)}`) === "submitted",
+      "Submit winner must leave submitted draft tombstone.");
+  } else {
+    assert(removeReservation.response.ok && removeReservation.body === true,
+      `Removal winner must reserve the path successfully: ${JSON.stringify(removeReservation.body)}`);
+    assert(claimResult.body?.message === "PG_CLAIM_EVIDENCE_INVALID",
+      `Submit loser must reject a delete_pending evidence set: ${JSON.stringify(claimResult.body)}`);
+    assert(querySql(`select count(*) from public.warranty_claims where warranty_id = ${sqlUuid(fixture.warrantyId)}`) === "0",
+      "Removal winner must leave no Claim row.");
+    assert(querySql(`
+      select state from private.warranty_claim_draft_evidence
+      where draft_id = ${sqlUuid(claim.p_draft_id)} and storage_path = '${storagePath}';
+    `) === "delete_pending", "Removal winner must retain cleanup-visible delete_pending metadata.");
+  }
+}
+
+console.log("Cube P Claim concurrency/idempotency/draft-removal races verified.");
