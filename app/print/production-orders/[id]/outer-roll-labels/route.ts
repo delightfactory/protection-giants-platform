@@ -51,12 +51,12 @@ export async function GET(request: Request, { params }: RouteContext) {
   const { id } = await params;
   if (!uuidPattern.test(id)) return textResponse("أمر الإنتاج غير موجود.", 404);
 
-  const source = await loadRollPrintPackSource(id);
-  if (!source) return textResponse("أمر الإنتاج غير موجود.", 404);
-
   const url = new URL(request.url);
 
   try {
+    const source = await loadRollPrintPackSource(id);
+    if (!source) return textResponse("أمر الإنتاج غير موجود.", 404);
+
     const selection = parseOuterRollLabelSelection({
       mode: url.searchParams.get("mode") ?? undefined,
       lot: url.searchParams.get("lot") ?? undefined,
