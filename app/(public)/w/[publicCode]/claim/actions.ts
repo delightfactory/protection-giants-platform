@@ -400,7 +400,6 @@ export async function submitWarrantyClaim(input: {
 
   const access = await getFreshClaimAccess(input.publicCode);
   if (!access) return { ok: false, code: "PG_CLAIM_VERIFICATION_REQUIRED" };
-  if (!access.context.canSubmitNewClaim) return { ok: false, code: "PG_CLAIM_NOT_SUBMITTABLE" };
 
   const evidence = await authoritativeEvidence(access.payload.draftId, input.evidencePaths);
   if (!evidence) return { ok: false, code: "PG_CLAIM_EVIDENCE_INVALID" };

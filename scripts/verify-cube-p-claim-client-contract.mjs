@@ -104,6 +104,12 @@ assert(
 assert(actions.includes("p_warranty_id: access.payload.warrantyId"),
   "Final Claim submit must take Warranty ownership only from the signed server context, not customer input.");
 
+const finalSubmitSource = actions.slice(actions.indexOf("export async function submitWarrantyClaim"));
+assert(!finalSubmitSource.includes("if (!access.context.canSubmitNewClaim)"),
+  "Final submit must not trust the read projection as an eligibility gate; same-request lost-response retries must always reach the authoritative DB idempotency boundary.");
+assert(finalSubmitSource.includes('admin.rpc("create_customer_warranty_claim"'),
+  "Final submit must continue through the authoritative idempotent Claim mutation after fresh phone-context validation.");
+
 for (const category of [
   "cracking", "yellowing", "discoloration", "peeling",
   "delamination", "adhesive_issue", "bubbling", "other",
