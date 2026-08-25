@@ -21,7 +21,7 @@ const issueModule = {
 const warrantyModule = {
   href: "/operations/warranties",
   title: "ضمانات العملاء",
-  description: "تفعيل ضمان عميل من رول مفتوح ومراجعة ضمانات المركز وسريانها.",
+  description: "مراجعة سجل ضمانات العملاء وحالاتها ومسارات الدعم التشغيلي المسموحة لدورك.",
   icon: "production" as const,
 };
 
@@ -34,6 +34,7 @@ const adminModules = [
   { href: "/operations/production-orders", title: "الإنتاج واللفات", description: "إنشاء أوامر الإنتاج والـLots وتوليد هويات اللفات ومراجعتها.", icon: "production" as const },
   { href: "/operations/rolls", title: "عهدة اللفات", description: "مراجعة حامل العهدة المؤكد حاليًا لكل لفة وحالة أهلية أمر الإنتاج.", icon: "production" as const },
   issueModule,
+  warrantyModule,
   transferModule,
 ];
 
