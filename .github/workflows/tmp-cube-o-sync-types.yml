@@ -34,19 +34,19 @@ jobs:
           supabase start
           supabase db reset --local --no-seed
 
-      - name: Generate public database types
-        run: supabase gen types typescript --local > lib/supabase/database.types.ts
+      - name: Generate public database types only
+        run: supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
 
       - name: Commit generated types if changed
         run: |
           if git diff --quiet -- lib/supabase/database.types.ts; then
-            echo "Generated types already synchronized."
+            echo "Generated public types already synchronized."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add lib/supabase/database.types.ts
-          git commit -m "chore(cube-o): sync generated database types"
+          git commit -m "chore(cube-o): sync public database types"
           git push origin "HEAD:${{ github.head_ref }}"
 
       - name: Stop local stack
