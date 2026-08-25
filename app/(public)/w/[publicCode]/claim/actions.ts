@@ -431,7 +431,7 @@ export async function submitWarrantyClaim(input: {
   if (!error && Array.isArray(data) && data.length === 1) {
     const row = data[0] as { claim_id: string; claim_number: string };
     revalidatePath(`/w/${input.publicCode}/claim`);
-    return { ok: true, claimId: row.claim_id, claimNumber: row.claim_number };
+    return { ok: true, claimNumber: row.claim_number };
   }
 
   const domainError = authoritativeSubmitError(error?.message);
@@ -466,7 +466,7 @@ export async function submitWarrantyClaim(input: {
   if (!existingError && Array.isArray(existing) && existing.length === 1) {
     const row = existing[0] as { claim_id: string; claim_number: string };
     revalidatePath(`/w/${input.publicCode}/claim`);
-    return { ok: true, claimId: row.claim_id, claimNumber: row.claim_number };
+    return { ok: true, claimNumber: row.claim_number };
   }
 
   return { ok: false, code: "PG_CLAIM_SUBMIT_AMBIGUOUS" };

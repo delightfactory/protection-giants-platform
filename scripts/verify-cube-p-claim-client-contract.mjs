@@ -46,6 +46,13 @@ assert(!customerContextType.includes("warrantyId") && !customerContextMapper.inc
   "Customer-facing verified Claim context must not serialize the internal Warranty UUID; server authorization keeps it only in the signed payload/server RPC boundary.");
 assert(!claimClient.includes("warrantyId"),
   "Customer Claim client must not depend on or expose the internal Warranty UUID.");
+const customerSubmitResultType = domain.slice(
+  domain.indexOf("export type WarrantyClaimSubmitResult"),
+  domain.indexOf("export function isWarrantyClaimCategory"),
+);
+const customerSubmitAction = actions.slice(actions.indexOf("export async function submitWarrantyClaim"));
+assert(!customerSubmitResultType.includes("claimId") && !customerSubmitAction.includes("claimId:"),
+  "Customer Claim submission result must expose only the stable non-secret Claim Number, never the internal Claim UUID.");
 assert(access.includes("ensureFreshClaimDraft") && access.includes("open_customer_warranty_claim_draft"),
   "The first sensitive evidence upload must open/revalidate one server-owned draft under the current Warranty phone.");
 assert(
