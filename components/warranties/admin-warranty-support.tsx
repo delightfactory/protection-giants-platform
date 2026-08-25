@@ -306,22 +306,14 @@ export function AdminWarrantySupport({
 
             <div className={styles.actions}>
               <ConfirmSubmitButton
-
-                title="تأكيد حفظ التصحيح؟"
-
-                description="سيتم حفظ بيانات العميل/السيارة المصححة مع السبب وتسجيل Before/After دائم في سجل التدقيق."
-
-                confirmLabel="نعم، حفظ التصحيح"
-
-                tone="primary"
-
-                disabled={isCorrecting || isVoiding}
-
-              >
-
-                {isCorrecting ? "جارٍ حفظ التصحيح…" : "حفظ التصحيح"}
-
-              </ConfirmSubmitButton>
+      title="تأكيد حفظ التصحيح؟"
+      description="سيتم حفظ بيانات العميل/السيارة المصححة مع السبب وتسجيل Before/After دائم في سجل التدقيق."
+      confirmLabel="نعم، حفظ التصحيح"
+      tone="primary"
+      disabled={isCorrecting || isVoiding}
+    >
+      {isCorrecting ? "جارٍ حفظ التصحيح…" : "حفظ التصحيح"}
+    </ConfirmSubmitButton>
               <button type="button" className="button button-ghost" onClick={cancelCorrection} disabled={isCorrecting || isVoiding}>
                 إلغاء
               </button>
