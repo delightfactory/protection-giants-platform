@@ -41,7 +41,8 @@ function warrantyStatus(state: string) {
 
 export default async function WarrantiesPage({ searchParams }: WarrantiesPageProps) {
   const profile = await requireOperationalProfile();
-  if (profile.role !== "center") redirect("/access-denied");
+  if (profile.role !== "center" && profile.role !== "admin") redirect("/access-denied");
+  const isAdmin = profile.role === "admin";
 
   const params = await searchParams;
   const rawSearch = (params.q ?? "").trim();
@@ -76,13 +77,17 @@ export default async function WarrantiesPage({ searchParams }: WarrantiesPagePro
     <>
       <PageHeader
         eyebrow="ضمانات العملاء"
-        title="ضمانات المركز"
-        description="فعّل ضمان العميل من رول مفتوح وراجع الضمانات التي أصدرها هذا المركز. رقم الضمان والسجل هنا للاستخدام التشغيلي الداخلي."
+        title={isAdmin ? "سجل ضمانات العملاء" : "ضمانات المركز"}
+        description={isAdmin
+          ? "راجع ضمانات العملاء الصادرة من كل مراكز التركيب، وابحث بالقيم التشغيلية الدقيقة قبل فتح السجل أو تنفيذ دعم إداري مسجل."
+          : "فعّل ضمان العميل من رول مفتوح وراجع الضمانات التي أصدرها هذا المركز. رقم الضمان والسجل هنا للاستخدام التشغيلي الداخلي."}
         meta={`صفحة ${page.toLocaleString("en-US")} · ${warranties.length.toLocaleString("en-US")} ضمان${hasNext ? " · يوجد المزيد" : ""}`}
-        actions={<Link href="/operations/warranties/activate" className="button button-primary">تفعيل ضمان عميل</Link>}
+        actions={isAdmin
+          ? undefined
+          : <Link href="/operations/warranties/activate" className="button button-primary">تفعيل ضمان عميل</Link>}
       />
 
-      <FilterBar label="البحث في ضمانات المركز">
+      <FilterBar label={isAdmin ? "البحث في سجل ضمانات العملاء" : "البحث في ضمانات المركز"}>
         <form method="get">
           <FilterGrid>
             <FilterField label="بحث مطابق" wide>
@@ -123,48 +128,59 @@ export default async function WarrantiesPage({ searchParams }: WarrantiesPagePro
             ? "لا توجد ضمانات في هذه الصفحة"
             : filtersActive
               ? "لم يتم العثور على ضمان مطابق"
-              : "لم يتم تفعيل أي ضمان من هذا المركز بعد"}
+              : isAdmin
+                ? "لا توجد ضمانات عملاء مسجلة بعد"
+                : "لم يتم تفعيل أي ضمان من هذا المركز بعد"}
           description={hasPrevious
             ? "ارجع للصفحة السابقة أو غيّر معايير البحث."
             : filtersActive
               ? "راجع القيمة المدخلة؛ البحث يطابق رقم الضمان أو الرول أو VIN أو الهاتف بدقة."
-              : "ابدأ بتحديد رول مفتوح ومؤهل ثم سجّل بيانات العميل والسيارة."}
+              : isAdmin
+                ? "ستظهر هنا الضمانات بمجرد إصدارها من مراكز التركيب."
+                : "ابدأ بتحديد رول مفتوح ومؤهل ثم سجّل بيانات العميل والسيارة."}
           action={hasPrevious
             ? <Link href={warrantiesHref(search, state, page - 1)} className="button button-ghost">الصفحة السابقة</Link>
             : filtersActive
               ? <Link href="/operations/warranties" className="button button-ghost">عرض كل الضمانات</Link>
-              : <Link href="/operations/warranties/activate" className="button button-primary">تفعيل أول ضمان</Link>}
+              : isAdmin
+                ? undefined
+                : <Link href="/operations/warranties/activate" className="button button-primary">تفعيل أول ضمان</Link>}
         />
       ) : null}
 
       {!searchInvalid && warranties.length > 0 ? (
-        <RecordList label="سجل ضمانات المركز">
-          {warranties.map((warranty) => (
-            <RecordItem
-              key={warranty.warranty_id}
-              kicker={<span dir="ltr">{warranty.warranty_number}</span>}
-              title={warranty.customer_name}
-              subtitle={`${warranty.vehicle_make} ${warranty.vehicle_model}`}
-              facts={[
-                { label: "المنتج", value: warranty.product_name },
-                { label: "Roll Serial", value: warranty.roll_serial, dir: "ltr" },
-                { label: "VIN / الشاسيه", value: warranty.vehicle_vin, dir: "ltr" },
-                { label: "التفعيل", value: <LocalDateTime value={warranty.activated_at} /> },
-                { label: "نهاية التغطية", value: <LocalDateTime value={warranty.coverage_expires_at} /> },
-              ]}
-              status={warrantyStatus(warranty.derived_state)}
-              actions={(
-                <Link href={`/operations/warranties/${warranty.warranty_id}`} className="button button-secondary">
-                  فتح الضمان
-                </Link>
-              )}
-            />
-          ))}
+        <RecordList label={isAdmin ? "سجل ضمانات العملاء" : "سجل ضمانات المركز"}>
+          {warranties.map((warranty) => {
+            const facts = [
+              { label: "المنتج", value: warranty.product_name },
+              { label: "Roll Serial", value: warranty.roll_serial, dir: "ltr" as const },
+              { label: "VIN / الشاسيه", value: warranty.vehicle_vin, dir: "ltr" as const },
+              ...(isAdmin ? [{ label: "مركز التفعيل", value: warranty.activating_center_name }] : []),
+              { label: "التفعيل", value: <LocalDateTime value={warranty.activated_at} /> },
+              { label: "نهاية التغطية", value: <LocalDateTime value={warranty.coverage_expires_at} /> },
+            ];
+
+            return (
+              <RecordItem
+                key={warranty.warranty_id}
+                kicker={<span dir="ltr">{warranty.warranty_number}</span>}
+                title={warranty.customer_name}
+                subtitle={`${warranty.vehicle_make} ${warranty.vehicle_model}`}
+                facts={facts}
+                status={warrantyStatus(warranty.derived_state)}
+                actions={(
+                  <Link href={`/operations/warranties/${warranty.warranty_id}`} className="button button-secondary">
+                    فتح الضمان
+                  </Link>
+                )}
+              />
+            );
+          })}
         </RecordList>
       ) : null}
 
       {!searchInvalid && warranties.length > 0 && (hasPrevious || hasNext) ? (
-        <nav className="ui-pagination" aria-label="صفحات ضمانات المركز">
+        <nav className="ui-pagination" aria-label={isAdmin ? "صفحات سجل ضمانات العملاء" : "صفحات ضمانات المركز"}>
           {hasPrevious ? (
             <Link href={warrantiesHref(search, state, page - 1)} className="button button-ghost">السابق</Link>
           ) : <span />}
