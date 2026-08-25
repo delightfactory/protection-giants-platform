@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { AdminWarrantySupport } from "@/components/warranties/admin-warranty-support";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
@@ -23,7 +24,8 @@ function statusBadge(state: string) {
 
 export default async function WarrantyDetailPage({ params }: WarrantyDetailPageProps) {
   const profile = await requireOperationalProfile();
-  if (profile.role !== "center") redirect("/access-denied");
+  if (profile.role !== "center" && profile.role !== "admin") redirect("/access-denied");
+  const isAdmin = profile.role === "admin";
 
   const { id } = await params;
   if (!uuidPattern.test(id)) notFound();
@@ -55,7 +57,9 @@ export default async function WarrantyDetailPage({ params }: WarrantyDetailPageP
       <div className={styles.stack}>
         {warranty.derived_state === "voided" ? (
           <FeedbackBanner tone="warning">
-            هذا سجل تاريخي لتفعيل أُلغي كخطأ إداري، ولم يعد ضمانًا فعّالًا. يظل السجل ورقم الضمان محفوظين للمراجعة والتدقيق.
+            {isAdmin
+              ? <>هذا تفعيل أُلغي كخطأ إداري وأصبح سجلًا تاريخيًا غير فعّال. السبب المسجل: <strong>{warranty.admin_void_reason ?? "غير متاح"}</strong></>
+              : "هذا سجل تاريخي لتفعيل أُلغي كخطأ إداري، ولم يعد ضمانًا فعّالًا. يظل السجل ورقم الضمان محفوظين للمراجعة والتدقيق."}
           </FeedbackBanner>
         ) : null}
 
@@ -121,9 +125,33 @@ export default async function WarrantyDetailPage({ params }: WarrantyDetailPageP
           </div>
         </section>
 
-        <FeedbackBanner tone="info">
-          المركز لا يستطيع تعديل بيانات هذا الضمان أو إلغاءه من هذه الشاشة. التصحيحات الحقيقية بعد التفعيل لها مسار Admin مسجل في سجل التدقيق.
-        </FeedbackBanner>
+        {isAdmin && warranty.record_state === "issued" ? (
+          <AdminWarrantySupport
+            warrantyId={warranty.warranty_id}
+            warrantyNumber={warranty.warranty_number}
+            initialDetails={{
+              customerName: warranty.customer_name,
+              customerPhone: warranty.customer_phone,
+              customerEmail: warranty.customer_email ?? "",
+              vehicleMake: warranty.vehicle_make,
+              vehicleModel: warranty.vehicle_model,
+              vehicleYear: warranty.vehicle_year,
+              vehiclePlate: warranty.vehicle_plate ?? "",
+              vehicleColor: warranty.vehicle_color ?? "",
+              vehicleVin: warranty.vehicle_vin,
+            }}
+          />
+        ) : null}
+
+        {!isAdmin ? (
+          <FeedbackBanner tone="info">
+            المركز لا يستطيع تعديل بيانات هذا الضمان أو إلغاءه من هذه الشاشة. التصحيحات الحقيقية بعد التفعيل لها مسار Admin مسجل في سجل التدقيق.
+          </FeedbackBanner>
+        ) : warranty.record_state === "voided_in_error" ? (
+          <FeedbackBanner tone="info">
+            السجل الملغى كخطأ أصبح غير قابل للتعديل. لا توجد عملية Restore إلى issued؛ أي تفعيل صحيح لاحق لنفس الرول يحتاج طلبًا جديدًا وأهلية تشغيلية حالية كاملة.
+          </FeedbackBanner>
+        ) : null}
       </div>
     </>
   );
