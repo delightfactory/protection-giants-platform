@@ -60,6 +60,7 @@ An approved Claim remains **open end-to-end** (`closed_at is null`) because fulf
 - inspection submission;
 - `awaiting_inspection → under_review`;
 - Company final `approved | rejected | cancelled` decision;
+- bounded cancellation while a requested inspection is still pending;
 - final decision reason/customer message;
 - one-to-one minimal Resolution/Entitlement row on approval;
 - end-to-end Claim `closed_at` handling for rejection/cancellation;
@@ -208,17 +209,18 @@ in the same business boundary that marks the inspection `submitted` and commits 
 
 ## 6.4 Final decision
 
-Allowed only from `under_review`.
+`approved` and `rejected` are allowed only from `under_review`.
 
-Outcomes:
+`cancelled` is allowed from either:
 
-- `approved`;
-- `rejected`;
-- `cancelled`.
+- `under_review`; or
+- `awaiting_inspection` when Company has confirmed a bounded cancellation reason such as duplicate/submitted-in-error/customer withdrawal.
 
-No decision directly from `submitted` or `awaiting_inspection`; Company must make the review state explicit first / finish the requested inspection.
+No terminal decision is allowed directly from `submitted`; Company must start review first.
 
-This keeps the timeline deterministic without adding many states.
+If cancellation occurs while `awaiting_inspection`, the Claim closes immediately and the still-`requested` inspection becomes historical/non-actionable because Center access always requires the parent Claim to remain open and `awaiting_inspection`. The inspection row is not deleted or rewritten into a fabricated completed result.
+
+This provides a recovery path without adding another inspection state or a generic task-cancellation subsystem.
 
 ---
 
@@ -257,8 +259,9 @@ Rules:
 - `technical_observation` required on submission, trimmed and bounded; target 10–3000 characters;
 - `suspected_cause` optional free technical note, bounded; it is **not** a root-cause taxonomy and does not auto-decide the Claim;
 - requested actor/time immutable;
-- current assigned Center may change only through Admin reassignment mutation while status is `requested`;
-- submitted actor/time/evidence immutable after submission.
+- current assigned Center may change only through Admin reassignment mutation while status is `requested` and parent Claim is open/awaiting inspection;
+- submitted actor/time/evidence immutable after submission;
+- a `requested` inspection whose parent Claim was later `cancelled` is historical and not an active task; the parent Claim lifecycle is authoritative for actionability.
 
 ## 7.2 Inspection evidence
 
@@ -317,7 +320,7 @@ Mutation changes current `assigned_center_party_id` and appends an immutable `in
 
 Old Center loses inspection access immediately after commit. New Center receives the task notification.
 
-No reassignment after the inspection is submitted.
+No reassignment after the inspection is submitted or after the parent Claim is closed.
 
 ---
 
@@ -368,9 +371,9 @@ Requirements:
 - exact current assigned Center actor passes section 9;
 - at least one valid private inspection image is staged;
 - technical observation valid;
-- Claim is still `awaiting_inspection`;
+- Claim is still `awaiting_inspection` and open;
 - inspection still `requested`;
-- no reassignment raced and committed first.
+- no reassignment/cancellation raced and committed first.
 
 Atomic database effects:
 
@@ -426,7 +429,7 @@ Preconditions:
 
 - Claim `status='under_review'`;
 - `closed_at is null`;
-- no unsubmitted requested inspection exists;
+- no unsubmitted requested inspection remains actionable;
 - Claim/Warranty relationship intact;
 - no competing terminal decision committed.
 
@@ -445,6 +448,8 @@ Approval does not change Warranty timestamps/state.
 
 ## 12.2 Rejection
 
+Preconditions include Claim `status='under_review'` and `closed_at is null`.
+
 Atomic effects:
 
 1. Claim → `rejected`;
@@ -457,7 +462,17 @@ Atomic effects:
 
 Admin-only bounded path for confirmed duplicate, submitted-in-error or customer withdrawal communicated outside the platform.
 
-Atomic effects mirror rejection with status/event `cancelled` and `closed_at` set.
+Allowed from `under_review` or `awaiting_inspection`, provided `closed_at is null` and no terminal decision committed.
+
+Atomic effects:
+
+1. Claim → `cancelled`;
+2. decision fields set;
+3. `cancelled` event appended;
+4. `closed_at` set;
+5. no Resolution row created.
+
+If the Claim was `awaiting_inspection`, the requested inspection becomes non-actionable immediately because its parent Claim is closed; the assigned Center loses read/submit authorization without deleting the historical request.
 
 Cancellation is not available after approval because the case has entered the independent Resolution lifecycle. Any future approved-resolution recovery belongs to R and must not rewrite Q adjudication.
 
@@ -473,13 +488,13 @@ Q-owned foundation shape:
 
 ```text
 warranty_claim_resolutions
-- id                    UUID PRIMARY KEY
-- claim_id              UUID NOT NULL UNIQUE -> warranty_claims.id
-- status                TEXT NOT NULL DEFAULT 'authorized'
+- id                       UUID PRIMARY KEY
+- claim_id                 UUID NOT NULL UNIQUE -> warranty_claims.id
+- status                   TEXT NOT NULL DEFAULT 'authorized'
 - authorized_by_profile_id UUID NOT NULL -> profiles.id
-- authorized_at         TIMESTAMPTZ NOT NULL
-- created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
-- updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+- authorized_at            TIMESTAMPTZ NOT NULL
+- created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+- updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
 At Q completion:
@@ -539,6 +554,8 @@ Append-only Claim events include:
 
 Every state transition and reassignment writes its matching event in the same DB transaction.
 
+A Claim cancellation while inspection is pending is represented by the Claim `cancelled` event; no fake `inspection_submitted` event is written.
+
 Events never become editable comments.
 
 ---
@@ -557,6 +574,10 @@ Deep link: protected Center inspection task.
 
 - new Center: action-required Inbox/Push;
 - old Center: its task disappears; an informational notification is optional only if operational review proves useful. Avoid noise by default.
+
+## Claim cancelled while inspection pending
+
+The assigned Center's task access disappears immediately. A concise informational Inbox event may be materialized if needed to prevent a Center acting on a previously received Push; do not make this a new workflow state.
 
 ## Inspection submitted
 
@@ -618,13 +639,13 @@ Active Protection Giants Admin may:
 - start review;
 - request/reassign inspection;
 - read all Claim/inspection evidence;
-- decide Claims.
+- decide/cancel Claims.
 
 ## Center
 
 Active Center may:
 
-- see only currently assigned pending inspection tasks;
+- see only currently assigned pending inspection tasks whose parent Claim is open and awaiting inspection;
 - read the narrow inspection projection;
 - upload/submit evidence for that inspection.
 
@@ -654,15 +675,17 @@ Q must test:
 1. two Admins start review simultaneously;
 2. decision races inspection request;
 3. inspection submission races Admin reassignment;
-4. two Admins decide same Claim differently;
-5. approve request retried after network ambiguity → one Resolution row only;
-6. reject/cancel race → one terminal outcome;
-7. Warranty void races open Claim/decision → no contradictory commit;
-8. Warranty expires while Claim under review → review/decision still valid;
-9. original Center suspended while inspection pending → Admin can reassign; old Center loses access;
-10. new Center suspended before inspection submit → submit rejected recoverably, Admin may reassign;
-11. direct database/API attempt to create `approved` without decision mutation denied;
-12. approved Claim remains `closed_at null` and therefore blocks second Claim until R completion.
+4. inspection submission races Claim cancellation while awaiting inspection;
+5. two Admins decide same Claim differently;
+6. approve request retried after network ambiguity → one Resolution row only;
+7. reject/cancel race → one terminal outcome;
+8. Warranty void races open Claim/decision → no contradictory commit;
+9. Warranty expires while Claim under review → review/decision still valid;
+10. original Center suspended while inspection pending → Admin can reassign; old Center loses access;
+11. new Center suspended before inspection submit → submit rejected recoverably, Admin may reassign or Company may cancel the Claim when a valid cancellation reason exists;
+12. direct database/API attempt to create `approved` without decision mutation denied;
+13. approved Claim remains `closed_at null` and therefore blocks second Claim until R completion;
+14. cancelled Claim with historical requested inspection exposes no active Center task.
 
 ---
 
@@ -671,11 +694,14 @@ Q must test:
 ## Database/state
 
 - allowed Claim transitions only;
+- approval/rejection only from `under_review`;
+- cancellation from `under_review` or `awaiting_inspection` only;
 - terminal decision immutability;
 - decision shape constraints;
 - one inspection per Claim;
 - inspection status constraints;
-- reassignment only while requested;
+- reassignment only while requested + parent Claim open/awaiting inspection;
+- cancelled parent Claim makes requested inspection non-actionable;
 - one Resolution per approved Claim;
 - rejected/cancelled set `closed_at`;
 - approved leaves `closed_at null`;
@@ -685,8 +711,9 @@ Q must test:
 ## Authorization
 
 - Agent/Dealer cannot list/read/decide;
-- Center only assigned inspection;
+- Center only assigned actionable inspection;
 - old Center denied after reassignment;
+- Center denied immediately after parent Claim cancellation;
 - suspended Center denied submission;
 - Admin-only decision;
 - evidence signed/private access follows authorization.
@@ -697,6 +724,7 @@ Q must test:
 - review detail includes correct Warranty policy snapshot;
 - direct decision path;
 - inspection request/reassignment path;
+- pending-inspection Claim cancellation path has no dead end;
 - Center task mobile flow with camera/gallery upload;
 - inspection submission returns Claim to review;
 - final decision customer message visible only after phone verification.
@@ -720,16 +748,17 @@ Cube Q is GO only when:
 3. Company can decide directly when evidence is sufficient;
 4. Company can request one formal Center inspection when needed;
 5. pending inspection can be reassigned without dead end;
-6. assigned active Center can submit private technical evidence but has no decision authority;
-7. final `approved | rejected | cancelled` decisions are authoritative, audited and immutable;
-8. rejection/cancellation close the end-to-end Claim;
-9. approval leaves Claim open and atomically creates exactly one `authorized` Resolution header;
-10. no remedy/Transfer/Roll/financial work leaks into Q;
-11. Cube M `voided_in_error` is blocked by any open Claim;
-12. customer verified status reflects review/inspection/decision safely;
-13. Q notification events use Cube L and do not create notification noise;
-14. Database Quality + PR Quality + Cube P Quality + dedicated **Cube Q Claim Decision Quality** PASS on exact final SHA;
-15. hosted Admin + Center mobile acceptance passes direct-decision and inspection paths;
-16. independent engineering/security/operational review PASS.
+6. an open Claim can be cancelled for a valid bounded reason while inspection is pending, instantly removing Center task authority without deleting history;
+7. assigned active Center can submit private technical evidence but has no decision authority;
+8. final `approved | rejected | cancelled` decisions are authoritative, audited and immutable;
+9. rejection/cancellation close the end-to-end Claim;
+10. approval leaves Claim open and atomically creates exactly one `authorized` Resolution header;
+11. no remedy/Transfer/Roll/financial work leaks into Q;
+12. Cube M `voided_in_error` is blocked by any open Claim;
+13. customer verified status reflects review/inspection/decision safely;
+14. Q notification events use Cube L and do not create notification noise;
+15. Database Quality + PR Quality + Cube P Quality + dedicated **Cube Q Claim Decision Quality** PASS on exact final SHA;
+16. hosted Admin + Center mobile acceptance passes direct-decision, inspection, reassignment and pending-inspection cancellation paths;
+17. independent engineering/security/operational review PASS.
 
 Cube Q GO remains an intermediate macro milestone. Production Claims service is not end-to-end complete until Cube R fulfills approved Claims.
