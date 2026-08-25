@@ -1,10 +1,10 @@
 # Cube R — Approved Claim Resolution / Replacement & Reinstall
 
 **Status:** DRAFT FOR FINAL PRODUCT / ENGINEERING REVIEW — product decisions are APPROVED/FROZEN  
-**Version:** 1.0  
+**Version:** 1.1  
 **Planning baseline:** `main` at `53125d64091f64366cd111ef4b4b7eb9e53a49b4`  
 **Implementation base:** must be the merged Cube Q HEAD, not the planning baseline above  
-**Depends on:** Cubes P + Q, Roll Custody/Transfer foundation, Cube J Roll Opening guards, Cube K Pre-install Issue guards, Cube M Warranty Activation/support, Cube N Public Warranty resolver, Cube L Notifications/PWA  
+**Depends on:** Cubes P + Q, Roll Custody/Transfer foundation, Cube J Roll Opening, Cube K Pre-install Issue, Cube M Warranty Activation/support, Cube N Public Warranty resolver, Cube L Notifications/PWA  
 **Consumes but does not redefine:** `docs/claims-product-decisions-amendment.md`, `docs/claims-pqr-master-architecture.md`  
 **Primary responsibility:** execute the physical operational remedy for one approved Claim, optionally consuming one tracked replacement Roll, record completion evidence, and close the end-to-end Claim without changing the original Warranty term or introducing finance.
 
@@ -14,32 +14,36 @@
 
 Cube Q answers whether the Claim is accepted. Cube R answers whether the accepted remedy was actually carried out.
 
-R starts only from the one-to-one `warranty_claim_resolutions` row created by Q in:
+R starts from the one-to-one `warranty_claim_resolutions` row created by Q in:
 
 `authorized`
 
-It ends when the physical service is completed and recorded:
+It ends only when the physical service is completed and recorded:
 
 `completed`
 
-The core invariant is:
+Core invariant:
 
 > An approved Claim is not closed merely because Company approved it. It closes only when its authorized physical remedy is completed.
 
 ---
 
-# 2. Inherited rules R must preserve
+# 2. Inherited rules
 
-1. Original Claim stays `approved`; R does not rewrite adjudication status.
-2. Original Claim has `closed_at is null` while fulfillment is pending.
-3. Original Warranty remains the customer Warranty record.
-4. Original Warranty `coverage_expires_at` never restarts/extends because of V1 replacement/reinstall.
-5. Original `/w/<PUBLIC-CODE>` remains the customer's permanent Warranty identity.
-6. Replacement Roll remains a real tracked physical Roll; no second replacement inventory exists.
-7. Existing Transfer/Custody remains the only way to move ordinary Roll custody.
-8. R never auto-creates a Transfer.
-9. Replacement Roll can never issue its own customer Warranty after it is consumed for Claim fulfillment.
-10. No cost/payment/reimbursement fields or workflows exist in R.
+R must preserve all of the following:
+
+1. original Claim remains `approved`; R does not rewrite adjudication;
+2. Claim `closed_at` remains null while fulfillment is incomplete;
+3. original Warranty remains the customer Warranty record;
+4. original `coverage_expires_at` never restarts/extends because of V1 service;
+5. original `/w/<PUBLIC-CODE>` remains the customer Warranty identity;
+6. replacement Roll is a real tracked physical Roll; no replacement inventory subsystem exists;
+7. existing Transfer/Custody remains the only ordinary physical-movement engine;
+8. R never auto-creates Transfer/receipt;
+9. replacement Roll must still record the real physical Cube J Opening before it can be consumed;
+10. replacement Roll may use the existing Cube K pre-install quality path before use;
+11. once consumed for Claim fulfillment, replacement Roll can never issue an independent customer Warranty;
+12. no cost/payment/reimbursement fields or workflows exist.
 
 ---
 
@@ -47,46 +51,46 @@ The core invariant is:
 
 ## In scope
 
-- approved Resolution queue/detail for Admin;
+- Admin Resolution queue/detail;
 - remedy selection;
 - performing Center assignment/reassignment;
-- Center fulfillment task/detail;
-- bounded eligible replacement Roll resolver for the assigned Center;
-- Admin replacement Roll allocation;
-- allocation release before use;
-- replacement Roll verification at completion;
-- terminal Claim-fulfillment consumption of replacement Roll;
+- Center fulfillment task;
+- bounded replacement Roll candidate resolver;
+- Admin Roll reservation/release;
+- narrow Cube J Opening compatibility for a Claim-reserved Roll;
+- reuse of Cube K Pre-install Issue on that opened reserved Roll;
+- exact replacement Roll verification;
+- terminal Claim-fulfillment consumption;
 - completion note + required private completion images;
 - normal Center completion;
-- narrow Admin recovery completion for an inactive assigned Center after real work/material use cannot otherwise be recorded;
+- narrow Admin recovery completion if the assigned Center becomes inactive after real work/material use;
 - Resolution events/timeline;
 - Claim `closed_at` finalization;
-- Warranty service-history read projection;
-- customer verified completion projection;
+- Warranty service-history projection;
+- verified customer completion projection;
 - Cube L fulfillment notifications;
-- minimal compatibility guards in Transfer, Roll Opening, Pre-install Issue, Warranty Activation, Warranty void and Cube N public resolver.
+- minimal compatibility guards in Transfer/J/K/M/N and Production void where actually required.
 
 ## Explicitly out of scope
 
-- deciding whether Claim is covered;
-- reopening/changing Q final decision;
+- changing Q final decision;
+- Resolution cancellation/reopen;
 - refunds/credits/invoices/labor charges;
 - automatic Roll transfer or receipt;
 - customer Warranty renewal;
 - replacement customer QR;
-- new customer account/OTP;
+- customer account/OTP;
 - generic stock reservation engine;
-- repair parts beyond tracked PPF Rolls;
 - arbitrary remedy/work-order builder;
-- workshop scheduling/calendar;
+- scheduling/calendar;
 - multi-Roll fulfillment for one V1 Claim;
-- reopening completed Resolution.
+- a second Roll Opening or quality-control subsystem.
 
 ---
 
 # 4. Resolution state model
 
-Frozen V1 states:
+Frozen V1 states are exactly:
 
 ```text
 authorized
@@ -94,27 +98,23 @@ assigned
 completed
 ```
 
-Transitions:
+Transition:
 
 ```text
 authorized → assigned → completed
 ```
 
-No backwards transition.
+No backwards transition and no Resolution `cancelled` state.
 
-Reassignment while `assigned` changes the current performing Center with an immutable event but does not create another state.
+Reassignment while `assigned` changes performing Center with an immutable event but does not add another state.
 
-A generic `in_progress`, `waiting_stock`, `scheduled`, `payment_pending`, `customer_arrived` state set is deliberately not added.
-
-Operational readiness is derived from current assignment/allocation facts.
+Operational readiness is derived from assignment, allocation, Opening and quality facts rather than extra workflow statuses.
 
 ---
 
 # 5. Resolution persistence extension
 
-Q already created the minimal `warranty_claim_resolutions` row.
-
-R extends it logically to:
+Q creates the minimal header. R extends it logically:
 
 ```text
 warranty_claim_resolutions
@@ -138,83 +138,69 @@ warranty_claim_resolutions
 - updated_at                 TIMESTAMPTZ NOT NULL
 ```
 
-Allowed `remedy_kind`:
+Allowed remedy kinds:
 
 - `service_reinstall`;
 - `replacement_roll_reinstall`.
 
-Shape constraints:
+Shape:
 
-## `authorized`
+- `authorized`: remedy/Center/assignment/completion fields null;
+- `assigned`: remedy + performing Center + assignment actor/time present, completion null;
+- `completed`: assignment + completion actor kind/profile/time/note present.
 
-- remedy/performing Center/assignment/completion fields null.
-
-## `assigned`
-
-- `remedy_kind`, performing Center, assigned actor/time present;
-- completion fields null.
-
-## `completed`
-
-- all assignment fields present;
-- completion actor kind/profile/time/note present;
-- note trimmed and bounded; target 10–2000 characters.
+Completion note target: 10–2000 trimmed characters.
 
 Completed row is terminal and immutable.
 
-No financial columns are permitted.
+No financial columns.
 
 ---
 
-# 6. Remedy selection and performing Center assignment
+# 6. Remedy + performing Center assignment
 
-Named Admin mutation, logically:
+Admin mutation, logically:
 
 `assign_warranty_claim_resolution(...)`
 
-Initial assignment allowed only:
+Initial assignment:
 
 `authorized → assigned`
 
-Inputs:
+Commit-time checks:
 
-- Resolution/Claim internal identity;
-- remedy kind;
-- performing Center party id;
-- request id.
-
-At commit time revalidate:
-
-1. active Admin actor;
-2. Claim is exactly `approved`;
+1. active Admin;
+2. Claim exactly `approved`;
 3. Claim `closed_at is null`;
 4. Resolution exactly `authorized`;
-5. Warranty remains present and not `voided_in_error`;
+5. Warranty still exists and is not `voided_in_error`;
 6. performing party is a real operational Center;
-7. Center is active.
+7. Center active.
 
-Protection Giants public approval badge is not required merely to perform an already-approved Warranty remedy in V1.
+Protection Giants approval badge is not a remedy-performance gate in V1.
 
-Mutation writes `resolution_assigned` event and Center notification in the same database boundary.
+Mutation persists remedy/Center/actor/time + `resolution_assigned` event + Center notification atomically.
 
 ---
 
 # 7. Reassignment
 
-Admin may reassign an unresolved `assigned` Resolution when the current Center cannot perform the work.
+Admin may reassign an unresolved `assigned` Resolution when current Center cannot perform the work.
 
 Requirements:
 
 - Resolution not completed;
-- Claim still open;
-- new Center operationally active;
-- new Center differs from current;
-- mandatory reason 5–500 characters;
-- **no active `reserved` replacement Roll allocation exists**.
+- Claim open;
+- new Center active;
+- new Center differs;
+- mandatory reason 5–500 chars;
+- **no active `reserved` replacement Roll allocation**.
 
-If a Roll is reserved, Admin must explicitly release that allocation first. R does not silently move/release material as a side effect of Center reassignment.
+If a Roll is reserved, Admin explicitly releases it first. R does not move/release material as a side effect.
 
-Reassignment updates current performing Center and appends immutable `resolution_reassigned` event with old/new Center and reason.
+If that Roll had already been opened, release does not undo Cube J Opening. Any later physical handling follows the existing opened-Roll rules/Recovery.
+
+Reassignment updates performing Center and appends `resolution_reassigned` with old/new Center + reason.
 
 Old Center loses task access immediately; new Center receives notification.
 
@@ -224,50 +210,47 @@ Old Center loses task access immediately; new Center receives notification.
 
 R never bypasses custody.
 
-If Company wishes to use a Roll currently held elsewhere:
+If desired replacement Roll is held elsewhere:
 
-1. do **not** allocate it to the Claim yet;
-2. use the existing ordinary Transfer workflow;
-3. recipient Center accepts/receives it under existing rules;
-4. only after confirmed custody equals the performing Center may Admin allocate it to the Resolution.
+1. do not allocate it;
+2. use ordinary existing Transfer;
+3. recipient Center confirms receipt;
+4. only after confirmed custody equals performing Center may Admin allocate it.
 
-This sequence is intentional.
+This avoids special Claim-aware Transfer semantics.
 
-It avoids special Claim-aware Transfer semantics and keeps one authoritative physical-movement system.
-
-R may present a helpful message that suitable material is not currently held by the Center, but it must not create a hidden Transfer from the Resolution page.
+R may explain that suitable material is not currently held by the Center, but it must not create a hidden Transfer from the Resolution page.
 
 ---
 
 # 9. Eligible replacement Roll resolver
 
-For `replacement_roll_reinstall`, Admin needs a narrow list/resolver limited to Rolls currently held by the assigned Center and eligible for Claim use.
+For `replacement_roll_reinstall`, Admin gets a narrow resolver/list limited to Rolls currently held by the assigned Center.
 
-Do not expose a global inventory browser merely for R.
+No global inventory browser is added.
 
-A Roll candidate must pass all authoritative checks at read time, and again at allocation commit time.
+At allocation commit time, candidate Roll must satisfy at minimum:
 
-Minimum commit-time eligibility:
+1. Roll exists;
+2. parent Production Order generated/non-voided;
+3. Roll not terminally unavailable;
+4. confirmed custodian = assigned performing Center;
+5. no active Transfer reservation;
+6. **no Cube J Opening yet**;
+7. no effective customer Warranty;
+8. no terminal prior state that makes it unusable;
+9. no active Claim allocation elsewhere;
+10. no prior Claim `consumed` relationship.
 
-1. physical Roll exists;
-2. parent Production Order is generated/non-voided;
-3. Roll is not terminally unavailable under existing lifecycle;
-4. confirmed current custodian is the assigned performing Center;
-5. no active pending Transfer reservation exists;
-6. no normal Roll Opening exists;
-7. no effective customer Warranty exists;
-8. no unresolved/terminal Pre-install Issue state makes the Roll unusable;
-9. no Opened Roll Recovery path has consumed/reclassified it;
-10. no active Claim allocation for this or another Resolution;
-11. Roll has not previously been consumed for Claim fulfillment.
+Because allocation requires an unopened Roll, there should normally be no Cube K issue yet. Implementation must still inspect current J/K/M/H predicates and reuse authoritative helpers rather than duplicate them.
 
-The implementation must inspect the exact merged J/K/M/H guards and reuse their authoritative predicates/helpers where possible rather than reimplementing divergent copies.
+Read-time eligibility is advisory; allocation mutation revalidates under locks.
 
 ---
 
-# 10. Replacement Roll allocation model
+# 10. Replacement Roll allocation
 
-Use dedicated allocation history:
+Use dedicated history:
 
 ```text
 warranty_claim_resolution_roll_allocations
@@ -285,7 +268,7 @@ warranty_claim_resolution_roll_allocations
 - created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
-Allowed states:
+Allowed:
 
 ```text
 reserved
@@ -295,119 +278,186 @@ consumed
 
 Rules:
 
-- only `replacement_roll_reinstall` may have an allocation;
+- only `replacement_roll_reinstall` may have allocation;
 - at most one `reserved` allocation per Resolution;
 - at most one `consumed` allocation per Resolution;
-- one Roll may have at most one `reserved` or `consumed` Claim allocation across the system;
-- released rows remain historical and do not block a later different allocation if every ordinary Roll rule still passes;
-- consumed is terminal and permanent;
-- no update/delete except named reservation lifecycle mutations.
-
-A consumed Roll cannot be released.
+- one Roll may have at most one `reserved` or `consumed` Claim allocation system-wide;
+- released rows remain historical;
+- consumed is terminal/permanent;
+- no generic direct update/delete.
 
 ---
 
-# 11. Allocate replacement Roll
-
-Admin-only named mutation, logically:
-
-`reserve_claim_resolution_roll(...)`
-
-Preconditions:
-
-- Claim `approved` and open;
-- Resolution `assigned`;
-- remedy `replacement_roll_reinstall`;
-- performing Center active;
-- Roll passes every section 9 check under authoritative locks;
-- no current reserved allocation for Resolution.
-
-Atomic effects:
-
-- create allocation `reserved`;
-- append `replacement_roll_reserved` Resolution event;
-- material becomes blocked from normal conflicting operations immediately.
-
-No Transfer or Roll Opening is created.
-
----
-
-# 12. Release unused allocation
+# 11. Reserve replacement Roll
 
 Admin-only mutation, logically:
 
-`release_claim_resolution_roll(...)`
+`reserve_claim_resolution_roll(...)`
 
-Allowed only while allocation is exactly `reserved` and Resolution not completed.
+Requires:
 
-Requires mandatory reason 5–500 chars.
+- Claim approved/open;
+- Resolution assigned;
+- replacement remedy;
+- performing Center active;
+- candidate passes section 9 under authoritative locks;
+- no reserved allocation already exists for Resolution.
 
 Atomic effects:
 
-- allocation → `released`;
-- actor/reason/time persisted;
-- event appended.
+- create `reserved` allocation;
+- append `replacement_roll_reserved` event;
+- conflicting normal operations become blocked immediately.
 
-After release the Roll is ordinary inventory again **only if all other current Roll lifecycle rules allow it**.
-
-Release does not move custody.
-
-This is the required path before:
-
-- choosing a different Roll;
-- reassigning the Resolution to another Center;
-- ordinary Transfer of that Roll.
+No Transfer and no Opening are created by reservation itself.
 
 ---
 
-# 13. Guards while Roll is reserved
+# 12. Claim-reserved Roll Opening — reuse Cube J
 
-Presence of active Claim allocation `status='reserved'` must make the Roll fail closed in:
+The replacement Roll must record the same real physical fact as every other Roll:
+
+> the assigned Center physically opened it.
+
+Do **not** create a Claim-specific Opening table.
+
+R adds only the minimal compatibility logic required around existing Cube J `roll_openings` / `open_roll` behavior.
+
+For a Roll with one active Claim allocation `reserved`, Cube J Opening is allowed only when all are true:
+
+1. caller is authenticated active Center user;
+2. current custodian is that Center under ordinary J rules;
+3. allocation belongs to an open approved Claim's `assigned` Resolution;
+4. Resolution remedy = `replacement_roll_reinstall`;
+5. Resolution performing Center = caller's Center;
+6. allocation still `reserved`;
+7. no existing Opening;
+8. no pending Transfer reservation;
+9. Roll still satisfies ordinary Production eligibility;
+10. no consumed Claim relationship exists.
+
+Opening writes the **existing immutable `roll_openings` row**. It does not change Claim status, Resolution status, Warranty or custody.
+
+The Opening should occur after reservation (`opened_at >= reserved_at`) and is required before replacement completion.
+
+Possession of Roll QR remains only identification, never authority.
+
+---
+
+# 13. Replacement Roll Pre-install Issue — reuse Cube K
+
+After the reserved Roll has been opened, the performing Center may discover a manufacturing/physical problem before installing it.
+
+The existing Cube K workflow remains the only quality path.
+
+R must **not** block a merely `reserved` Claim Roll from Cube K once ordinary K eligibility (including Opening/current custody) is satisfied.
+
+Cube K behavior applies unchanged:
+
+- issue `submitted` → unresolved quality hold;
+- `cleared_for_use` → quality hold removed;
+- `reported_in_error` → issue-specific hold removed;
+- `return_required` → Roll must not be used.
+
+R adds Claim-consumption interpretation:
+
+- while any issue is `submitted`, Resolution completion/consumption fails closed;
+- historical `return_required` permanently blocks this Roll from Claim consumption;
+- all issue history only `cleared_for_use` / `reported_in_error` permits fulfillment to continue subject to other R rules.
+
+## Defective replacement Roll path
+
+If Company decides `return_required`:
+
+1. Claim Resolution remains assigned/open;
+2. Admin explicitly releases the **unused** Claim allocation;
+3. release does not undo Roll Opening or issue history;
+4. existing Cube J Opened Roll Recovery may handle physical return under its ordinary rules after Cube K resolution;
+5. Admin may later reserve a different eligible unopened Roll for the same Resolution after all current rules pass.
+
+No automatic Recovery/Transfer occurs.
+
+This closes the replacement-material defect case without a second quality subsystem.
+
+---
+
+# 14. Release unused allocation
+
+Admin-only mutation:
+
+`release_claim_resolution_roll(...)`
+
+Allowed while allocation exactly `reserved` and Resolution incomplete.
+
+Requires reason 5–500 chars.
+
+Atomic:
+
+- allocation → `released`;
+- actor/reason/time;
+- `replacement_roll_released` event.
+
+Release is required before:
+
+- choosing another Roll;
+- reassigning Center;
+- moving an unopened Roll through ordinary Transfer.
+
+After release:
+
+- if Roll remains unopened, ordinary eligibility may resume subject to all existing rules;
+- if Roll was already opened, it remains opened forever under Cube J; ordinary Transfer remains blocked and any physical return uses opened-Roll Recovery where eligible;
+- any Cube K issue history remains authoritative.
+
+Consumed allocation can never be released.
+
+---
+
+# 15. Guards while allocation is reserved
+
+A `reserved` Claim Roll must fail closed in:
 
 - ordinary Transfer creation/selection;
-- Cube J normal Roll Opening;
-- Cube K Pre-install Issue entry into the normal pre-Warranty path;
 - Cube M Warranty Activation;
 - allocation to another Claim Resolution.
 
-Do not silently release the Claim allocation when another operation is attempted.
+Cube J Opening is **not generally blocked**: only the exact section 12 Claim-performing Center/context may open it.
 
-The user must resolve the reservation in R explicitly.
+Cube K is **not blocked** after that Opening: the existing Pre-install Issue lifecycle remains available.
 
-The reserved state is a temporary operational hold and does not need a new public Cube N Warranty label; the public resolver may continue its ordinary pre-activation presentation until the Roll is actually consumed.
+Do not silently release reservation when conflicting operations are attempted.
+
+Cube N does not need a new public label/state for mere reservation/opening; the Roll becomes terminally unavailable only after Claim consumption or another existing terminal lifecycle reason.
 
 ---
 
-# 14. Performing Center fulfillment task
+# 16. Performing Center task
 
-Active users bound to the assigned performing Center may read one narrow task projection when Resolution is `assigned`.
-
-Projection may include:
+Active users bound to assigned performing Center may read one narrow unresolved Resolution projection:
 
 - Claim Number;
 - approved customer-safe remedy instruction;
-- Product name/version snapshot from original Warranty;
-- vehicle make/model/year plus identity needed to work on the correct vehicle;
+- original Warranty Product name/version snapshot;
+- vehicle identity needed to work on correct car;
 - affected area;
-- customer Claim description;
-- relevant Claim/inspection images when needed for work;
-- original Warranty coverage context as useful;
+- customer description;
+- relevant Claim/inspection images;
+- relevant Warranty coverage context;
 - remedy kind;
-- if replacement remedy: allocated Roll serial/product identity needed to verify the correct material.
+- allocated replacement Roll serial/product identity when applicable;
+- whether replacement Roll is reserved/opened/blocked by unresolved quality issue.
 
-Do not expose:
+Do not expose finance, unrelated customer history, private Admin audit, or other inventory.
 
-- financial information;
-- unrelated customer history;
-- internal decision reason beyond what is operationally necessary;
-- other inventory;
-- Admin audit data.
+For replacement remedy the UI should guide the natural sequence:
+
+**allocated → scan/open exact Roll → if defect, report through existing Roll Issue → otherwise complete installation → submit completion evidence.**
 
 ---
 
-# 15. Completion evidence
+# 17. Completion evidence
 
-Use the existing private `warranty-claim-evidence` bucket with a dedicated metadata table:
+Use private `warranty-claim-evidence` bucket and dedicated metadata:
 
 ```text
 warranty_claim_resolution_evidence
@@ -420,140 +470,150 @@ warranty_claim_resolution_evidence
 - created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
-Normal V1 completion requires:
+Normal completion requires:
 
 - minimum 1 image;
-- maximum 5 images;
+- maximum 5;
 - maximum 8 MiB/image;
 - JPEG/PNG/WebP;
-- completion note.
+- completion note;
+- no video.
 
-Images demonstrate the completed physical service. No video.
-
-Same server-controlled upload, private signed read and compensation rules apply.
+Use server-controlled upload, private signed reads and compensation pattern already established by P/Q/K.
 
 ---
 
-# 16. Normal Center completion
+# 18. Normal Center completion
 
-Named mutation/service, logically:
+Named operation, logically:
 
 `complete_warranty_claim_resolution(...)`
 
-Caller must be an active Profile bound to the exact currently assigned active Center.
+Caller must be active Profile bound to exact assigned active Center.
 
-Common prerequisites:
+Common preconditions:
 
 1. Claim `approved`;
 2. Claim `closed_at is null`;
 3. Resolution `assigned`;
-4. performing Center equals caller Center;
+4. performing Center = caller Center;
 5. valid completion note;
 6. 1–5 valid staged completion images;
-7. Warranty relationship remains intact and Warranty is not `voided_in_error`.
+7. Warranty relationship intact and Warranty not `voided_in_error`.
 
-## For `service_reinstall`
+## `service_reinstall`
 
-There must be no active/consumed replacement Roll allocation for the Resolution.
+- no active/consumed replacement allocation.
 
-## For `replacement_roll_reinstall`
+## `replacement_roll_reinstall`
 
-Additionally:
+Additionally require:
 
-- exactly one allocation exists in `reserved`;
-- allocated Roll is still confirmed custody of the performing Center;
-- Roll still has no normal opening/Warranty/transfer conflict;
-- caller confirms/scans the exact allocated Roll identity; a different Roll fails closed.
+1. exactly one allocation `reserved`;
+2. allocated Roll still confirmed custody of performing Center;
+3. exactly one Cube J Opening exists for that Roll;
+4. `opened_by_center_party_id` = performing Center;
+5. Opening occurred after the allocation reservation;
+6. no active Transfer reservation/conflict;
+7. no effective customer Warranty;
+8. no Cube K issue currently `submitted`;
+9. no historical Cube K `return_required`;
+10. exact allocated Roll is confirmed/scanned at completion.
+
+A different Roll fails closed.
 
 ### Atomic database effects
 
 For `service_reinstall`:
 
 - Resolution → `completed`;
-- completion fields set;
-- completion evidence metadata committed;
-- `resolution_completed` event appended;
-- original Claim `closed_at` set to authoritative completion time;
+- completion fields/evidence metadata;
+- `resolution_completed` event;
+- Claim `closed_at` set;
 - notifications materialized.
 
-For `replacement_roll_reinstall`, the **same transaction** additionally:
+For replacement remedy, the **same transaction** additionally:
 
 - allocation `reserved → consumed`;
-- consumed actor/time set;
-- `replacement_roll_consumed` event appended;
-- permanent consumed Roll guard becomes effective.
+- consumed actor/time;
+- `replacement_roll_consumed` event;
+- terminal consumed-Roll guards become effective.
 
-There is no separate normal Roll Opening or new Warranty Activation.
+There is **no new Warranty Activation** for replacement material.
 
-This design intentionally makes digital consumption and Resolution completion one authoritative boundary. A network retry uses idempotency and returns the already-completed result rather than double-consuming material.
+Cube J Opening happened earlier as the real physical Opening fact; completion does not synthesize or backdate it.
+
+Idempotent retry returns already-completed result rather than double-consuming.
 
 ---
 
-# 17. Narrow Admin completion recovery
+# 19. Narrow Admin completion recovery
 
-A normal active assigned Center should complete its own work.
+Normal assigned active Center records completion.
 
-However, a dead end can occur if physical work/material use has genuinely occurred and the assigned Center becomes operationally inactive before it can record completion.
+Dead-end case: real work/material use occurred but assigned Center becomes inactive/suspended before digital completion.
 
-R therefore permits one narrow Company recovery operation, logically:
+Allow one narrow Company recovery operation:
 
 `admin_complete_claim_resolution_recovery(...)`
 
-Allowed only when:
+Only when:
 
-- active Protection Giants Admin actor;
-- Resolution remains `assigned` and Claim open;
-- currently assigned Center is **operationally inactive/suspended** at commit time;
-- required completion evidence is provided through Company-controlled private upload;
-- mandatory recovery reason 5–500 chars;
-- all remedy-specific Roll facts can still be authoritatively proven.
+- active Admin;
+- Resolution still assigned and Claim open;
+- assigned Center currently inactive/suspended;
+- required completion evidence provided through Company-controlled private upload;
+- mandatory reason 5–500 chars;
+- all remedy-specific facts can still be proven.
 
-For a replacement remedy, if the reserved Roll cannot be proven as the material actually used, Admin must **not guess or consume it**. The case requires operational correction outside the automated happy path before recovery completion.
+For replacement remedy, Admin must prove the exact reserved Roll was opened/used and passes the same quality constraints. If material identity/use cannot be proven, Admin must not guess or consume it.
 
-Recovery completion records `completion_actor_kind='admin_recovery'` and an immutable recovery event/reason. It is not Center impersonation.
+Recovery records `completion_actor_kind='admin_recovery'` + immutable recovery event/reason.
 
-Do not broaden this into a general Admin “complete anything” shortcut while an assigned Center is active.
+This is not Center impersonation and not a general Admin completion shortcut while Center is active.
 
 ---
 
-# 18. Consumed replacement Roll terminal behavior
+# 20. Consumed replacement Roll terminal behavior
 
-Once allocation is `consumed`, the physical Roll is permanently Claim Fulfillment material.
+Once allocation = `consumed`, Roll is permanently Claim Fulfillment material.
 
-The presence of that consumed relationship must authoritatively block:
+Authoritatively block:
 
 - ordinary Transfer;
-- normal Roll Opening;
-- Pre-install Issue / Opened Roll Recovery paths;
+- new Roll Opening;
+- new Pre-install Issue / Opened Roll Recovery paths that imply pre-use material;
 - Warranty Activation;
-- allocation to another Resolution;
-- return to ordinary available inventory.
+- another Claim allocation;
+- return to ordinary inventory.
 
-There is no “unconsume”.
+Existing historical Cube J Opening and Cube K events remain readable/auditable.
 
-Historical confirmed custodian remains the last operational Center; R does not invent a Customer operational-party custody row.
+There is no `unconsume`.
+
+Confirmed custodian remains last operational Center; no fake Customer operational-party custody row.
 
 ---
 
-# 19. Cube N public Warranty resolver compatibility
+# 21. Cube N public Warranty resolver compatibility
 
-A consumed replacement Roll already owns its own permanent Public Code because all Rolls do.
+Every Roll has its own permanent Public Code.
 
-After consumption for Claim fulfillment, if that Roll has no effective Warranty, its own `/w/<PUBLIC-CODE>` must resolve as terminal:
+After replacement Roll is consumed for Claim fulfillment, if it has no effective Warranty, its own `/w/<PUBLIC-CODE>` resolves:
 
 `unavailable_for_warranty`
 
-rather than `not_activated`.
+not `not_activated`.
 
-This protects against a printed replacement-Roll Warranty sticker later implying that a second Warranty can be activated.
+This prevents printed replacement-Roll Warranty stickers from implying later Warranty eligibility.
 
-The **customer vehicle Warranty page remains the original source Roll Public Code** and continues to show the original Warranty according to Cube N, plus the verified Claims/service entry added by P/Q/R.
+The serviced customer's Warranty page remains the **original source Roll Public Code**. It continues to show original Warranty and, after phone verification, the Claim/service history.
 
-Do not rotate either code.
+No code rotates.
 
 ---
 
-# 20. Original Warranty behavior / service history
+# 22. Original Warranty / service history
 
 R does not change:
 
@@ -563,54 +623,31 @@ R does not change:
 - coverage_expires_at;
 - Product policy snapshot;
 - activating Center snapshot;
-- original customer Public Code.
+- original Public Code.
 
-R adds a bounded read projection that lets authorized Company and the verified customer understand service history without mutating Warranty issuance.
+Internal service history may show Claim, decision, inspection, remedy, performing Center, replacement Roll internal identity, completion/evidence/timeline.
 
-## Internal Warranty service history may show
+Verified customer history shows only Claim Number, customer-facing decision, remedy/progress, assigned Center when relevant, and completion date/status.
 
-- Claim Number;
-- Claim category/affected area;
-- submission time;
-- final decision;
-- inspection summary when authorized;
-- Resolution remedy kind;
-- performing Center;
-- replacement Roll internal identity where operationally authorized;
-- completion time/evidence;
-- timeline.
-
-## Verified customer service history shows only
-
-- Claim Number;
-- customer-facing decision;
-- remedy/progress;
-- assigned Center when relevant;
-- completion date/status.
-
-No replacement Roll serial, ERP serial, private internal reason, custody history or audit actors are exposed to the customer.
+No replacement serial/ERP identity, private reason, custody history or audit actor is customer-visible.
 
 ---
 
-# 21. Warranty `voided_in_error` interaction
+# 23. Warranty `voided_in_error`
 
-Q already blocks Warranty void while Claim is open.
+Q blocks Warranty void while Claim open. R preserves the guard until completion.
 
-R preserves that rule through completion.
+Only after Resolution completed + Claim `closed_at` may Cube M void-in-error be evaluated under ordinary rules.
 
-Only after Resolution completes and Claim `closed_at` is set may Cube M void-in-error be evaluated again under its ordinary rules.
+R completion does not void/renew Warranty.
 
-R completion does **not** automatically void/renew the Warranty.
-
-If a later human concludes the original Warranty itself was an erroneous activation despite completed service, that is a separate audited Company correction and must not erase Claim/Resolution history.
+Later Warranty correction cannot erase Claim/Resolution/Opening/Issue/consumption history.
 
 ---
 
-# 22. Resolution events
+# 24. Resolution events
 
-Use an append-only `warranty_claim_resolution_events` table or equivalently bounded event stream.
-
-Required event kinds:
+Append-only Resolution event stream includes:
 
 - `resolution_assigned`;
 - `resolution_reassigned`;
@@ -618,98 +655,107 @@ Required event kinds:
 - `replacement_roll_released`;
 - `replacement_roll_consumed`;
 - `resolution_completed`;
-- `resolution_completed_admin_recovery` when applicable.
+- `resolution_completed_admin_recovery` when used.
 
-Q's Claim `approved` event + Resolution `authorized_by/at` remain sufficient evidence of authorization; R does not need to synthesize duplicate historical authorization events unless implementation quality benefits from it.
+Cube J/K keep their own Opening/Issue event domains; R references/composes them but does not duplicate them into fake Resolution events.
 
-Events are immutable and cannot be used as comments/chat.
+Events are immutable and not comments/chat.
 
 ---
 
-# 23. Notifications
+# 25. Notifications
 
 Reuse Cube L.
 
-## Resolution assigned/reassigned
+## Assigned/reassigned
 
-Recipient: active profiles of performing Center.  
-Intent: action required.
+Performing Center: action-required Inbox/Push as appropriate.
 
 ## Replacement Roll reserved
 
-Notify assigned Center only if the information changes what they need to do; avoid redundant Push when the task page already reflects it and no immediate action is required.
+Notify only if it changes required Center action; avoid redundant Push.
+
+## Pre-install Issue
+
+Existing Cube K notifications/queue semantics remain authoritative for quality review. R does not create duplicate Company quality alerts.
 
 ## Resolution completed
 
-- Admin Inbox: informational/operational completion;
-- performing Center: do not Push actor about its own synchronous success;
-- customer: verified Claim page reflects completion; no SMS/email/WhatsApp added.
-
-Push transport remains best-effort and cannot determine fulfillment state.
+Admin: informational/operational Inbox. Avoid pushing actor about its own synchronous success. Customer follows verified Claim page; no SMS/email/WhatsApp.
 
 ---
 
-# 24. RLS / authorization
+# 26. RLS / authorization
 
 ## Admin
 
 May:
 
-- list/read authorized/incomplete/completed Resolutions;
+- list/read Resolutions;
 - assign/reassign Center;
-- list eligible Rolls within the assigned Center boundary;
+- list eligible Rolls within assigned Center scope;
 - reserve/release replacement Roll;
-- read all Resolution evidence;
-- invoke narrow inactive-Center recovery completion when preconditions pass.
+- read Resolution evidence;
+- invoke narrow inactive-Center recovery completion.
 
 ## Assigned Center
 
 May:
 
-- read only currently assigned unresolved Resolution tasks;
-- see exact allocated replacement Roll when relevant;
+- read only assigned unresolved Resolution;
+- see exact allocated Roll;
+- open that reserved Roll through the bounded Cube J compatibility path;
+- use existing Cube K issue submission if defect found;
 - upload completion evidence;
 - complete its own assigned Resolution.
 
 Cannot:
 
 - choose/allocate arbitrary Company Rolls;
-- transfer Roll via R;
-- change remedy kind;
-- assign another Center;
+- transfer Roll through R;
+- change remedy;
+- assign Center;
 - release allocation;
 - alter Claim decision;
 - restart Warranty.
 
 ## Agent / Dealer
 
-No R resolution authority in V1.
+No R Resolution authority. Existing Agent Opened Roll Recovery capability remains a separate Cube J capability and is usable only under its existing rules after Claim allocation is released when relevant.
 
 ## Anonymous
 
-No direct R table/storage access; customer reads only verified projection.
+No direct R table/Storage access; customer reads verified projection only.
 
 ---
 
-# 25. Cross-cube compatibility changes R must make
+# 27. Minimal compatibility changes R must make
 
-R may touch existing completed cubes only through narrow guards required by the approved lifecycle.
+R may touch completed cubes only through guards/exceptions needed for approved lifecycle.
 
 ## Transfer
 
-Reject Roll with active `reserved` Claim allocation or terminal `consumed` Claim allocation.
+- `reserved` Claim allocation → ordinary Transfer blocked;
+- `consumed` → blocked;
+- after allocation release, Transfer follows ordinary rules; if Roll was opened, Cube J already blocks ordinary Transfer.
 
-## Cube J Roll Opening
+## Cube J Opening
 
-Reject reserved/consumed Claim Roll.
+- `consumed` → blocked;
+- `reserved` → allowed only for exact assigned performing Center/context in section 12;
+- no second Opening engine.
 
 ## Cube K Pre-install Issue
 
-Reject Claim-reserved/consumed Roll from entering normal pre-Warranty issue path.
+- `reserved + opened` → allowed under existing K rules;
+- `consumed` → new issue blocked;
+- R completion consumes only when no pending issue and no `return_required` history.
 
 ## Cube M Activation
 
-Reject reserved/consumed Claim Roll.
+- `reserved` and `consumed` → blocked.
+
+If allocation is released before consumption, ordinary M rules apply; existing Cube J/K facts may still independently permit/block Activation.
 
 ## Cube M Admin Warranty void
 
@@ -717,172 +763,190 @@ Keep Q open-Claim guard through R completion.
 
 ## Cube N resolver
 
-Treat `consumed` Claim Roll as terminal unavailable when no effective Warranty exists.
+Consumed Claim Roll → terminal unavailable when no effective Warranty.
 
 ## Production void
 
-During implementation, re-audit the exact current Production Order void predicate. A Roll already transferred to a Center and/or reserved/consumed for Claim fulfillment must never be silently erased or made contradictory by Production void. Reuse existing downstream-operation guards where they already cover this; add only the missing narrow claim-consumption guard if required.
+Re-audit exact current predicate at implementation. A Roll with downstream transfer/opening/Claim allocation/consumption must never be made contradictory by Production void. Add only missing narrow Claim guard; reuse existing downstream-operation guards otherwise.
 
 These are compatibility patches, not redesign permission.
 
 ---
 
-# 26. Concurrency / hard cases
+# 28. Concurrency / hard cases
 
-R must permanently test:
+Permanently test:
 
 1. two Admins assign same authorized Resolution;
-2. reassignment races Roll reservation;
-3. Roll reservation races ordinary Transfer;
-4. Roll reservation races Roll Opening;
-5. Roll reservation races Warranty Activation;
-6. same Roll allocated concurrently to two Resolutions → one winner;
-7. allocation release races Center completion → either release wins and completion fails recoverably, or completion consumes and release fails; never both;
-8. replacement completion retried after network ambiguity → one consumed allocation, one completion;
-9. performing Center suspended after assignment but before allocation → reassign works;
-10. Center suspended while Roll reserved but unused → Admin release then reassign;
-11. Center suspended after physical use but before digital completion → bounded Admin recovery path, no guessed material;
-12. second Claim submission races R completion → no overlapping open Claims;
-13. Warranty void races R completion → deterministic valid winner; no voided Warranty with still-open unresolved Claim;
-14. consumed Roll later attempts Transfer/Open/Activation → all blocked;
-15. consumed Roll own public Warranty URL → `unavailable_for_warranty`;
-16. original Warranty expiry during R → fulfillment continues and original expiry remains unchanged.
+2. reassignment races reservation;
+3. reservation races ordinary Transfer;
+4. same Roll reservation by two Resolutions → one winner;
+5. exact assigned Center Opening races allocation release → deterministic winner; no unauthorized stale Opening;
+6. unrelated Center/ordinary Opening attempt against reserved Roll → rejected;
+7. Pre-install Issue submission races Resolution completion → one winner; pending issue prevents consumption;
+8. `return_required` Roll completion attempt → rejected;
+9. allocation release races completion → either release wins and completion fails or completion consumes and release fails;
+10. completion retry → one consumption/one completion;
+11. Center suspended before Opening → normal Opening denied; Admin can release/reassign;
+12. Center suspended after Opening but before use → allocation can be released; physical Roll remains opened and follows Recovery rules;
+13. Center suspended after real use before completion → narrow Admin recovery, no guessed material;
+14. second Claim races R completion → no overlap;
+15. Warranty void races R completion → no voided Warranty + unresolved open Claim contradiction;
+16. consumed Roll attempts Transfer/Open/Issue/Activation → blocked;
+17. consumed Roll own public URL → unavailable;
+18. original Warranty expiry during R → completion continues, expiry unchanged.
 
 ---
 
-# 27. Required tests
+# 29. Required tests
 
-## Resolution state
+## Resolution
 
 - only authorized→assigned→completed;
-- completed immutable;
-- remedy shape constraints;
-- assignment active-Center requirement;
-- reassignment reason and no-reserved-allocation guard;
-- Claim remains open through assigned state;
+- no cancelled/reopen state;
+- remedy shape;
+- active Center assignment;
+- reassignment requires no reserved Roll;
+- Claim open until completion;
 - completion sets Claim `closed_at`.
 
-## Roll allocation
+## Allocation / physical Roll
 
-- eligibility predicates;
-- one reserved/consumed allocation per Roll;
-- one active/consumed material path per Resolution;
+- candidate unopened at allocation;
+- one reserved/consumed owner per Roll;
 - release only before consumption;
-- consumed terminal;
-- reserved/consumed guards in Transfer/J/K/M;
-- public resolver terminal state after consumption.
+- Claim-reserved Cube J Opening exact-context authorization;
+- Opening immutable and after reservation;
+- Cube K issue allowed after Opening;
+- submitted/return_required issue blocks completion;
+- cleared/reported-in-error path permits completion;
+- return_required supports explicit release then existing Recovery;
+- consumed terminal guards across Transfer/J/K/M/N.
 
 ## Evidence
 
 - completion min 1 / max 5;
-- JPEG/PNG/WebP only;
-- 8 MiB/image limit;
+- JPEG/PNG/WebP;
+- 8 MiB/image;
 - private access;
-- compensation on failed final mutation;
+- compensation on failed mutation;
 - completed Resolution never references missing evidence.
 
 ## Authorization
 
 - Admin allocation only;
-- only assigned active Center normally completes;
+- assigned Center only opens/completes;
 - wrong Center denied;
-- suspended Center denied normal completion;
+- suspended Center denied normal actions;
 - Admin recovery only under inactive-Center condition;
-- Agent/Dealer denied;
-- customer cannot access raw completion evidence/internal Roll identity.
+- Agent/Dealer no Resolution authority;
+- customer cannot access raw evidence/internal replacement identity.
 
 ## Regression
 
-- P Claim intake/open-case invariant PASS;
-- Q decision/inspection/void guard PASS;
-- Transfer receipt/custody gates PASS;
-- Cube J/K guards PASS;
-- Cube M Warranty Quality PASS;
-- Cube N Public Warranty Quality PASS;
-- Cube L Notification Quality PASS.
+- P open-case invariant;
+- Q decision/inspection/void guard;
+- Transfer/Custody;
+- Cube J Opening/Recovery;
+- Cube K Issue/Recovery integration;
+- Cube M Warranty Quality;
+- Cube N Public Warranty Quality;
+- Cube L Notification Quality.
 
 ---
 
-# 28. Hosted end-to-end acceptance scenarios
-
-R cannot close on isolated unit tests only.
-
-Staging must prove at least:
+# 30. Hosted end-to-end acceptance
 
 ## Scenario A — approved service without replacement Roll
 
-1. active customer Warranty;
-2. customer Claim submitted;
-3. Company reviews and approves;
-4. authorized Resolution assigned as `service_reinstall`;
-5. Center opens task on mobile;
-6. Center uploads completion image/note;
-7. Resolution completes;
-8. Claim closes;
-9. customer verified page shows completed;
-10. Warranty expiry unchanged.
+1. active Warranty;
+2. Claim submitted;
+3. Company approves;
+4. Resolution assigned `service_reinstall`;
+5. Center completes with image/note;
+6. Resolution completes + Claim closes;
+7. verified customer sees completion;
+8. original Warranty expiry unchanged.
 
-## Scenario B — approved replacement Roll
+## Scenario B — approved replacement Roll, clean material
 
 1. approved Claim/authorized Resolution;
-2. assign performing Center and replacement remedy;
-3. candidate Roll initially elsewhere → ordinary Transfer to Center and confirmed receipt;
-4. Admin allocates Roll only after custody is confirmed;
-5. Roll disappears from conflicting normal Transfer/Open/Activation eligibility;
-6. Center verifies exact allocated Roll and submits completion evidence;
-7. allocation becomes consumed + Resolution completed + Claim closed atomically;
-8. replacement Roll cannot activate a Warranty;
-9. replacement Roll's own `/w/` resolves unavailable;
-10. original customer `/w/` remains unchanged and shows original Warranty + completed service state after verification.
+2. assign Center + replacement remedy;
+3. desired Roll elsewhere → ordinary Transfer + confirmed receipt;
+4. Admin reserves Roll only after custody confirmed;
+5. assigned Center scans/opens exact Roll through Cube J;
+6. no defect → installation/reinstall performed;
+7. Center submits completion image/note + exact Roll confirmation;
+8. allocation consumed + Resolution completed + Claim closed atomically;
+9. Roll cannot activate independent Warranty;
+10. replacement Roll `/w/` unavailable;
+11. original customer `/w/` unchanged.
 
-## Scenario C — Center becomes unavailable
+## Scenario C — replacement Roll found defective
 
-Prove assignment/reassignment and the narrow recovery path produce no dead end and do not silently move/release Roll custody.
+1. Roll reserved to Resolution;
+2. assigned Center opens exact Roll;
+3. defect found → existing Cube K issue submitted;
+4. R completion blocked while issue pending;
+5. Company decides `return_required`;
+6. Admin releases Claim allocation;
+7. existing Opened Roll Recovery can return physical Roll under ordinary J/K rules;
+8. another eligible unopened Roll may be transferred/reserved later;
+9. same approved Resolution continues without new Claim/decision.
 
----
+Also test `cleared_for_use` path resumes normal R completion.
 
-# 29. Cube R Definition of Done
+## Scenario D — Center unavailable
 
-Cube R is GO only when:
-
-1. implementation starts from merged/qualified Cube Q `main`;
-2. approved Claim creates/uses exactly one Resolution;
-3. Company can assign one of the two frozen operational remedy kinds;
-4. performing Center can be reassigned before completion with explicit material-release discipline;
-5. R does not create automatic Transfers;
-6. replacement candidate must already be in confirmed custody of performing Center before allocation;
-7. Admin can reserve/release exactly one eligible replacement Roll at a time;
-8. reserved Roll is blocked from conflicting Transfer/Open/Issue/Activation paths;
-9. normal Center completion requires private image evidence and note;
-10. replacement completion atomically consumes exact allocated Roll and completes Resolution;
-11. consumed replacement Roll is permanently barred from customer Warranty and ordinary reuse;
-12. Cube N shows consumed replacement Roll as unavailable for Warranty activation;
-13. original Warranty Public Code and coverage expiry remain unchanged;
-14. Claim `closed_at` is set only on successful fulfillment completion (or earlier Q rejection/cancellation);
-15. no accounting/financial fields/workflows exist;
-16. inactive-Center recovery has a narrow auditable non-impersonation path;
-17. full Warranty service history is reconstructable without rewriting Warranty issuance;
-18. PR Quality + Database Quality + P + Q + relevant Transfer/J/K/M/N/L regression gates + dedicated **Cube R Claim Fulfillment Quality** PASS on exact final SHA;
-19. hosted end-to-end Scenarios A/B/C PASS on mobile-relevant actors;
-20. independent engineering/security + operational/DoD second audit PASS.
+Prove pre-opening reassignment, post-opening unused recovery path, and post-use narrow Admin completion recovery without hidden custody/material changes.
 
 ---
 
-# 30. Claims macro closure rule
+# 31. Cube R Definition of Done
 
-After Cube R passes its exact-HEAD gates, run one independent end-to-end **Claims Macro Audit** across P/Q/R.
+R is GO only when:
 
-The macro is GO only when it proves:
+1. starts from merged/qualified Cube Q `main`;
+2. one approved Claim owns exactly one Resolution;
+3. only the two frozen remedy kinds exist;
+4. performing Center assignment/reassignment works without hidden material moves;
+5. no automatic Transfer exists;
+6. replacement Roll must reach confirmed Center custody before allocation;
+7. allocation requires eligible **unopened** Roll;
+8. Admin can reserve/release one Roll at a time;
+9. reserved Roll cannot Transfer/Activate elsewhere;
+10. assigned Center can create the existing Cube J Opening for exact reserved Roll;
+11. reserved/opened Roll can use Cube K Issue; pending/return_required blocks consumption;
+12. defective Roll can be released and handled through existing Opened Roll Recovery without closing the Claim;
+13. completion requires private images + note;
+14. replacement completion atomically consumes exact allocated opened/cleared Roll and completes Resolution;
+15. consumed Roll permanently barred from Warranty/ordinary reuse and resolves unavailable publicly;
+16. original Warranty Public Code + expiry unchanged;
+17. Claim closes only on successful fulfillment (or earlier Q rejection/cancellation);
+18. no accounting/financial scope exists;
+19. inactive-Center recovery is narrow/audited/non-impersonating;
+20. full service history is reconstructable without rewriting Warranty issuance;
+21. PR Quality + Database Quality + P/Q + Transfer/J/K/M/N/L regressions + **Cube R Claim Fulfillment Quality** PASS on exact SHA;
+22. hosted Scenarios A/B/C/D PASS;
+23. independent engineering/security + operational/DoD audit PASS.
+
+---
+
+# 32. Claims macro closure
+
+After R exact-HEAD gates, run one independent **Claims Macro Audit** proving:
 
 ```text
 Warranty
   → Customer Claim
   → Company Review
-  → optional Center Inspection
+  → optional Claim Inspection
   → Company Decision
   → approved Resolution
   → optional ordinary Roll Transfer
   → replacement allocation
+  → Cube J replacement Roll Opening
+  → optional Cube K replacement Roll Issue
   → service/reinstall completion
   → Claim closure
   → Warranty service history
@@ -890,12 +954,12 @@ Warranty
 
 with:
 
-- no second customer Warranty on replacement material;
-- no changed original Warranty expiry;
+- no second Warranty on replacement material;
+- no changed original expiry;
 - no new customer QR;
 - no financial subsystem;
-- no dead end from Center suspension or Warranty expiry;
-- no contradictory Roll ownership/reservation state;
-- no unauthorized customer/Center data exposure.
+- no dead end from Center suspension, Warranty expiry or defective replacement Roll;
+- no contradictory custody/reservation/Opening/Issue state;
+- no unauthorized data exposure.
 
-Only then is the Claims/Resolution core lifecycle functionally complete for the V1 product scope.
+Only then is Claims/Resolution V1 functionally complete.
