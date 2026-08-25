@@ -24,12 +24,10 @@ export class RollPrintPackSourceError extends Error {
 
 const publicCodePattern = /^[0-9a-f]{64}$/;
 
-export async function loadRollPrintPackSource(
+export async function loadRollWarrantyPrintIdentities(
   productionOrderId: string,
-): Promise<RollPrintPackSource | null> {
-  const outerSource = await loadOuterRollLabelSource(productionOrderId);
-  if (!outerSource) return null;
-
+  expectedRollIds: readonly string[],
+): Promise<ReadonlyMap<string, RollWarrantyPrintIdentity>> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("list_roll_warranty_print_identities", {
     p_production_order_id: productionOrderId,
@@ -51,15 +49,29 @@ export async function loadRollPrintPackSource(
     });
   }
 
-  if (warrantyIdentities.size !== outerSource.rolls.length) {
+  if (warrantyIdentities.size !== expectedRollIds.length) {
     throw new RollPrintPackSourceError("Warranty print identity source is incomplete for this Production Order.");
   }
 
-  for (const roll of outerSource.rolls) {
-    if (!warrantyIdentities.has(roll.id)) {
+  for (const rollId of expectedRollIds) {
+    if (!warrantyIdentities.has(rollId)) {
       throw new RollPrintPackSourceError("A Production Order Roll is missing its Warranty print identity.");
     }
   }
+
+  return warrantyIdentities;
+}
+
+export async function loadRollPrintPackSource(
+  productionOrderId: string,
+): Promise<RollPrintPackSource | null> {
+  const outerSource = await loadOuterRollLabelSource(productionOrderId);
+  if (!outerSource) return null;
+
+  const warrantyIdentities = await loadRollWarrantyPrintIdentities(
+    productionOrderId,
+    outerSource.rolls.map((roll) => roll.id),
+  );
 
   return {
     ...outerSource,
