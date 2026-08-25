@@ -1,0 +1,267 @@
+.flow {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  max-width: 860px;
+  margin-inline: auto;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  min-width: 0;
+  padding: .75rem .55rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: .82rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.steps li[data-active="true"] {
+  border-color: var(--line);
+  background: var(--surface-1);
+  color: inherit;
+  box-shadow: var(--shadow-panel);
+}
+
+.card,
+.successCard {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
+}
+
+.cardHeading,
+.candidateHeader {
+  display: grid;
+  gap: .35rem;
+  min-width: 0;
+}
+
+.cardHeading h2,
+.candidateHeader h2,
+.successCard h2 {
+  margin: 0;
+  font-size: clamp(1.08rem, 4vw, 1.35rem);
+}
+
+.cardHeading p,
+.successCard p,
+.readyBox p,
+.blockedBox p,
+.irreversibleBox p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.eyebrow {
+  color: var(--text-secondary);
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.scanButton {
+  width: 100%;
+  min-height: 52px;
+}
+
+.manualForm,
+.detailsForm {
+  display: grid;
+  gap: 1rem;
+}
+
+.manualForm > label,
+.fieldsGrid label {
+  display: grid;
+  gap: .4rem;
+  color: var(--text-secondary);
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+.manualRow {
+  display: grid;
+  gap: .65rem;
+}
+
+.manualRow input,
+.manualRow button,
+.fieldsGrid input,
+.actions button,
+.actions a {
+  min-height: 48px;
+}
+
+.candidateHeader code,
+.warrantyNumber {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.candidateHeader code {
+  display: block;
+  padding: .65rem .75rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  direction: ltr;
+  text-align: left;
+}
+
+.summaryGrid,
+.reviewGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .7rem;
+  margin: 0;
+}
+
+.summaryGrid > div,
+.reviewGrid > div {
+  min-width: 0;
+  padding: .75rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.summaryGrid dt,
+.reviewGrid dt {
+  margin-bottom: .25rem;
+  color: var(--text-secondary);
+  font-size: .76rem;
+  font-weight: 700;
+}
+
+.summaryGrid dd,
+.reviewGrid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.readyBox,
+.blockedBox,
+.irreversibleBox {
+  display: grid;
+  gap: .45rem;
+  padding: .9rem;
+  border-radius: var(--radius-md);
+}
+
+.readyBox {
+  border: 1px solid var(--success-border);
+  background: var(--success-soft);
+}
+
+.blockedBox,
+.irreversibleBox {
+  border: 1px solid var(--warning-border);
+  background: var(--warning-soft);
+}
+
+.detailsForm fieldset {
+  display: grid;
+  gap: .8rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.detailsForm legend {
+  margin-bottom: .65rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.fieldsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .8rem;
+}
+
+.fullField {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+}
+
+.actions > * {
+  flex: 1 1 12rem;
+}
+
+.successCard {
+  text-align: center;
+}
+
+.successMark {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-inline: auto;
+  border: 1px solid var(--success-border);
+  border-radius: 999px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.warrantyNumber {
+  padding: .9rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-family: monospace;
+  font-size: clamp(1.05rem, 5vw, 1.35rem);
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-align: center;
+}
+
+@media (min-width: 680px) {
+  .card,
+  .successCard {
+    padding: 1.25rem;
+  }
+
+  .manualRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .summaryGrid,
+  .reviewGrid,
+  .fieldsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scanButton {
+    width: auto;
+    justify-self: start;
+  }
+}

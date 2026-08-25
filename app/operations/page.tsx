@@ -18,6 +18,13 @@ const issueModule = {
   icon: "production" as const,
 };
 
+const warrantyModule = {
+  href: "/operations/warranties",
+  title: "ضمانات العملاء",
+  description: "مراجعة سجل ضمانات العملاء وحالاتها ومسارات الدعم التشغيلي المسموحة لدورك.",
+  icon: "production" as const,
+};
+
 const adminModules = [
   { href: "/operations/users", title: "الحسابات التشغيلية", description: "المستخدمون والأدوار والارتباطات التشغيلية.", icon: "users" as const },
   { href: "/operations/agents", title: "وكلاء الدول", description: "إدارة وكلاء الدول وهويتهم وحالتهم التشغيلية وTransfer ID.", icon: "users" as const },
@@ -27,6 +34,7 @@ const adminModules = [
   { href: "/operations/production-orders", title: "الإنتاج واللفات", description: "إنشاء أوامر الإنتاج والـLots وتوليد هويات اللفات ومراجعتها.", icon: "production" as const },
   { href: "/operations/rolls", title: "عهدة اللفات", description: "مراجعة حامل العهدة المؤكد حاليًا لكل لفة وحالة أهلية أمر الإنتاج.", icon: "production" as const },
   issueModule,
+  warrantyModule,
   transferModule,
 ];
 
@@ -50,6 +58,7 @@ const centerModules = [
   { href: "/operations/products", title: "المنتجات", description: "مراجعة بيانات المنتجات التشغيلية المتاحة للمركز.", icon: "products" as const },
   { href: "/operations/rolls", title: "عهدة اللفات", description: "عرض اللفات المؤكدة حاليًا في عهدة المركز فقط.", icon: "production" as const },
   issueModule,
+  warrantyModule,
   transferModule,
 ];
 

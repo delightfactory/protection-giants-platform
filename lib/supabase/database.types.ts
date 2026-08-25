@@ -1493,6 +1493,192 @@ export type Database = {
           },
         ]
       }
+      warranties: {
+        Row: {
+          activated_at: string
+          activated_by_profile_id: string
+          activating_center_name_snapshot: string
+          activating_center_party_id: string
+          care_instructions_snapshot: string
+          coverage_expires_at: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          id: string
+          product_code_snapshot: string
+          product_id: string
+          product_name_snapshot: string
+          product_version_snapshot: string | null
+          record_state: string
+          request_id: string
+          roll_id: string
+          updated_at: string
+          vehicle_color: string | null
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string | null
+          vehicle_vin: string
+          vehicle_year: number | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by_profile_id: string | null
+          warranty_coverage_snapshot: string
+          warranty_months_snapshot: number
+          warranty_number: string
+        }
+        Insert: {
+          activated_at: string
+          activated_by_profile_id: string
+          activating_center_name_snapshot: string
+          activating_center_party_id: string
+          care_instructions_snapshot: string
+          coverage_expires_at: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone: string
+          id?: string
+          product_code_snapshot: string
+          product_id: string
+          product_name_snapshot: string
+          product_version_snapshot?: string | null
+          record_state?: string
+          request_id: string
+          roll_id: string
+          updated_at?: string
+          vehicle_color?: string | null
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate?: string | null
+          vehicle_vin: string
+          vehicle_year?: number | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by_profile_id?: string | null
+          warranty_coverage_snapshot: string
+          warranty_months_snapshot: number
+          warranty_number: string
+        }
+        Update: {
+          activated_at?: string
+          activated_by_profile_id?: string
+          activating_center_name_snapshot?: string
+          activating_center_party_id?: string
+          care_instructions_snapshot?: string
+          coverage_expires_at?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          product_code_snapshot?: string
+          product_id?: string
+          product_name_snapshot?: string
+          product_version_snapshot?: string | null
+          record_state?: string
+          request_id?: string
+          roll_id?: string
+          updated_at?: string
+          vehicle_color?: string | null
+          vehicle_make?: string
+          vehicle_model?: string
+          vehicle_plate?: string | null
+          vehicle_vin?: string
+          vehicle_year?: number | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by_profile_id?: string | null
+          warranty_coverage_snapshot?: string
+          warranty_months_snapshot?: number
+          warranty_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranties_activated_by_profile_id_fkey"
+            columns: ["activated_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_activating_center_party_id_fkey"
+            columns: ["activating_center_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: false
+            referencedRelation: "rolls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_voided_by_profile_id_fkey"
+            columns: ["voided_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_events: {
+        Row: {
+          action_request_id: string
+          actor_profile_id: string
+          change_snapshot: Json | null
+          created_at: string
+          event_kind: string
+          id: string
+          reason: string | null
+          warranty_id: string
+        }
+        Insert: {
+          action_request_id: string
+          actor_profile_id: string
+          change_snapshot?: Json | null
+          created_at?: string
+          event_kind: string
+          id?: string
+          reason?: string | null
+          warranty_id: string
+        }
+        Update: {
+          action_request_id?: string
+          actor_profile_id?: string
+          change_snapshot?: Json | null
+          created_at?: string
+          event_kind?: string
+          id?: string
+          reason?: string | null
+          warranty_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_events_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_events_warranty_id_fkey"
+            columns: ["warranty_id"]
+            isOneToOne: false
+            referencedRelation: "warranties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       public_center_directory: {
@@ -1524,6 +1710,41 @@ export type Database = {
       }
     }
     Functions: {
+      activate_roll_warranty: {
+        Args: {
+          p_customer_email: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_request_id: string
+          p_roll_serial: string
+          p_vehicle_color: string
+          p_vehicle_make: string
+          p_vehicle_model: string
+          p_vehicle_plate: string
+          p_vehicle_vin: string
+          p_vehicle_year: number
+        }
+        Returns: {
+          activated_at: string
+          activating_center_name: string
+          coverage_expires_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          product_code: string
+          product_name: string
+          product_version: string
+          record_state: string
+          vehicle_color: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_vin: string
+          vehicle_year: number
+          warranty_id: string
+          warranty_number: string
+        }[]
+      }
       admin_cancel_pending_roll_transfer: {
         Args: { p_reason: string; p_transfer_id: string }
         Returns: string
@@ -1575,6 +1796,23 @@ export type Database = {
           p256dh: string
           title: string
         }[]
+      }
+      correct_warranty_details: {
+        Args: {
+          p_action_request_id: string
+          p_customer_email: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_reason: string
+          p_vehicle_color: string
+          p_vehicle_make: string
+          p_vehicle_model: string
+          p_vehicle_plate: string
+          p_vehicle_vin: string
+          p_vehicle_year: number
+          p_warranty_id: string
+        }
+        Returns: string
       }
       create_production_order: {
         Args: {
@@ -1668,6 +1906,39 @@ export type Database = {
         Args: { p_party_type: string }
         Returns: string
       }
+      get_internal_warranty_detail: {
+        Args: { p_warranty_id: string }
+        Returns: {
+          activated_at: string
+          activating_center_name: string
+          activating_center_party_id: string
+          admin_void_reason: string
+          care_instructions: string
+          coverage_expires_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          derived_state: string
+          product_code: string
+          product_id: string
+          product_name: string
+          product_version: string
+          record_state: string
+          roll_id: string
+          roll_serial: string
+          vehicle_color: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_vin: string
+          vehicle_year: number
+          voided_at: string
+          warranty_coverage: string
+          warranty_id: string
+          warranty_months: number
+          warranty_number: string
+        }[]
+      }
       get_roll_preinstall_issue_detail: {
         Args: { p_issue_id: string }
         Returns: {
@@ -1723,6 +1994,30 @@ export type Database = {
           viewer_is_admin: boolean
           viewer_is_recipient: boolean
           viewer_is_sender: boolean
+        }[]
+      }
+      list_internal_warranties: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_record_state?: string
+          p_search?: string
+        }
+        Returns: {
+          activated_at: string
+          activating_center_name: string
+          coverage_expires_at: string
+          customer_name: string
+          derived_state: string
+          product_code: string
+          product_name: string
+          record_state: string
+          roll_serial: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_vin: string
+          warranty_id: string
+          warranty_number: string
         }[]
       }
       list_notifications: {
@@ -1968,6 +2263,25 @@ export type Database = {
           party_id: string
         }[]
       }
+      resolve_warranty_activation_candidate: {
+        Args: { p_roll_serial: string }
+        Returns: {
+          acting_center_name: string
+          acting_center_party_id: string
+          blocking_issue_state: string
+          eligibility: string
+          existing_warranty_id: string
+          existing_warranty_number: string
+          lot_number: string
+          opened_at: string
+          product_code: string
+          product_name: string
+          product_version: string
+          roll_id: string
+          serial_number: string
+          warranty_months: number
+        }[]
+      }
       revoke_center_network_approval: {
         Args: { p_center_id: string }
         Returns: {
@@ -1995,6 +2309,14 @@ export type Database = {
       }
       void_production_order: {
         Args: { p_order_id: string; p_reason: string }
+        Returns: string
+      }
+      void_warranty_in_error: {
+        Args: {
+          p_action_request_id: string
+          p_reason: string
+          p_warranty_id: string
+        }
         Returns: string
       }
     }
@@ -2129,3 +2451,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
