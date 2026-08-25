@@ -6,6 +6,7 @@ function assert(condition, message) {
 
 const page = readFileSync("app/operations/production-orders/[id]/outer-roll-labels/page.tsx", "utf8");
 const route = readFileSync("app/print/production-orders/[id]/outer-roll-labels/route.ts", "utf8");
+const source = readFileSync("lib/labels/roll-print-pack-source.server.ts", "utf8");
 const preview = readFileSync("components/labels/roll-print-pack-preview.tsx", "utf8");
 const previewCss = readFileSync("components/labels/roll-print-pack-preview.module.css", "utf8");
 
@@ -23,6 +24,11 @@ assert(route.includes("PG-ROLL-PACK-"), "Download filename must identify Roll Pa
 assert(route.includes('"X-PG-Pack-Count"'), "Download response must expose Pack count for operational verification.");
 assert(!route.includes("renderOuterRollPrintPdf"), "Download route must not fall back to the old Outer-only renderer.");
 assert(!route.includes("planOuterRollPrintLayout"), "Download route must not use the old Outer-only page plan.");
+const tryIndex = route.indexOf("try {");
+const sourceLoadIndex = route.indexOf("await loadRollPrintPackSource(id)");
+assert(tryIndex >= 0 && sourceLoadIndex > tryIndex, "Download source loading must remain inside the controlled Preflight error boundary.");
+assert(route.includes("error instanceof RollPrintPackSourceError"), "Download route must map bounded source failures to controlled Preflight output.");
+assert(source.includes('error.message === "PG_ROLL_PRINT_IDENTITY_INCOMPLETE"'), "Server source must normalize the database incomplete-identity signal into the bounded Pack source error.");
 
 assert(preview.includes("pack.outerCopies.map") && preview.includes("pack.warrantyCopies.map"), "Pack preview must render both Outer and Warranty pieces from one Roll model.");
 assert(preview.includes("Outer ×2 · Warranty ×3"), "Pack preview guide must make the five-piece grouping visible.");
