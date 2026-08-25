@@ -1,7 +1,7 @@
 # Cube R — Approved Claim Resolution / Replacement & Reinstall
 
 **Status:** DRAFT FOR FINAL PRODUCT / ENGINEERING REVIEW — product decisions are APPROVED/FROZEN  
-**Version:** 1.1  
+**Version:** 1.2  
 **Planning baseline:** `main` at `53125d64091f64366cd111ef4b4b7eb9e53a49b4`  
 **Implementation base:** must be the merged Cube Q HEAD, not the planning baseline above  
 **Depends on:** Cubes P + Q, Roll Custody/Transfer foundation, Cube J Roll Opening, Cube K Pre-install Issue, Cube M Warranty Activation/support, Cube N Public Warranty resolver, Cube L Notifications/PWA  
@@ -40,10 +40,11 @@ R must preserve all of the following:
 6. replacement Roll is a real tracked physical Roll; no replacement inventory subsystem exists;
 7. existing Transfer/Custody remains the only ordinary physical-movement engine;
 8. R never auto-creates Transfer/receipt;
-9. replacement Roll must still record the real physical Cube J Opening before it can be consumed;
-10. replacement Roll may use the existing Cube K pre-install quality path before use;
-11. once consumed for Claim fulfillment, replacement Roll can never issue an independent customer Warranty;
-12. no cost/payment/reimbursement fields or workflows exist.
+9. replacement Product compatibility is policy-driven; V1 enables same Product/SKU only, but equality is not a permanent schema invariant;
+10. replacement Roll must still record the real physical Cube J Opening before it can be consumed;
+11. replacement Roll may use the existing Cube K pre-install quality path before use;
+12. once consumed for Claim fulfillment, replacement Roll can never issue an independent customer Warranty;
+13. no cost/payment/reimbursement fields or workflows exist.
 
 ---
 
@@ -56,6 +57,9 @@ R must preserve all of the following:
 - performing Center assignment/reassignment;
 - Center fulfillment task;
 - bounded replacement Roll candidate resolver;
+- one authoritative Replacement Product Eligibility Policy boundary shared by candidate reads and allocation;
+- V1 same-Product default eligibility without hard schema coupling;
+- server-generated Product eligibility basis snapshot on successful Roll allocation;
 - Admin Roll reservation/release;
 - narrow Cube J Opening compatibility for a Claim-reserved Roll;
 - reuse of Cube K Pre-install Issue on that opened reserved Roll;
@@ -84,7 +88,9 @@ R must preserve all of the following:
 - arbitrary remedy/work-order builder;
 - scheduling/calendar;
 - multi-Roll fulfillment for one V1 Claim;
-- a second Roll Opening or quality-control subsystem.
+- a second Roll Opening or quality-control subsystem;
+- cross-Product/SKU substitution configuration in V1;
+- an unused generic Product compatibility engine or substitution matrix.
 
 ---
 
@@ -108,7 +114,7 @@ No backwards transition and no Resolution `cancelled` state.
 
 Reassignment while `assigned` changes performing Center with an immutable event but does not add another state.
 
-Operational readiness is derived from assignment, allocation, Opening and quality facts rather than extra workflow statuses.
+Operational readiness is derived from assignment, allocation, Product-policy eligibility, Opening and quality facts rather than extra workflow statuses.
 
 ---
 
@@ -223,11 +229,46 @@ R may explain that suitable material is not currently held by the Center, but it
 
 ---
 
-# 9. Eligible replacement Roll resolver
+# 9. Replacement Product Eligibility Policy + candidate resolver
 
 For `replacement_roll_reinstall`, Admin gets a narrow resolver/list limited to Rolls currently held by the assigned Center.
 
 No global inventory browser is added.
+
+Product compatibility must not be duplicated throughout R. Introduce one authoritative private/server policy boundary, logically equivalent to:
+
+```text
+resolve_claim_replacement_product_eligibility(
+  original_warranty_product_id,
+  candidate_roll_product_id
+) -> { eligible, basis_code }
+```
+
+Exact implementation naming/location follows repository conventions, but its responsibility is frozen:
+
+- candidate list/read path uses it;
+- final Roll reservation mutation uses it again under authoritative locks;
+- client cannot supply or override `eligible` or `basis_code`;
+- Claim/Resolution/allocation tables do not carry a permanent equality constraint between Warranty Product and replacement Roll Product.
+
+## 9.1 V1 Product policy
+
+The only enabled V1 policy is:
+
+```text
+eligible = candidate_roll.product_id = original_warranty.product_id
+basis_code = 'same_product_default'
+```
+
+Therefore V1 behavior remains same canonical Product/SKU by default and in actual operation.
+
+This equality belongs **inside this policy boundary only**. Do not scatter `candidate.product_id = warranty.product_id` across candidate SQL, UI, completion, Transfer or unrelated lifecycle functions.
+
+A future Company-approved substitution policy may extend the policy implementation/configuration to accept selected alternative Products without redesigning the Claim/Resolution lifecycle or physical Roll lifecycle.
+
+Do **not** build that future mapping/configuration now.
+
+## 9.2 General physical Roll candidate checks
 
 At allocation commit time, candidate Roll must satisfy at minimum:
 
@@ -240,11 +281,12 @@ At allocation commit time, candidate Roll must satisfy at minimum:
 7. no effective customer Warranty;
 8. no terminal prior state that makes it unusable;
 9. no active Claim allocation elsewhere;
-10. no prior Claim `consumed` relationship.
+10. no prior Claim `consumed` relationship;
+11. Product policy returns `eligible=true` and a valid server-generated basis code.
 
 Because allocation requires an unopened Roll, there should normally be no Cube K issue yet. Implementation must still inspect current J/K/M/H predicates and reuse authoritative helpers rather than duplicate them.
 
-Read-time eligibility is advisory; allocation mutation revalidates under locks.
+Read-time eligibility is advisory; allocation mutation revalidates every rule under locks using the same Product-policy boundary.
 
 ---
 
@@ -254,21 +296,32 @@ Use dedicated history:
 
 ```text
 warranty_claim_resolution_roll_allocations
-- id                     UUID PRIMARY KEY
-- resolution_id          UUID NOT NULL -> warranty_claim_resolutions.id
-- roll_id                UUID NOT NULL -> rolls.id
-- status                 TEXT NOT NULL DEFAULT 'reserved'
-- reserved_by_profile_id UUID NOT NULL -> profiles.id
-- reserved_at            TIMESTAMPTZ NOT NULL
-- released_by_profile_id UUID NULL -> profiles.id
-- release_reason         TEXT NULL
-- released_at            TIMESTAMPTZ NULL
-- consumed_by_profile_id UUID NULL -> profiles.id
-- consumed_at            TIMESTAMPTZ NULL
-- created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+- id                        UUID PRIMARY KEY
+- resolution_id             UUID NOT NULL -> warranty_claim_resolutions.id
+- roll_id                   UUID NOT NULL -> rolls.id
+- product_eligibility_basis TEXT NOT NULL
+- status                    TEXT NOT NULL DEFAULT 'reserved'
+- reserved_by_profile_id    UUID NOT NULL -> profiles.id
+- reserved_at               TIMESTAMPTZ NOT NULL
+- released_by_profile_id    UUID NULL -> profiles.id
+- release_reason            TEXT NULL
+- released_at               TIMESTAMPTZ NULL
+- consumed_by_profile_id    UUID NULL -> profiles.id
+- consumed_at               TIMESTAMPTZ NULL
+- created_at                TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
-Allowed:
+`product_eligibility_basis` rules:
+
+- generated only by the authoritative policy boundary;
+- never accepted as client input;
+- trimmed/bounded stable code, recommended 2–80 characters;
+- V1 value is `same_product_default`;
+- do **not** add a database CHECK that permanently restricts it to the V1 code;
+- immutable after allocation creation;
+- records why the exact Roll was eligible at allocation time so later policy changes do not rewrite history.
+
+Allowed allocation states:
 
 ```text
 reserved
@@ -285,6 +338,8 @@ Rules:
 - released rows remain historical;
 - consumed is terminal/permanent;
 - no generic direct update/delete.
+
+No separate `replacement_product_id` is needed: the exact allocated Roll already owns its canonical Product identity. The eligibility basis explains the policy decision without duplicating Product ownership.
 
 ---
 
@@ -305,11 +360,15 @@ Requires:
 
 Atomic effects:
 
-- create `reserved` allocation;
-- append `replacement_roll_reserved` event;
-- conflicting normal operations become blocked immediately.
+1. resolve authoritative Product eligibility and basis code;
+2. reject if not eligible;
+3. create `reserved` allocation with that immutable `product_eligibility_basis`;
+4. append `replacement_roll_reserved` event;
+5. conflicting normal operations become blocked immediately.
 
 No Transfer and no Opening are created by reservation itself.
+
+Idempotent retry returns the same allocation and same eligibility basis. A conflicting retry for a different Roll fails deterministically.
 
 ---
 
@@ -336,7 +395,7 @@ For a Roll with one active Claim allocation `reserved`, Cube J Opening is allowe
 9. Roll still satisfies ordinary Production eligibility;
 10. no consumed Claim relationship exists.
 
-Opening writes the **existing immutable `roll_openings` row**. It does not change Claim status, Resolution status, Warranty or custody.
+Opening writes the **existing immutable `roll_openings` row**. It does not change Claim status, Resolution status, Warranty, Product eligibility basis or custody.
 
 The Opening should occur after reservation (`opened_at >= reserved_at`) and is required before replacement completion.
 
@@ -371,9 +430,9 @@ If Company decides `return_required`:
 
 1. Claim Resolution remains assigned/open;
 2. Admin explicitly releases the **unused** Claim allocation;
-3. release does not undo Roll Opening or issue history;
+3. release does not undo Roll Opening, Product eligibility basis or issue history;
 4. existing Cube J Opened Roll Recovery may handle physical return under its ordinary rules after Cube K resolution;
-5. Admin may later reserve a different eligible unopened Roll for the same Resolution after all current rules pass.
+5. Admin may later reserve a different eligible unopened Roll for the same Resolution after all current rules and current Product policy pass.
 
 No automatic Recovery/Transfer occurs.
 
@@ -407,7 +466,8 @@ After release:
 
 - if Roll remains unopened, ordinary eligibility may resume subject to all existing rules;
 - if Roll was already opened, it remains opened forever under Cube J; ordinary Transfer remains blocked and any physical return uses opened-Roll Recovery where eligible;
-- any Cube K issue history remains authoritative.
+- any Cube K issue history remains authoritative;
+- the historical allocation's `product_eligibility_basis` remains immutable evidence and does not authorize a later new allocation by itself.
 
 Consumed allocation can never be released.
 
@@ -448,6 +508,8 @@ Active users bound to assigned performing Center may read one narrow unresolved 
 - whether replacement Roll is reserved/opened/blocked by unresolved quality issue.
 
 Do not expose finance, unrelated customer history, private Admin audit, or other inventory.
+
+The UI may show the selected replacement Product identity when a Roll is allocated, but it must not infer or decide Product compatibility client-side.
 
 For replacement remedy the UI should guide the natural sequence:
 
@@ -510,17 +572,21 @@ Common preconditions:
 Additionally require:
 
 1. exactly one allocation `reserved`;
-2. allocated Roll still confirmed custody of performing Center;
-3. exactly one Cube J Opening exists for that Roll;
-4. `opened_by_center_party_id` = performing Center;
-5. Opening occurred after the allocation reservation;
-6. no active Transfer reservation/conflict;
-7. no effective customer Warranty;
-8. no Cube K issue currently `submitted`;
-9. no historical Cube K `return_required`;
-10. exact allocated Roll is confirmed/scanned at completion.
+2. allocation has non-empty immutable server-generated `product_eligibility_basis`;
+3. allocated Roll still confirmed custody of performing Center;
+4. exact Roll still has the same canonical Product identity it had when allocated; Roll Product identity must not be mutable through this lifecycle;
+5. exactly one Cube J Opening exists for that Roll;
+6. `opened_by_center_party_id` = performing Center;
+7. Opening occurred after the allocation reservation;
+8. no active Transfer reservation/conflict;
+9. no effective customer Warranty;
+10. no Cube K issue currently `submitted`;
+11. no historical Cube K `return_required`;
+12. exact allocated Roll is confirmed/scanned at completion.
 
 A different Roll fails closed.
+
+**Do not re-run the current/latest Product eligibility policy at completion.** Allocation was the authoritative Product-eligibility decision point and its basis is snapshotted. A later Company policy change must not retroactively invalidate a Roll already validly reserved under an earlier basis.
 
 ### Atomic database effects
 
@@ -566,7 +632,7 @@ Only when:
 - mandatory reason 5–500 chars;
 - all remedy-specific facts can still be proven.
 
-For replacement remedy, Admin must prove the exact reserved Roll was opened/used and passes the same quality constraints. If material identity/use cannot be proven, Admin must not guess or consume it.
+For replacement remedy, Admin must prove the exact reserved Roll was opened/used, that the allocation carried a valid recorded Product eligibility basis, and that all quality constraints pass. If material identity/use cannot be proven, Admin must not guess or consume it.
 
 Recovery records `completion_actor_kind='admin_recovery'` + immutable recovery event/reason.
 
@@ -587,7 +653,7 @@ Authoritatively block:
 - another Claim allocation;
 - return to ordinary inventory.
 
-Existing historical Cube J Opening and Cube K events remain readable/auditable.
+Existing historical Cube J Opening, Cube K events and allocation Product eligibility basis remain readable/auditable.
 
 There is no `unconsume`.
 
@@ -625,11 +691,11 @@ R does not change:
 - activating Center snapshot;
 - original Public Code.
 
-Internal service history may show Claim, decision, inspection, remedy, performing Center, replacement Roll internal identity, completion/evidence/timeline.
+Internal service history may show Claim, decision, inspection, remedy, performing Center, replacement Roll internal identity/Product, Product eligibility basis, completion/evidence/timeline.
 
 Verified customer history shows only Claim Number, customer-facing decision, remedy/progress, assigned Center when relevant, and completion date/status.
 
-No replacement serial/ERP identity, private reason, custody history or audit actor is customer-visible.
+No replacement serial/ERP identity, Product eligibility basis, private reason, custody history or audit actor is customer-visible.
 
 ---
 
@@ -656,6 +722,8 @@ Append-only Resolution event stream includes:
 - `replacement_roll_consumed`;
 - `resolution_completed`;
 - `resolution_completed_admin_recovery` when used.
+
+`replacement_roll_reserved` evidence must be sufficient to reconstruct the exact Roll and the server-generated Product eligibility basis used by the allocation; this may live on the allocation row and be referenced by the event rather than duplicated as free-form text.
 
 Cube J/K keep their own Opening/Issue event domains; R references/composes them but does not duplicate them into fake Resolution events.
 
@@ -698,6 +766,8 @@ May:
 - read Resolution evidence;
 - invoke narrow inactive-Center recovery completion.
 
+Admin may choose a candidate Roll only from the authoritative resolver result; Admin does not manually override Product-policy eligibility or type an eligibility basis.
+
 ## Assigned Center
 
 May:
@@ -712,6 +782,7 @@ May:
 Cannot:
 
 - choose/allocate arbitrary Company Rolls;
+- override Product eligibility;
 - transfer Roll through R;
 - change remedy;
 - assign Center;
@@ -738,6 +809,8 @@ R may touch completed cubes only through guards/exceptions needed for approved l
 - `reserved` Claim allocation → ordinary Transfer blocked;
 - `consumed` → blocked;
 - after allocation release, Transfer follows ordinary rules; if Roll was opened, Cube J already blocks ordinary Transfer.
+
+Transfer does not need to know same-Product vs future substitute Product. Product compatibility belongs only to R's allocation policy.
 
 ## Cube J Opening
 
@@ -781,20 +854,26 @@ Permanently test:
 2. reassignment races reservation;
 3. reservation races ordinary Transfer;
 4. same Roll reservation by two Resolutions → one winner;
-5. exact assigned Center Opening races allocation release → deterministic winner; no unauthorized stale Opening;
-6. unrelated Center/ordinary Opening attempt against reserved Roll → rejected;
-7. Pre-install Issue submission races Resolution completion → one winner; pending issue prevents consumption;
-8. `return_required` Roll completion attempt → rejected;
-9. allocation release races completion → either release wins and completion fails or completion consumes and release fails;
-10. completion retry → one consumption/one completion;
-11. Center suspended before Opening → normal Opening denied; Admin can release/reassign;
-12. Center suspended after Opening but before use → allocation can be released; physical Roll remains opened and follows Recovery rules;
-13. Center suspended after real use before completion → narrow Admin recovery, no guessed material;
-14. second Claim races R completion → no overlap;
-15. Warranty void races R completion → no voided Warranty + unresolved open Claim contradiction;
-16. consumed Roll attempts Transfer/Open/Issue/Activation → blocked;
-17. consumed Roll own public URL → unavailable;
-18. original Warranty expiry during R → completion continues, expiry unchanged.
+5. V1 same-Product candidate accepted by centralized Product policy;
+6. V1 different-Product candidate rejected by centralized Product policy;
+7. read-time candidate result becomes stale before reservation → reservation re-evaluates under locks;
+8. successful allocation records one immutable eligibility basis and retry returns the same basis;
+9. exact assigned Center Opening races allocation release → deterministic winner; no unauthorized stale Opening;
+10. unrelated Center/ordinary Opening attempt against reserved Roll → rejected;
+11. Pre-install Issue submission races Resolution completion → one winner; pending issue prevents consumption;
+12. `return_required` Roll completion attempt → rejected;
+13. allocation release races completion → either release wins and completion fails or completion consumes and release fails;
+14. completion retry → one consumption/one completion;
+15. Center suspended before Opening → normal Opening denied; Admin can release/reassign;
+16. Center suspended after Opening but before use → allocation can be released; physical Roll remains opened and follows Recovery rules;
+17. Center suspended after real use before completion → narrow Admin recovery, no guessed material;
+18. second Claim races R completion → no overlap;
+19. Warranty void races R completion → no voided Warranty + unresolved open Claim contradiction;
+20. consumed Roll attempts Transfer/Open/Issue/Activation → blocked;
+21. consumed Roll own public URL → unavailable;
+22. original Warranty expiry during R → completion continues, expiry unchanged.
+
+Future Product policy changes must have their own tests, but V1 must already prove that Product equality is centralized rather than encoded as an allocation schema invariant.
 
 ---
 
@@ -809,6 +888,17 @@ Permanently test:
 - reassignment requires no reserved Roll;
 - Claim open until completion;
 - completion sets Claim `closed_at`.
+
+## Replacement Product policy
+
+- one authoritative policy boundary exists;
+- candidate resolver and reservation mutation both use it;
+- V1 same Product returns eligible with `same_product_default`;
+- V1 different Product returns ineligible;
+- client cannot supply eligibility/basis;
+- allocation schema has no hard same-Product CHECK/foreign-key shape;
+- successful allocation snapshots immutable bounded `product_eligibility_basis`;
+- completion uses the allocation snapshot and exact Roll/Product identity rather than reinterpreting eligibility under a later policy.
 
 ## Allocation / physical Roll
 
@@ -840,7 +930,7 @@ Permanently test:
 - suspended Center denied normal actions;
 - Admin recovery only under inactive-Center condition;
 - Agent/Dealer no Resolution authority;
-- customer cannot access raw evidence/internal replacement identity.
+- customer cannot access raw evidence/internal replacement identity/eligibility basis.
 
 ## Regression
 
@@ -873,14 +963,17 @@ Permanently test:
 1. approved Claim/authorized Resolution;
 2. assign Center + replacement remedy;
 3. desired Roll elsewhere → ordinary Transfer + confirmed receipt;
-4. Admin reserves Roll only after custody confirmed;
-5. assigned Center scans/opens exact Roll through Cube J;
-6. no defect → installation/reinstall performed;
-7. Center submits completion image/note + exact Roll confirmation;
-8. allocation consumed + Resolution completed + Claim closed atomically;
-9. Roll cannot activate independent Warranty;
-10. replacement Roll `/w/` unavailable;
-11. original customer `/w/` unchanged.
+4. candidate resolver shows the V1 same-Product Roll as policy-eligible;
+5. Admin reserves Roll only after custody confirmed; allocation stores `same_product_default` basis;
+6. assigned Center scans/opens exact Roll through Cube J;
+7. no defect → installation/reinstall performed;
+8. Center submits completion image/note + exact Roll confirmation;
+9. allocation consumed + Resolution completed + Claim closed atomically;
+10. Roll cannot activate independent Warranty;
+11. replacement Roll `/w/` unavailable;
+12. original customer `/w/` unchanged.
+
+Also prove a different-Product Roll in the same Center is excluded/rejected by the V1 policy rather than by a hard allocation-schema constraint.
 
 ## Scenario C — replacement Roll found defective
 
@@ -891,7 +984,7 @@ Permanently test:
 5. Company decides `return_required`;
 6. Admin releases Claim allocation;
 7. existing Opened Roll Recovery can return physical Roll under ordinary J/K rules;
-8. another eligible unopened Roll may be transferred/reserved later;
+8. another currently policy-eligible unopened Roll may be transferred/reserved later;
 9. same approved Resolution continues without new Claim/decision.
 
 Also test `cleared_for_use` path resumes normal R completion.
@@ -912,23 +1005,26 @@ R is GO only when:
 4. performing Center assignment/reassignment works without hidden material moves;
 5. no automatic Transfer exists;
 6. replacement Roll must reach confirmed Center custody before allocation;
-7. allocation requires eligible **unopened** Roll;
-8. Admin can reserve/release one Roll at a time;
-9. reserved Roll cannot Transfer/Activate elsewhere;
-10. assigned Center can create the existing Cube J Opening for exact reserved Roll;
-11. reserved/opened Roll can use Cube K Issue; pending/return_required blocks consumption;
-12. defective Roll can be released and handled through existing Opened Roll Recovery without closing the Claim;
-13. completion requires private images + note;
-14. replacement completion atomically consumes exact allocated opened/cleared Roll and completes Resolution;
-15. consumed Roll permanently barred from Warranty/ordinary reuse and resolves unavailable publicly;
-16. original Warranty Public Code + expiry unchanged;
-17. Claim closes only on successful fulfillment (or earlier Q rejection/cancellation);
-18. no accounting/financial scope exists;
-19. inactive-Center recovery is narrow/audited/non-impersonating;
-20. full service history is reconstructable without rewriting Warranty issuance;
-21. PR Quality + Database Quality + P/Q + Transfer/J/K/M/N/L regressions + **Cube R Claim Fulfillment Quality** PASS on exact SHA;
-22. hosted Scenarios A/B/C/D PASS;
-23. independent engineering/security + operational/DoD audit PASS.
+7. replacement Product eligibility is centralized behind one authoritative policy boundary;
+8. V1 policy accepts same canonical Product/SKU only, but allocation schema does not permanently encode that equality;
+9. eligible candidate must be unopened at allocation;
+10. successful allocation stores immutable server-generated `product_eligibility_basis`;
+11. Admin can reserve/release one Roll at a time;
+12. reserved Roll cannot Transfer/Activate elsewhere;
+13. assigned Center can create the existing Cube J Opening for exact reserved Roll;
+14. reserved/opened Roll can use Cube K Issue; pending/return_required blocks consumption;
+15. defective Roll can be released and handled through existing Opened Roll Recovery without closing the Claim;
+16. completion requires private images + note;
+17. replacement completion atomically consumes exact allocated opened/cleared Roll and completes Resolution without re-running a newer Product policy;
+18. consumed Roll permanently barred from Warranty/ordinary reuse and resolves unavailable publicly;
+19. original Warranty Public Code + expiry unchanged;
+20. Claim closes only on successful fulfillment (or earlier Q rejection/cancellation);
+21. no accounting/financial scope exists;
+22. inactive-Center recovery is narrow/audited/non-impersonating;
+23. full service history is reconstructable without rewriting Warranty issuance;
+24. PR Quality + Database Quality + P/Q + Transfer/J/K/M/N/L regressions + **Cube R Claim Fulfillment Quality** PASS on exact SHA;
+25. hosted Scenarios A/B/C/D PASS;
+26. independent engineering/security + operational/DoD audit PASS.
 
 ---
 
@@ -944,6 +1040,7 @@ Warranty
   → Company Decision
   → approved Resolution
   → optional ordinary Roll Transfer
+  → Replacement Product Eligibility Policy
   → replacement allocation
   → Cube J replacement Roll Opening
   → optional Cube K replacement Roll Issue
@@ -954,6 +1051,7 @@ Warranty
 
 with:
 
+- V1 same-Product default enforced by one centralized Product policy rather than permanent schema coupling;
 - no second Warranty on replacement material;
 - no changed original expiry;
 - no new customer QR;
