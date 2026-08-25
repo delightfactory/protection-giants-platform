@@ -3,22 +3,30 @@ import {
   OuterRollLabelPlanError,
   buildOuterRollLabelPlan,
 } from "@/lib/labels/outer-roll-label-plan";
-import {
-  OuterRollLabelPdfError,
-  renderOuterRollPrintPdf,
-} from "@/lib/labels/outer-roll-label-pdf";
+import { OuterRollLabelPdfError } from "@/lib/labels/outer-roll-label-pdf";
 import { OuterRollMachineCodeError } from "@/lib/labels/outer-roll-machine-codes";
 import {
-  OUTER_ROLL_MASTER_PAGE_PROFILE,
-  OuterRollPrintLayoutError,
-  planOuterRollPrintLayout,
-} from "@/lib/labels/outer-roll-print-layout";
-import { loadOuterRollLabelSource } from "@/lib/labels/outer-roll-label-source.server";
+  RollPrintPackLayoutError,
+  planRollPrintPackMasterLayout,
+} from "@/lib/labels/roll-print-pack-layout";
+import {
+  RollPrintPackPdfError,
+  renderRollPrintPackPdf,
+} from "@/lib/labels/roll-print-pack-pdf";
+import {
+  RollPrintPackPlanError,
+  buildRollPrintPackPlan,
+} from "@/lib/labels/roll-print-pack-plan";
+import {
+  RollPrintPackSourceError,
+  loadRollPrintPackSource,
+} from "@/lib/labels/roll-print-pack-source.server";
 import {
   OuterRollLabelRequestError,
   parseOuterRollLabelChunk,
   parseOuterRollLabelSelection,
 } from "@/lib/labels/outer-roll-label-request";
+import { WarrantyQrLabelPdfError } from "@/lib/labels/warranty-qr-label-pdf";
 import { getPublicSiteOrigin } from "@/lib/public-site";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -43,7 +51,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   const { id } = await params;
   if (!uuidPattern.test(id)) return textResponse("أمر الإنتاج غير موجود.", 404);
 
-  const source = await loadOuterRollLabelSource(id);
+  const source = await loadRollPrintPackSource(id);
   if (!source) return textResponse("أمر الإنتاج غير موجود.", 404);
 
   const url = new URL(request.url);
@@ -56,7 +64,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       to: url.searchParams.get("to") ?? undefined,
     });
 
-    const plan = buildOuterRollLabelPlan({
+    const outerPlan = buildOuterRollLabelPlan({
       publicSiteOrigin: getPublicSiteOrigin(),
       product: source.product,
       order: source.order,
@@ -64,18 +72,29 @@ export async function GET(request: Request, { params }: RouteContext) {
       rolls: source.rolls,
       selection,
     });
+    const packPlan = buildRollPrintPackPlan({
+      outerPlan,
+      warrantyIdentities: source.warrantyIdentities,
+    });
 
     const chunkNumber = parseOuterRollLabelChunk(
       url.searchParams.get("chunk") ?? undefined,
-      plan.chunks.length,
+      packPlan.chunks.length,
     );
-    const chunk = plan.chunks[chunkNumber - 1];
+    const chunk = packPlan.chunks[chunkNumber - 1];
     if (!chunk) return textResponse("جزء الطباعة المطلوب غير موجود.", 404);
 
-    const layout = planOuterRollPrintLayout(chunk.items, OUTER_ROLL_MASTER_PAGE_PROFILE);
-    const pdf = await renderOuterRollPrintPdf(layout);
+    const firstPackOrdinal = 1 + packPlan.chunks
+      .slice(0, chunkNumber - 1)
+      .reduce((sum, candidate) => sum + candidate.packCount, 0);
+    const layout = planRollPrintPackMasterLayout({
+      chunk,
+      firstPackOrdinal,
+      totalPackCount: packPlan.packCount,
+    });
+    const pdf = await renderRollPrintPackPdf(layout);
     const responseBody = new Uint8Array(pdf).buffer;
-    const filename = `PG-OUTER-ROLL-${source.order.orderNumber}-part-${chunkNumber}-of-${plan.chunks.length}.pdf`;
+    const filename = `PG-ROLL-PACK-${source.order.orderNumber}-part-${chunkNumber}-of-${packPlan.chunks.length}.pdf`;
 
     return new Response(responseBody, {
       status: 200,
@@ -85,26 +104,33 @@ export async function GET(request: Request, { params }: RouteContext) {
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
         "X-Robots-Tag": "noindex, nofollow",
-        "X-PG-Roll-Count": String(chunk.rollCount),
-        "X-PG-Label-Count": String(chunk.labelCount),
+        "X-PG-Roll-Count": String(chunk.packCount),
+        "X-PG-Pack-Count": String(chunk.packCount),
+        "X-PG-Label-Count": String(chunk.physicalLabelCount),
       },
     });
   } catch (error) {
     if (error instanceof OuterRollLabelRequestError) {
       return textResponse(error.message, 400);
     }
-    if (error instanceof OuterRollLabelPlanError) {
-      return textResponse("تم إيقاف إصدار الملصقات لأن بيانات الأمر أو الهوية لا تجتاز Preflight.", 409);
+    if (
+      error instanceof OuterRollLabelPlanError
+      || error instanceof RollPrintPackPlanError
+      || error instanceof RollPrintPackSourceError
+    ) {
+      return textResponse("تم إيقاف إصدار Roll Print Pack لأن بيانات الأمر أو هوية إحدى اللفات لا تجتاز Preflight.", 409);
     }
     if (
       error instanceof OuterRollLabelPdfError
       || error instanceof OuterRollMachineCodeError
-      || error instanceof OuterRollPrintLayoutError
+      || error instanceof WarrantyQrLabelPdfError
+      || error instanceof RollPrintPackLayoutError
+      || error instanceof RollPrintPackPdfError
     ) {
-      return textResponse("تعذر إنشاء ملف الطباعة لأن محتوى الملصق أو هندسته لا يجتاز تحقق الإخراج. راجع بيانات المنتج قبل إعادة المحاولة.", 409);
+      return textResponse("تعذر إنشاء ملف Roll Print Pack لأن محتوى إحدى القطع أو هندسة الـPack لا تجتاز تحقق الإخراج.", 409);
     }
     if (error instanceof Error && error.message.includes("NEXT_PUBLIC_SITE_URL")) {
-      return textResponse("عنوان الموقع العام غير مضبوط، لذلك لا يمكن إنشاء Roll QR.", 503);
+      return textResponse("عنوان الموقع العام غير مضبوط، لذلك لا يمكن إنشاء Roll QR التشغيلي.", 503);
     }
     throw error;
   }
