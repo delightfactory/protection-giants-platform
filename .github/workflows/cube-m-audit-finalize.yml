@@ -1,0 +1,72 @@
+name: Cube M Audit Finalize
+
+"on":
+  push:
+    branches:
+      - fix/cube-m-independent-audit-closure
+    paths:
+      - ".github/workflows/cube-m-audit-finalize.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: fix/cube-m-independent-audit-closure
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Add explicit correction confirmation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('components/warranties/admin-warranty-support.tsx')
+          text = path.read_text()
+          old = '''              <button type="submit" className="button button-primary" disabled={isCorrecting || isVoiding}>
+                {isCorrecting ? "جارٍ حفظ التصحيح…" : "حفظ التصحيح"}
+              </button>'''
+          new = '''              <ConfirmSubmitButton
+                title="تأكيد حفظ التصحيح؟"
+                description="سيتم حفظ بيانات العميل/السيارة المصححة مع السبب وتسجيل Before/After دائم في سجل التدقيق."
+                confirmLabel="نعم، حفظ التصحيح"
+                tone="primary"
+                disabled={isCorrecting || isVoiding}
+              >
+                {isCorrecting ? "جارٍ حفظ التصحيح…" : "حفظ التصحيح"}
+              </ConfirmSubmitButton>'''
+          if old not in text:
+              raise SystemExit('Expected correction submit button was not found.')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Generate canonical public database types
+        run: supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
+
+      - name: Remove temporary audit workflows
+        run: |
+          rm .github/workflows/cube-m-audit-scaffold.yml
+          rm .github/workflows/cube-m-audit-finalize.yml
+
+      - name: Commit finalization only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/warranties/admin-warranty-support.tsx lib/supabase/database.types.ts .github/workflows/cube-m-audit-scaffold.yml .github/workflows/cube-m-audit-finalize.yml
+          git commit -m "fix(cube-m): finalize independent audit support safeguards"
+          git push
