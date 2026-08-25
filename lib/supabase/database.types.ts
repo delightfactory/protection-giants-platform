@@ -1922,6 +1922,13 @@ export type Database = {
         }[]
       }
       cancel_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
+      claim_expired_warranty_claim_draft_cleanup_candidates: {
+        Args: { p_limit?: number }
+        Returns: {
+          draft_id: string
+          storage_paths: string[]
+        }[]
+      }
       claim_notification_push_deliveries: {
         Args: { p_limit?: number }
         Returns: {
@@ -2060,6 +2067,18 @@ export type Database = {
           reserved_count: number
           total_count: number
         }[]
+      }
+      finalize_customer_warranty_claim_draft_evidence_removal: {
+        Args: {
+          p_draft_id: string
+          p_storage_path: string
+          p_warranty_id: string
+        }
+        Returns: boolean
+      }
+      finalize_expired_warranty_claim_draft_cleanup: {
+        Args: { p_draft_id: string }
+        Returns: boolean
       }
       generate_operational_transfer_code: {
         Args: { p_party_type: string }
@@ -2352,6 +2371,15 @@ export type Database = {
         Returns: number
       }
       notification_unread_count: { Args: never; Returns: number }
+      open_customer_warranty_claim_draft: {
+        Args: {
+          p_draft_id: string
+          p_expires_at: string
+          p_verified_phone_normalized: string
+          p_warranty_id: string
+        }
+        Returns: string
+      }
       open_roll: {
         Args: { p_request_id: string; p_roll_serial: string }
         Returns: string
@@ -2386,6 +2414,16 @@ export type Database = {
           p_roll_serial: string
         }
         Returns: string
+      }
+      register_customer_warranty_claim_draft_evidence: {
+        Args: {
+          p_draft_id: string
+          p_mime_type: string
+          p_size_bytes: number
+          p_storage_path: string
+          p_warranty_id: string
+        }
+        Returns: boolean
       }
       register_push_subscription: {
         Args: { p_auth_secret: string; p_endpoint: string; p_p256dh: string }
@@ -2511,6 +2549,14 @@ export type Database = {
       }
       set_agent_opened_roll_recovery: {
         Args: { p_agent_id: string; p_enabled: boolean }
+        Returns: boolean
+      }
+      unregister_customer_warranty_claim_draft_evidence: {
+        Args: {
+          p_draft_id: string
+          p_storage_path: string
+          p_warranty_id: string
+        }
         Returns: boolean
       }
       update_own_center_location: {
