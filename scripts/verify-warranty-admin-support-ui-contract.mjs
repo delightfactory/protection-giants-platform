@@ -36,8 +36,10 @@ includes(detail, "admin_void_reason", "Admin voided Warranty detail must expose 
 includes(detail, "لا توجد عملية Restore إلى issued", "Voided Admin detail must explain permanent no-restore semantics.");
 includes(detail, "المركز لا يستطيع تعديل بيانات هذا الضمان أو إلغاءه", "Center detail must remain explicitly read-only.");
 
-includes(supportActions, 'callSupportRpc("correct_warranty_details"', "Admin correction must use the authoritative support RPC.");
-includes(supportActions, 'callSupportRpc("void_warranty_in_error"', "Admin void must use the authoritative support RPC.");
+includes(supportActions, 'rpc("correct_warranty_details"', "Admin correction must use the typed authoritative support RPC.");
+includes(supportActions, 'rpc("void_warranty_in_error"', "Admin void must use the typed authoritative support RPC.");
+includes(supportActions, 'Database["public"]["Functions"]["correct_warranty_details"]["Args"]', "Correction action must bind to generated database RPC types.");
+includes(supportActions, 'Database["public"]["Functions"]["void_warranty_in_error"]["Args"]', "Void action must bind to generated database RPC types.");
 assert(!/\.from\(["']warranties["']\)/.test(supportActions), "Admin support actions must never update warranties directly.");
 assert(!/\.from\(["']warranty_events["']\)/.test(supportActions), "Admin support actions must never insert warranty_events directly.");
 
