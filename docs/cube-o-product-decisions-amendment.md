@@ -1,10 +1,10 @@
 # Protection Giants — Cube O Product Decisions Amendment
 
-**Status:** Approved product-owner decisions for Cube O  
+**Status:** Approved product-owner decisions for Cube O; folded into main ledger as PD-057–PD-062  
 **Date:** 2026-08-25  
 **Applies to:** Customer Warranty QR / Print and Roll Print Pack composition
 
-This amendment records the Cube O decisions approved after Cube N closure. It is normative for Cube O implementation and should be folded into the main Product Decisions ledger during Cube O delivery/closure.
+This amendment records the Cube O decisions approved after Cube N closure. It remains a Cube O scope reference; the same decisions are now also present in the canonical `docs/product-decisions.md` ledger as PD-057 through PD-062.
 
 ## PD-O1 — Three customer Warranty QR stickers are identical
 
