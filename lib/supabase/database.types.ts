@@ -1631,6 +1631,148 @@ export type Database = {
           },
         ]
       }
+      warranty_claim_events: {
+        Row: {
+          action_request_id: string
+          actor_kind: string
+          actor_profile_id: string | null
+          claim_id: string
+          created_at: string
+          event_data: Json | null
+          event_kind: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          action_request_id: string
+          actor_kind: string
+          actor_profile_id?: string | null
+          claim_id: string
+          created_at?: string
+          event_data?: Json | null
+          event_kind: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          action_request_id?: string
+          actor_kind?: string
+          actor_profile_id?: string | null
+          claim_id?: string
+          created_at?: string
+          event_data?: Json | null
+          event_kind?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claim_events_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_events_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_claim_evidence: {
+        Row: {
+          claim_id: string
+          created_at: string
+          evidence_kind: string
+          id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          claim_id: string
+          created_at?: string
+          evidence_kind?: string
+          id?: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Update: {
+          claim_id?: string
+          created_at?: string
+          evidence_kind?: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claim_evidence_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_claims: {
+        Row: {
+          affected_area: string
+          category: string
+          claim_number: string
+          closed_at: string | null
+          created_at: string
+          description: string
+          id: string
+          request_id: string
+          status: string
+          submitted_at: string
+          updated_at: string
+          warranty_id: string
+        }
+        Insert: {
+          affected_area: string
+          category: string
+          claim_number: string
+          closed_at?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          request_id: string
+          status?: string
+          submitted_at: string
+          updated_at?: string
+          warranty_id: string
+        }
+        Update: {
+          affected_area?: string
+          category?: string
+          claim_number?: string
+          closed_at?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          request_id?: string
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          warranty_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claims_warranty_id_fkey"
+            columns: ["warranty_id"]
+            isOneToOne: false
+            referencedRelation: "warranties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       warranty_events: {
         Row: {
           action_request_id: string
@@ -1814,6 +1956,23 @@ export type Database = {
         }
         Returns: string
       }
+      create_customer_warranty_claim: {
+        Args: {
+          p_affected_area: string
+          p_category: string
+          p_description: string
+          p_draft_id: string
+          p_evidence: Json
+          p_public_code: string
+          p_request_id: string
+          p_verified_phone_normalized: string
+          p_warranty_id: string
+        }
+        Returns: {
+          claim_id: string
+          claim_number: string
+        }[]
+      }
       create_production_order: {
         Args: {
           p_lots: Json
@@ -1905,6 +2064,32 @@ export type Database = {
       generate_operational_transfer_code: {
         Args: { p_party_type: string }
         Returns: string
+      }
+      get_customer_warranty_claim_by_request: {
+        Args: { p_request_id: string; p_warranty_id: string }
+        Returns: {
+          claim_id: string
+          claim_number: string
+        }[]
+      }
+      get_customer_warranty_claim_context: {
+        Args: { p_public_code: string; p_warranty_id: string }
+        Returns: {
+          activated_at: string
+          activating_center_name: string
+          can_submit_new_claim: boolean
+          coverage_expires_at: string
+          current_open_claim: Json
+          current_phone_normalized: string
+          product_name: string
+          public_state: string
+          recent_closed_claims: Json
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_year: number
+          warranty_id: string
+          warranty_number: string
+        }[]
       }
       get_internal_warranty_audit: {
         Args: { p_warranty_id: string }
@@ -2339,6 +2524,15 @@ export type Database = {
           source: string
         }[]
       }
+      verify_customer_warranty_claim_phone: {
+        Args: { p_phone: string; p_public_code: string }
+        Returns: {
+          coverage_expires_at: string
+          normalized_phone: string
+          public_state: string
+          warranty_id: string
+        }[]
+      }
       void_production_order: {
         Args: { p_order_id: string; p_reason: string }
         Returns: string
@@ -2483,4 +2677,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
