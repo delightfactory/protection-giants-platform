@@ -12,6 +12,7 @@ name: Cube N Public Warranty Quality
       - "app/(public)/w/**"
       - "app/(public)/warranty/**"
       - "lib/warranty/**"
+      - "lib/supabase/database.types.ts"
       - "docs/cube-n-public-warranty-access-verification-spec.md"
       - "docs/cube-n-final-spec-review-amendment.md"
       - "docs/pre-cube-n-public-warranty-status-amendment.md"
