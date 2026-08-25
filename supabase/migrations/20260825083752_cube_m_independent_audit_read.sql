@@ -11,7 +11,6 @@ returns table (
   created_at timestamptz
 )
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
@@ -22,7 +21,7 @@ begin
     raise exception using errcode = '22023', message = 'PG_WARRANTY_NOT_FOUND';
   end if;
 
-  v_context := private.resolve_internal_warranty_read_context();
+  v_context := private.lock_warranty_read_context();
 
   if v_context ->> 'role' <> 'admin' then
     raise exception using errcode = '42501', message = 'PG_WARRANTY_ADMIN_REQUIRED';
