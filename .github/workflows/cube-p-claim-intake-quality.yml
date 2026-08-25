@@ -5,130 +5,96 @@ name: Cube P Claim Intake Quality
     branches:
       - main
     paths:
+      - "supabase/**"
       - "app/(public)/w/**"
+      - "lib/warranty/claim-*.ts"
+      - "lib/supabase/database.types.ts"
       - "scripts/verify-cube-p-claim-*.mjs"
       - ".github/workflows/cube-p-claim-intake-quality.yml"
+      - "docs/cube-p-customer-warranty-claim-intake-spec.md"
+      - "docs/claims-pqr-final-spec-review-amendment.md"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply-evidence-phone-freshness-wiring:
+  claim-intake-quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - name: Checkout exact PR head
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          node-version: "22"
 
-      - name: Wire server actions and permanent PD-077 verification
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify Cube P client/security contracts
+        run: node scripts/verify-cube-p-claim-client-contract.mjs
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Lint local database
+        run: supabase db lint --local --level warning --fail-on error
+
+      - name: Create bounded existing-domain fixtures
         run: |
-          python3 <<'PY'
-          from pathlib import Path
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-roll-opening-foundation.mjs
+          node scripts/verify-warranty-schema-foundation.mjs
+          node scripts/verify-warranty-activation-engine.mjs
 
-          # Server actions: both sensitive draft mutations send the current
-          # normalized phone to the new Warranty-first DB boundary.
-          actions_path = Path("app/(public)/w/[publicCode]/claim/actions.ts")
-          actions = actions_path.read_text()
-          switch_anchor = '''    case "PG_CLAIM_DRAFT_EVIDENCE_DELETING":\n      return "PG_CLAIM_EVIDENCE_REMOVE_FAILED";\n    default:\n'''
-          switch_replacement = '''    case "PG_CLAIM_DRAFT_EVIDENCE_DELETING":\n      return "PG_CLAIM_EVIDENCE_REMOVE_FAILED";\n    case "PG_CLAIM_WARRANTY_EXPIRED":\n    case "PG_CLAIM_WARRANTY_UNAVAILABLE":\n      return "PG_CLAIM_NOT_SUBMITTABLE";\n    default:\n'''
-          if switch_anchor not in actions:
-              raise SystemExit("draftMutationError anchor missing")
-          actions = actions.replace(switch_anchor, switch_replacement, 1)
-
-          register_marker = "async function registerDraftEvidence("
-          reserve_marker = "async function reserveDraftEvidenceRemoval("
-          finalize_marker = "async function finalizeDraftEvidenceRemoval("
-          before_register, rest = actions.split(register_marker, 1)
-          register_body, rest = rest.split(reserve_marker, 1)
-          reserve_body, after_reserve = rest.split(finalize_marker, 1)
-          reg_anchor = "    p_warranty_id: access.payload.warrantyId,\n    p_storage_path: evidence.storagePath,\n"
-          reg_replace = "    p_warranty_id: access.payload.warrantyId,\n    p_verified_phone_normalized: access.currentPhoneNormalized,\n    p_storage_path: evidence.storagePath,\n"
-          if reg_anchor not in register_body:
-              raise SystemExit("register RPC payload anchor missing")
-          register_body = register_body.replace(reg_anchor, reg_replace, 1)
-          rem_anchor = "    p_warranty_id: access.payload.warrantyId,\n    p_storage_path: storagePath,\n"
-          rem_replace = "    p_warranty_id: access.payload.warrantyId,\n    p_verified_phone_normalized: access.currentPhoneNormalized,\n    p_storage_path: storagePath,\n"
-          if rem_anchor not in reserve_body:
-              raise SystemExit("remove reservation RPC payload anchor missing")
-          reserve_body = reserve_body.replace(rem_anchor, rem_replace, 1)
-          actions_path.write_text(before_register + register_marker + register_body + reserve_marker + reserve_body + finalize_marker + after_reserve)
-
-          # Static client/server contract pins the transactional phone parameter.
-          static_path = Path("scripts/verify-cube-p-claim-client-contract.mjs")
-          static = static_path.read_text()
-          static_anchor = '''assert(\n  actions.includes("register_customer_warranty_claim_draft_evidence")\n    && actions.includes("registerDraftEvidence(access, evidence)"),\n  "Both fresh and pre-existing content-addressed Storage objects must be registered in the locked private draft before they are accepted by the client.",\n);\n'''
-          static_add = static_anchor + '''assert(\n  actions.includes("p_verified_phone_normalized: access.currentPhoneNormalized")\n    && actions.slice(actions.indexOf("async function registerDraftEvidence"), actions.indexOf("async function reserveDraftEvidenceRemoval")).includes("p_verified_phone_normalized: access.currentPhoneNormalized")\n    && actions.slice(actions.indexOf("async function reserveDraftEvidenceRemoval"), actions.indexOf("async function finalizeDraftEvidenceRemoval")).includes("p_verified_phone_normalized: access.currentPhoneNormalized"),\n  "Evidence register/remove must pass the current normalized Warranty phone into the transactional DB freshness boundary, not rely only on an earlier server read.",\n);\n'''
-          if static_anchor not in static:
-              raise SystemExit("static evidence anchor missing")
-          static_path.write_text(static.replace(static_anchor, static_add, 1))
-
-          # Integration contracts: new signatures, current phone arguments, and
-          # post-correction stale register/remove rejection.
-          intake_path = Path("scripts/verify-cube-p-claim-intake.mjs")
-          intake = intake_path.read_text()
-          intake = intake.replace(
-              '"public.register_customer_warranty_claim_draft_evidence(uuid,uuid,text,text,bigint)"',
-              '"public.register_customer_warranty_claim_draft_evidence(uuid,uuid,text,text,text,bigint)"',
-          )
-          intake = intake.replace(
-              '"public.unregister_customer_warranty_claim_draft_evidence(uuid,uuid,text)"',
-              '"public.unregister_customer_warranty_claim_draft_evidence(uuid,uuid,text,text)"',
-          )
-          first_reg = '''  p_draft_id: draftId,\n  p_warranty_id: warrantyId,\n  p_storage_path: storagePath,\n'''
-          first_reg_new = '''  p_draft_id: draftId,\n  p_warranty_id: warrantyId,\n  p_verified_phone_normalized: verified.normalized_phone,\n  p_storage_path: storagePath,\n'''
-          if first_reg not in intake:
-              raise SystemExit("initial integration register payload missing")
-          intake = intake.replace(first_reg, first_reg_new, 1)
-          submitted_remove = '''  p_draft_id: draftId,\n  p_warranty_id: warrantyId,\n  p_storage_path: storagePath,\n}, "PG_CLAIM_DRAFT_CLOSED");\n'''
-          submitted_remove_new = '''  p_draft_id: draftId,\n  p_warranty_id: warrantyId,\n  p_verified_phone_normalized: verified.normalized_phone,\n  p_storage_path: storagePath,\n}, "PG_CLAIM_DRAFT_CLOSED");\n'''
-          if submitted_remove not in intake:
-              raise SystemExit("submitted-draft remove payload missing")
-          intake = intake.replace(submitted_remove, submitted_remove_new, 1)
-
-          stale_setup_anchor = '''const verified2 = one(await rpc("verify_customer_warranty_claim_phone", { p_public_code: code2, p_phone: phone2 }), "Verify second Warranty");\nconst correctedPhone = "+201099988877";\n'''
-          stale_setup = '''const verified2 = one(await rpc("verify_customer_warranty_claim_phone", { p_public_code: code2, p_phone: phone2 }), "Verify second Warranty");\nconst staleEvidenceDraft = randomUUID();\nconst staleEvidencePath = `${staleEvidenceDraft}/${"c".repeat(64)}.jpg`;\nconst staleDraftOpened = await rpc("open_customer_warranty_claim_draft", {\n  p_draft_id: staleEvidenceDraft,\n  p_warranty_id: w2,\n  p_verified_phone_normalized: verified2.normalized_phone,\n  p_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),\n});\nassert(staleDraftOpened.response.ok && staleDraftOpened.body === staleEvidenceDraft,\n  `Could not open stale-phone evidence draft: ${staleDraftOpened.response.status} ${JSON.stringify(staleDraftOpened.body)}`);\nconst staleEvidenceRegistered = await rpc("register_customer_warranty_claim_draft_evidence", {\n  p_draft_id: staleEvidenceDraft,\n  p_warranty_id: w2,\n  p_verified_phone_normalized: verified2.normalized_phone,\n  p_storage_path: staleEvidencePath,\n  p_mime_type: "image/jpeg",\n  p_size_bytes: 128,\n});\nassert(staleEvidenceRegistered.response.ok && staleEvidenceRegistered.body === true,\n  `Could not seed stale-phone evidence registry: ${staleEvidenceRegistered.response.status} ${JSON.stringify(staleEvidenceRegistered.body)}`);\nconst correctedPhone = "+201099988877";\n'''
-          if stale_setup_anchor not in intake:
-              raise SystemExit("stale-phone setup anchor missing")
-          intake = intake.replace(stale_setup_anchor, stale_setup, 1)
-
-          correction_anchor = '''assert(correction.response.ok, `Could not correct Warranty phone fixture: ${correction.response.status} ${JSON.stringify(correction.body)}`);\n\nconst staleDraft = randomUUID();\n'''
-          correction_checks = '''assert(correction.response.ok, `Could not correct Warranty phone fixture: ${correction.response.status} ${JSON.stringify(correction.body)}`);\n\nawait expectRpcError("register_customer_warranty_claim_draft_evidence", {\n  p_draft_id: staleEvidenceDraft,\n  p_warranty_id: w2,\n  p_verified_phone_normalized: verified2.normalized_phone,\n  p_storage_path: `${staleEvidenceDraft}/${"d".repeat(64)}.jpg`,\n  p_mime_type: "image/jpeg",\n  p_size_bytes: 128,\n}, "PG_CLAIM_VERIFICATION_STALE");\nawait expectRpcError("unregister_customer_warranty_claim_draft_evidence", {\n  p_draft_id: staleEvidenceDraft,\n  p_warranty_id: w2,\n  p_verified_phone_normalized: verified2.normalized_phone,\n  p_storage_path: staleEvidencePath,\n}, "PG_CLAIM_VERIFICATION_STALE");\n\nconst staleDraft = randomUUID();\n'''
-          if correction_anchor not in intake:
-              raise SystemExit("post-correction integration anchor missing")
-          intake_path.write_text(intake.replace(correction_anchor, correction_checks, 1))
-
-          # Concurrency suite: every register/remove passes phone; add one fresh
-          # Roll for evidence-register vs phone-correction serialization.
-          races_path = Path("scripts/verify-cube-p-claim-races.mjs")
-          races = races_path.read_text()
-          race_reg = '''    p_draft_id: draftId,\n    p_warranty_id: fixture.warrantyId,\n    p_storage_path: storagePath,\n'''
-          race_reg_new = '''    p_draft_id: draftId,\n    p_warranty_id: fixture.warrantyId,\n    p_verified_phone_normalized: fixture.normalizedPhone,\n    p_storage_path: storagePath,\n'''
-          if race_reg not in races:
-              raise SystemExit("race register payload missing")
-          races = races.replace(race_reg, race_reg_new, 1)
-          races = races.replace('p_lots: [{ quantity: 5, source_reference: "CUBE-P-RACES" }]', 'p_lots: [{ quantity: 6, source_reference: "CUBE-P-RACES" }]', 1)
-          races = races.replace('rollsResult.body.length === 5', 'rollsResult.body.length === 6', 1)
-          races = races.replace('Cube P races require five fresh Rolls', 'Cube P races require six fresh Rolls', 1)
-
-          old_race4 = '''// Race 4 — final submit versus a second-tab evidence removal. The draft row is\n'''
-          new_race4 = '''// Race 4 — evidence registration versus legitimate phone correction. Both\n// operations serialize on the Warranty row. Registration may win only if it\n// acquires the old-phone truth first; after correction commits, the old phone\n// must never register another staged object.\n{\n  const fixture = fixtures[4];\n  const correctedPhone = "+201066688844";\n  const draftId = randomUUID();\n  const opened = await rpc("open_customer_warranty_claim_draft", {\n    p_draft_id: draftId,\n    p_warranty_id: fixture.warrantyId,\n    p_verified_phone_normalized: fixture.normalizedPhone,\n    p_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),\n  });\n  assert(opened.response.ok && opened.body === draftId,\n    `Could not open evidence/phone race draft: ${opened.response.status} ${JSON.stringify(opened.body)}`);\n  const firstPath = `${draftId}/${"e".repeat(64)}.jpg`;\n  const [registerResult, correctionResult] = await Promise.all([\n    rpc("register_customer_warranty_claim_draft_evidence", {\n      p_draft_id: draftId,\n      p_warranty_id: fixture.warrantyId,\n      p_verified_phone_normalized: fixture.normalizedPhone,\n      p_storage_path: firstPath,\n      p_mime_type: "image/jpeg",\n      p_size_bytes: 128,\n    }),\n    rpc("correct_warranty_details", {\n      p_action_request_id: randomUUID(),\n      p_warranty_id: fixture.warrantyId,\n      p_customer_name: fixture.customerName,\n      p_customer_phone: correctedPhone,\n      p_customer_email: fixture.customerEmail,\n      p_vehicle_make: fixture.vehicleMake,\n      p_vehicle_model: fixture.vehicleModel,\n      p_vehicle_year: fixture.vehicleYear,\n      p_vehicle_plate: fixture.vehiclePlate,\n      p_vehicle_color: fixture.vehicleColor,\n      p_vehicle_vin: fixture.vehicleVin,\n      p_reason: "Cube P concurrent evidence registration versus phone correction verification.",\n    }, adminToken, anonKey),\n  ]);\n  assert(correctionResult.response.ok,\n    `Evidence/phone correction must commit: ${correctionResult.response.status} ${JSON.stringify(correctionResult.body)}`);\n  if (!registerResult.response.ok) {\n    assert(registerResult.body?.message === "PG_CLAIM_VERIFICATION_STALE",\n      `Evidence registration loser must fail stale: ${JSON.stringify(registerResult.body)}`);\n  } else {\n    assert(registerResult.body === true, "Evidence registration winner must return true.");\n  }\n  await expectRpcError("register_customer_warranty_claim_draft_evidence", {\n    p_draft_id: draftId,\n    p_warranty_id: fixture.warrantyId,\n    p_verified_phone_normalized: fixture.normalizedPhone,\n    p_storage_path: `${draftId}/${"f".repeat(64)}.jpg`,\n    p_mime_type: "image/jpeg",\n    p_size_bytes: 128,\n  }, "PG_CLAIM_VERIFICATION_STALE");\n  assert(querySql(`select customer_phone from public.warranties where id = ${sqlUuid(fixture.warrantyId)}`) === correctedPhone,\n    "Evidence/phone race must finish with the corrected phone authoritative.");\n}\n\n// Race 5 — final submit versus a second-tab evidence removal. The draft row is\n'''
-          if old_race4 not in races:
-              raise SystemExit("race-4 insertion anchor missing")
-          races = races.replace(old_race4, new_race4, 1)
-          races = races.replace('const fixture = fixtures[4];\n  const claim = await prepareClaimPayload(fixture, { suffix: "claim-versus-remove" });', 'const fixture = fixtures[5];\n  const claim = await prepareClaimPayload(fixture, { suffix: "claim-versus-remove" });', 1)
-          race_remove = '''      p_draft_id: claim.p_draft_id,\n      p_warranty_id: fixture.warrantyId,\n      p_storage_path: storagePath,\n'''
-          race_remove_new = '''      p_draft_id: claim.p_draft_id,\n      p_warranty_id: fixture.warrantyId,\n      p_verified_phone_normalized: fixture.normalizedPhone,\n      p_storage_path: storagePath,\n'''
-          if race_remove not in races:
-              raise SystemExit("race remove payload missing")
-          races_path.write_text(races.replace(race_remove, race_remove_new, 1))
-          PY
-
-      - name: Commit PD-077 evidence freshness wiring
+      - name: Verify Cube P database / privacy / lifecycle contracts
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add 'app/(public)/w/[publicCode]/claim/actions.ts' scripts/verify-cube-p-claim-client-contract.mjs scripts/verify-cube-p-claim-intake.mjs scripts/verify-cube-p-claim-races.mjs
-          git diff --cached --quiet && exit 0
-          git commit -m "Cube P: enforce current phone on evidence actions"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-p-claim-intake.mjs
+
+      - name: Verify Cube P concurrency and idempotency races
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-p-claim-races.mjs
+
+      - name: Verify generated database types
+        run: |
+          supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
+          node <<'NODE'
+          const fs = require("node:fs");
+          for (const path of ["/tmp/generated.database.types.ts", "lib/supabase/database.types.ts"]) {
+            const content = fs.readFileSync(path, "utf8").replace(/\n*$/, "\n");
+            fs.writeFileSync(path, content);
+          }
+          NODE
+          diff -u lib/supabase/database.types.ts /tmp/generated.database.types.ts
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
+
+      - name: Stop local stack
+        if: always()
+        run: |
+          if command -v supabase >/dev/null 2>&1; then
+            supabase stop --no-backup
+          fi
