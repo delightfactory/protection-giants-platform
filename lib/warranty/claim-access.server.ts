@@ -98,12 +98,6 @@ function phoneFingerprint(normalizedPhone: string): string {
     .digest("base64url");
 }
 
-function signPayload(encodedPayload: string): string {
-  return createHmac("sha256", signingKey())
-    .update(encodedPayload, "utf8")
-    .digest("base64url");
-}
-
 function safeEqualText(left: string, right: string): boolean {
   const a = Buffer.from(left, "utf8");
   const b = Buffer.from(right, "utf8");
@@ -121,6 +115,12 @@ function cookiePath(publicCode: string): string {
 function encodeToken(payload: ClaimAccessPayload): string {
   const encoded = base64url(JSON.stringify(payload));
   return `${encoded}.${signPayload(encoded)}`;
+}
+
+function signPayload(encodedPayload: string): string {
+  return createHmac("sha256", signingKey())
+    .update(encodedPayload, "utf8")
+    .digest("base64url");
 }
 
 function decodeToken(token: string): ClaimAccessPayload | null {
@@ -228,6 +228,12 @@ async function cleanupExpiredClaimDrafts(): Promise<void> {
         .remove(actualPaths);
       if (removeError) continue;
     }
+
+    // If the page was full, do not assume there were only this many physical
+    // objects. Leave the draft cleanup_pending so a later verified request drains
+    // the next batch. Finalize only after a short page proves the folder is below
+    // the batch ceiling (possibly empty).
+    if ((objects ?? []).length >= CLEANUP_STORAGE_LIST_LIMIT) continue;
 
     const { error: finalizeError } = await admin.rpc(
       "finalize_expired_warranty_claim_draft_cleanup",
