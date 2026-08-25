@@ -14,21 +14,16 @@ name: Cube P Claim Intake Quality
       - "docs/cube-p-customer-warranty-claim-intake-spec.md"
       - "docs/claims-pqr-final-spec-review-amendment.md"
 
-# TEMPORARY BOOTSTRAP: this write permission is used once to commit the exact
-# Supabase-generated type file from a fresh local rebuild. It is reverted as
-# soon as that generated-file commit lands on this same PR branch.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   claim-intake-quality:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Checkout exact PR head for generated-type bootstrap
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -76,7 +71,7 @@ jobs:
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-p-claim-races.mjs
 
-      - name: Synchronize exact generated database types
+      - name: Verify generated database types
         run: |
           supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
           node <<'NODE'
@@ -86,14 +81,7 @@ jobs:
             fs.writeFileSync(path, content);
           }
           NODE
-          if ! diff -q lib/supabase/database.types.ts /tmp/generated.database.types.ts >/dev/null; then
-            cp /tmp/generated.database.types.ts lib/supabase/database.types.ts
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add lib/supabase/database.types.ts
-            git commit -m "Cube P: synchronize generated database types"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
+          diff -u lib/supabase/database.types.ts /tmp/generated.database.types.ts
 
       - name: TypeScript typecheck
         run: npx tsc --noEmit
