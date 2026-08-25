@@ -47,8 +47,26 @@ assert(
     && domain.includes('WARRANTY_CLAIM_EVIDENCE_BUCKET = "warranty-claim-evidence"'),
   "Private evidence writes must remain server-controlled and use the canonical private Claim evidence bucket constant.",
 );
-assert(actions.includes("get_customer_warranty_claim_by_request") && actions.includes("cleanupEvidence"),
-  "Ambiguous final submit must resolve committed idempotency before evidence compensation.");
+assert(
+  actions.includes("detectWarrantyClaimImageMime")
+    && actions.includes('bytes.toString("ascii", 0, 4) === "RIFF"')
+    && actions.includes('bytes.toString("ascii", 8, 12) === "WEBP"')
+    && actions.includes("detectedMime !== file.type")
+    && actions.includes(".upload(storagePath, bytes"),
+  "Server upload must validate JPEG/PNG/WebP file signatures and upload the inspected bytes rather than trusting browser MIME alone.",
+);
+
+const domainErrorIndex = actions.indexOf("const domainError = authoritativeSubmitError");
+const domainCompensationIndex = actions.lastIndexOf("cleanupEvidence(");
+const committedLookupIndex = actions.indexOf('"get_customer_warranty_claim_by_request"');
+const ambiguousReturnIndex = actions.indexOf('code: "PG_CLAIM_SUBMIT_AMBIGUOUS"');
+assert(
+  domainErrorIndex >= 0
+    && domainCompensationIndex > domainErrorIndex
+    && committedLookupIndex > domainCompensationIndex
+    && ambiguousReturnIndex > committedLookupIndex,
+  "Only authoritative DB rejections may compensate evidence; unknown/transport ambiguity must resolve committed idempotency and otherwise preserve evidence for same-request retry.",
+);
 assert(actions.includes("p_warranty_id: access.payload.warrantyId"),
   "Final Claim submit must take Warranty ownership only from the signed server context, not customer input.");
 
