@@ -65,7 +65,20 @@ assert(claimClient.includes("currentOpenClaim") && claimClient.includes("recentC
   "Customer surface must use the Warranty-scoped open/history management envelope.");
 assert(claimClient.includes("لا يمكن إنشاء مطالبة أخرى قبل إغلاق المطالبة الحالية"),
   "Open Claim UX must prevent a dead duplicate submission path.");
-assert(!claimClient.includes("اعتماد المطالبة") && !claimClient.includes("رفض المطالبة") && !claimClient.includes("رول بديل"),
-  "Cube P must not pull Q adjudication or R replacement controls into customer intake.");
+
+for (const forbiddenOperation of [
+  "approveWarrantyClaim",
+  "rejectWarrantyClaim",
+  "cancelWarrantyClaimDecision",
+  "requestClaimInspection",
+  "assignClaimResolution",
+  "reserveClaimReplacementRoll",
+  "completeClaimResolution",
+]) {
+  assert(!actions.includes(forbiddenOperation) && !claimClient.includes(forbiddenOperation),
+    `Cube P must not implement future Q/R operation ${forbiddenOperation}.`);
+}
+assert(claimClient.includes("لا يعني قبول أو رفض المطالبة تلقائيًا"),
+  "Customer intake should explicitly explain that category selection is not an adjudication decision.");
 
 console.log("Cube P customer Claim client/security contracts verified.");
