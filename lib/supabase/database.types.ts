@@ -2421,6 +2421,7 @@ export type Database = {
           p_mime_type: string
           p_size_bytes: number
           p_storage_path: string
+          p_verified_phone_normalized: string
           p_warranty_id: string
         }
         Returns: boolean
@@ -2555,6 +2556,7 @@ export type Database = {
         Args: {
           p_draft_id: string
           p_storage_path: string
+          p_verified_phone_normalized: string
           p_warranty_id: string
         }
         Returns: boolean

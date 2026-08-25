@@ -39,6 +39,14 @@ async function rpc(name, body, token = serviceRoleKey, key = serviceRoleKey) {
   return request(`/rest/v1/rpc/${name}`, { method: "POST", body, token, key });
 }
 
+async function expectRpcError(name, body, expected, token = serviceRoleKey, key = serviceRoleKey) {
+  const result = await rpc(name, body, token, key);
+  assert(!result.response.ok, `${name} unexpectedly succeeded; expected ${expected}.`);
+  assert(result.body?.message === expected,
+    `${name} expected ${expected}, got ${result.response.status} ${JSON.stringify(result.body)}`);
+  return result;
+}
+
 async function signIn(email) {
   const result = await request("/auth/v1/token?grant_type=password", {
     method: "POST",
