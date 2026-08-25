@@ -42,6 +42,9 @@ jobs:
       - name: Verify Cube O O3 Roll Print Pack grouping contract
         run: npx vitest run scripts/verify-cube-o-roll-print-pack-plan.test.mjs
 
+      - name: Verify Cube O O4 Master Pack PDF contract
+        run: npx vitest run scripts/verify-cube-o-roll-print-pack-pdf.test.mjs
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
