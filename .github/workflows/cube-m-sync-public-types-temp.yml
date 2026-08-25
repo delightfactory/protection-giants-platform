@@ -52,3 +52,5 @@ jobs:
       - name: Stop local stack
         if: always()
         run: supabase stop --no-backup
+
+# retrigger canonical public-type sync after Database Quality artifact verification
