@@ -1,0 +1,61 @@
+name: Cube M Audit Format Final
+
+"on":
+  push:
+    branches:
+      - fix/cube-m-independent-audit-closure
+    paths:
+      - ".github/workflows/cube-m-audit-format-final.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: fix/cube-m-independent-audit-closure
+
+      - name: Normalize correction confirmation indentation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('components/warranties/admin-warranty-support.tsx')
+          lines = path.read_text().splitlines()
+          start = None
+          end = None
+          for i, line in enumerate(lines):
+              if line.strip() == '<ConfirmSubmitButton' and i + 1 < len(lines) and 'title="تأكيد حفظ التصحيح؟"' in lines[i + 1]:
+                  start = i
+                  for j in range(i + 1, min(i + 20, len(lines))):
+                      if lines[j].strip() == '</ConfirmSubmitButton>':
+                          end = j
+                          break
+                  break
+          if start is None or end is None:
+              raise SystemExit('Correction confirmation block not found.')
+          block = [
+              '              <ConfirmSubmitButton',
+              '                title="تأكيد حفظ التصحيح؟"',
+              '                description="سيتم حفظ بيانات العميل/السيارة المصححة مع السبب وتسجيل Before/After دائم في سجل التدقيق."',
+              '                confirmLabel="نعم، حفظ التصحيح"',
+              '                tone="primary"',
+              '                disabled={isCorrecting || isVoiding}',
+              '              >',
+              '                {isCorrecting ? "جارٍ حفظ التصحيح…" : "حفظ التصحيح"}',
+              '              </ConfirmSubmitButton>',
+          ]
+          path.write_text('\n'.join(lines[:start] + block + lines[end + 1:]) + '\n')
+          PY
+
+      - name: Remove temporary workflow and commit
+        run: |
+          rm .github/workflows/cube-m-audit-format-final.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/warranties/admin-warranty-support.tsx .github/workflows/cube-m-audit-format-final.yml
+          git commit -m "style(cube-m): clean correction confirmation formatting"
+          git push
