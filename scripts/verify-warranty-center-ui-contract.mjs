@@ -43,7 +43,8 @@ includes(flow, "crypto.randomUUID()", "Activation UI must allocate a stable idem
 includes(flow, "requestIdRef", "Activation UI must retain the request ID across lost-response retries.");
 includes(flow, "تأكيد تفعيل ضمان العميل", "Irreversible activation confirmation copy is missing.");
 includes(flow, "PG_WARRANTY_REQUEST_CONFLICT", "Request-conflict behavior must be surfaced to the UI.");
-includes(flow, "voided_in_error", "Historical voided retry must not be presented as successful issuance.");
+includes(flow, 'result.warranty.recordState !== "issued"', "Any historical non-issued retry must not be presented as successful issuance.");
+includes(flow, "هذه المحاولة تشير إلى تفعيل تاريخي تم إلغاؤه كخطأ", "Historical voided retry must surface an explicit safe next step.");
 includes(flow, "LocalDateTime", "Warranty timestamps must use the shared local-time presentation component.");
 
 for (const field of [
