@@ -409,8 +409,8 @@ begin
     where draft.state in ('open', 'cleanup_pending')
       and draft.expires_at <= clock_timestamp()
     order by draft.expires_at, draft.id
-    for update skip locked
     limit p_limit
+    for update skip locked
   ),
   marked as (
     update private.warranty_claim_drafts draft
