@@ -2113,6 +2113,13 @@ export type Database = {
           transfer_number: string
         }[]
       }
+      list_roll_warranty_print_identities: {
+        Args: { p_production_order_id: string }
+        Returns: {
+          public_code: string
+          roll_id: string
+        }[]
+      }
       list_transfer_send_lots: {
         Args: { p_limit?: number; p_offset?: number; p_search?: string }
         Returns: {
@@ -2476,3 +2483,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

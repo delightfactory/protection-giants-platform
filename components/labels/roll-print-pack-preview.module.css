@@ -1,0 +1,96 @@
+.pack {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--border, #d8d8d8);
+  border-radius: 18px;
+  background: #f7f7f5;
+}
+
+.guide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid #c9c9c5;
+  border-radius: 12px;
+  background: #ecece8;
+}
+
+.guide > div,
+.guideMeta {
+  display: grid;
+  gap: 4px;
+}
+
+.guide span {
+  color: #666;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.guide strong {
+  font-size: 13px;
+}
+
+.guideMeta {
+  text-align: end;
+}
+
+.outerRow,
+.warrantyRow {
+  display: grid;
+  align-items: start;
+  gap: 16px;
+}
+
+.outerRow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.warrantyRow {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 920px;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.piece {
+  min-width: 0;
+}
+
+.pieceGuide {
+  margin-bottom: 7px;
+  color: #666;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+  .pack {
+    padding: 12px;
+  }
+
+  .guide {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .guideMeta {
+    text-align: start;
+  }
+
+  .outerRow,
+  .warrantyRow {
+    grid-template-columns: 1fr;
+  }
+
+  .warrantyRow {
+    max-width: 420px;
+    margin-inline: 0;
+  }
+}

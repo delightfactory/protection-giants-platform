@@ -1,0 +1,89 @@
+name: Cube O Roll Print Pack Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/**"
+      - "scripts/verify-cube-o-*.mjs"
+      - ".github/workflows/cube-o-roll-print-pack-quality.yml"
+      - "lib/labels/**"
+      - "lib/qr/**"
+      - "lib/supabase/database.types.ts"
+      - "components/labels/**"
+      - "app/operations/production-orders/**"
+      - "app/print/production-orders/**"
+      - "docs/cube-o-*.md"
+      - "docs/product-decisions.md"
+
+permissions:
+  contents: read
+
+jobs:
+  roll-print-pack-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify Cube O O2 permanent Warranty QR label contract
+        run: npx vitest run scripts/verify-cube-o-warranty-qr-label.test.mjs
+
+      - name: Verify Cube O O3 Roll Print Pack grouping contract
+        run: npx vitest run scripts/verify-cube-o-roll-print-pack-plan.test.mjs
+
+      - name: Verify Cube O O4 Master Pack PDF contract
+        run: npx vitest run scripts/verify-cube-o-roll-print-pack-pdf.test.mjs
+
+      - name: Verify Cube O O5 UI and download wiring
+        run: node scripts/verify-cube-o-roll-print-pack-ui-contract.mjs
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Lint local database
+        run: supabase db lint --local --level warning --fail-on error
+
+      - name: Create bounded existing-domain fixtures
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-roll-opening-foundation.mjs
+
+      - name: Verify Cube N permanent Roll public identity regression
+        run: node scripts/verify-cube-n-roll-public-identity.mjs
+
+      - name: Verify Cube O O1 Warranty print identity boundary
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-o-warranty-print-identity.mjs
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: Stop local stack
+        if: always()
+        run: |
+          if command -v supabase >/dev/null 2>&1; then
+            supabase stop --no-backup
+          fi
