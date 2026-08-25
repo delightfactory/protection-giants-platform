@@ -2229,6 +2229,20 @@ export type Database = {
         Args: { p_serial: string }
         Returns: string
       }
+      resolve_public_warranty: {
+        Args: { p_public_code: string }
+        Returns: {
+          activated_at: string
+          activating_center_name: string
+          coverage_expires_at: string
+          product_name: string
+          public_state: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_year: number
+          warranty_number: string
+        }[]
+      }
       resolve_roll_opening_candidate: {
         Args: { p_roll_serial: string }
         Returns: {
@@ -2462,4 +2476,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
