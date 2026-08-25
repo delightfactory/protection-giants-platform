@@ -4,7 +4,7 @@
 **Date:** 2026-08-25  
 **Baseline:** `main` at `53125d64091f64366cd111ef4b4b7eb9e53a49b4`  
 **Product decisions:** `docs/claims-product-decisions-amendment.md` (PD-063 through PD-075)  
-**Depends on:** Cube M Warranty Activation, Cube N Public Warranty Access, Cube L Notifications/PWA, existing Operational Party / Center foundation, Roll Custody & Transfers, and physical Roll lifecycle guards  
+**Depends on:** Cube M Warranty Activation, Cube N Public Warranty Access, Cube L Notifications/PWA, existing Operational Party / Center foundation, Roll Custody & Transfers, Cube J Roll Opening, and Cube K Pre-install Issue  
 **Purpose:** freeze one coherent end-to-end Claims architecture before P, Q and R are implemented separately.
 
 ---
@@ -19,6 +19,7 @@ If Intake, adjudication and replacement/reinstall were designed independently, t
 - changing Claim ownership or customer verification after public launch;
 - leaving approved Claims without an authoritative fulfillment handoff;
 - making a replacement Roll accidentally eligible for a second Warranty;
+- bypassing the physical Roll Opening / pre-install quality history when replacement material is used;
 - letting Warranty `voided_in_error`, Transfer, Roll Opening or Activation race with Claim state;
 - adding an unnecessary accounting/ticketing subsystem to solve an operational lifecycle problem.
 
@@ -93,7 +94,7 @@ Resolution does **not** own money, invoices or reimbursement.
 
 ## Warranty identity
 
-The existing human Warranty Number remains unchanged:
+The existing human Warranty Number remains:
 
 `PG-W-NNNNNNNN`
 
@@ -144,16 +145,20 @@ cancelled
 
 Rules:
 
-- P creates only `submitted`.
-- Q owns all later adjudication transitions.
-- `approved`, `rejected`, `cancelled` are adjudication-terminal.
-- R does not rewrite an approved Claim into a fulfillment status.
+- P creates only `submitted`;
+- Q owns later adjudication transitions;
+- `approved`, `rejected`, `cancelled` are adjudication-terminal;
+- R does not rewrite an approved Claim into a fulfillment status;
+- approval/rejection occur from `under_review`;
+- bounded cancellation may occur from `under_review` or `awaiting_inspection` to avoid a pending-inspection dead end.
+
+If a Claim is cancelled while an inspection is still `requested`, the historical inspection row remains but loses actionability because the parent Claim is closed. No fake inspection-completion/cancellation state is invented.
 
 ## 4.2 End-to-end open-case marker
 
 `status` alone cannot enforce one active customer case because an `approved` Claim remains operationally unfinished until Resolution completes.
 
-Therefore Claim also carries an authoritative nullable `closed_at`:
+Claim therefore carries an authoritative nullable `closed_at`:
 
 - new Claim → `closed_at = null`;
 - Q `rejected` → set `closed_at`;
@@ -169,7 +174,7 @@ This is the cross-cube invariant that prevents a second Claim while the first ap
 
 ## 4.3 Resolution state
 
-Frozen V1 Resolution states:
+Frozen V1 Resolution states are exactly:
 
 ```text
 authorized
@@ -177,15 +182,15 @@ assigned
 completed
 ```
 
-A narrow audited `cancelled` recovery state may exist only if implementation review proves a real pre-completion operational recovery need; it must not be used as a financial settlement state or as an easy undo for consumed material.
+There is no Resolution `cancelled`, `waiting_stock`, `scheduled`, `payment_pending` or generic `in_progress` state in V1.
 
-Recommended boundary:
+Boundary:
 
-- Q approval atomically creates exactly one minimal Resolution/Entitlement row in `authorized` state.
-- Q does not populate performing Center, replacement Roll or completion data.
-- R exclusively owns transitions beyond `authorized`.
+- Q approval atomically creates exactly one minimal Resolution/Entitlement row in `authorized`;
+- Q does not populate performing Center, remedy kind, replacement Roll or completion data;
+- R exclusively owns `authorized → assigned → completed` and bounded reassignment while still `assigned`.
 
-This gives the Q→R handoff a durable database contract without implementing R prematurely.
+This makes the Q→R handoff durable without implementing R prematurely.
 
 ---
 
@@ -207,12 +212,12 @@ For an effective **active** Warranty:
 
 - customer may verify the registered phone;
 - if no open Claim exists, customer may submit a new Claim;
-- if an open Claim exists, verified customer sees its narrow status instead of a second submit form.
+- if one open Claim exists, verified customer sees its narrow status instead of a second submit form.
 
 For an effective **expired** Warranty:
 
 - no new Claim submission;
-- verified customer may still follow a Claim that was submitted while coverage was active.
+- verified customer may still follow a Claim submitted while coverage was active.
 
 For non-effective/no-current/unavailable states:
 
@@ -227,13 +232,11 @@ The server must not return the stored phone to the browser for comparison.
 
 No verification endpoint may become a phone-based Warranty lookup oracle.
 
-Repeated invalid phone attempts must fail in a generic bounded way; implementation may use ordinary platform/server abuse controls without creating a bespoke fraud engine in P.
-
 ## 5.4 Customer-visible Claim projection
 
 After successful phone verification, return only the minimum customer service projection.
 
-Possible derived customer statuses include:
+Derived labels may include:
 
 - `تم استلام المطالبة`;
 - `قيد المراجعة`;
@@ -243,130 +246,110 @@ Possible derived customer statuses include:
 - `تم إلغاء المطالبة`;
 - `تم تنفيذ المعالجة`.
 
-These labels are a presentation projection; they do not create another persisted state machine.
+These labels do not create another persisted state machine.
 
 ---
 
 # 6. Evidence architecture
 
-Claims use a new private evidence boundary separate from Product assets and Pre-install Issue evidence.
+Claims use a new private evidence boundary separate from Product assets and the existing Pre-install Issue evidence domain.
 
-Recommended bucket responsibility:
+Recommended bucket:
 
 `warranty-claim-evidence`
 
-V1 file contract:
+V1 file contract is inherited consistently across P/Q/R:
 
 - images only;
-- bounded formats validated server-side and by Storage policy where possible;
-- bounded count and per-image/aggregate size frozen in Cube P implementation Spec;
+- minimum/maximum counts frozen by each operation;
+- maximum 5 images when evidence is required;
+- maximum 8 MiB/image;
+- JPEG, PNG, WebP;
 - no video;
-- no public bucket;
-- no customer-readable raw object listing;
-- no direct anonymous object enumeration.
+- no public bucket or raw anonymous object listing.
 
-## 6.1 Submission atomicity vs Storage
+## 6.1 Storage vs database atomicity
 
-Storage bytes and business rows are not one PostgreSQL transaction. The architecture therefore uses a safe two-boundary model:
+Storage bytes and business rows are not one PostgreSQL transaction. Use a bounded staged-upload model:
 
-1. customer is successfully phone-verified for one exact effective Warranty;
-2. required images are uploaded into a private, random, short-lived/staged intake path through a bounded server-authorized upload path;
-3. final authoritative Claim submission validates that every referenced staged image belongs to that exact intake context and meets the frozen evidence contract;
-4. one database transaction creates Claim + Claim Number + evidence metadata references + initial Claim event + durable notification materialization inputs;
-5. only the committed Claim owns those evidence references.
+1. authorize exact customer/Center context;
+2. upload into a private random staged path;
+3. final authoritative mutation validates ownership/type/size/count;
+4. database transaction commits business row + evidence metadata + event + notification source;
+5. failed final mutation compensates uploaded objects best-effort.
 
-A failed final submission must never leave a visible `submitted` Claim with missing required evidence.
-
-Orphaned unreferenced staging objects are not domain Claims. Implementation should use best-effort compensation and bounded cleanup without introducing a cron/ticket subsystem solely for V1 intake.
+A successful business record must never reference missing required evidence.
 
 ---
 
 # 7. Internal review and inspection architecture
 
-## 7.1 Company Claim queue
+## 7.1 Company queue/detail
 
-Cube Q provides Admin with one Claims work queue using the existing `/operations` authenticated shell.
+Cube Q provides one Company/Admin Claims queue inside the existing `/operations` shell.
 
-The queue is Company/Admin only in V1.
+Admin detail composes bounded reads for:
 
-It must be useful on mobile and must not depend on wide desktop tables.
-
-## 7.2 Review context
-
-Admin Claim detail composes, through bounded reads:
-
-- Claim facts and evidence;
+- Claim facts/evidence;
 - Warranty Number/status;
 - coverage start/end and submit-time eligibility;
 - Product identity snapshot;
 - Warranty coverage/care snapshot;
 - customer/vehicle data needed for review;
 - activating Center snapshot;
-- previous closed Claims/service history for the same Warranty;
+- previous closed Claims/service history;
 - inspection result when present;
 - immutable timeline.
 
-Current Product policy edits must not replace the Warranty policy snapshot used for adjudicating the historical Warranty.
+Current Product policy edits never replace the Warranty policy snapshot used to adjudicate the issued Warranty.
 
-## 7.3 One formal V1 inspection
+## 7.2 One formal V1 inspection
 
-A Claim may have at most one formal inspection record in V1.
-
-Inspection current state:
+A Claim has at most one formal inspection row:
 
 ```text
 requested
 submitted
 ```
 
-Admin may reassign the **same** pending inspection to another active Center with a mandatory reason and immutable event. Reassignment is not a second inspection loop.
+Admin may reassign the same pending inspection to another active Center with mandatory reason/event.
 
-Assigned Center can read only the Claim facts/evidence necessary to perform the requested technical inspection. It must not receive unrelated customer history, internal Admin notes or decision controls.
+Assigned Center is evidence provider only. Submission returns Claim to `under_review`.
 
-Center inspection submission requires:
-
-- technical observation/note;
-- affected area confirmation;
-- private inspection image evidence;
-- authoritative Center actor/time.
-
-Submission returns the Claim to `under_review` for Company decision.
+If Company legitimately cancels the Claim while inspection is pending, the requested row remains historical but the Center immediately loses task access because the Claim is closed.
 
 ---
 
 # 8. Decision architecture
 
-Only active Admin/Company may decide.
+Only active Admin/Company decides.
 
-## `approved`
+## Approved
 
 Atomic consequences:
 
-- Claim status → `approved`;
+- Claim → `approved`;
 - final decision fields/events persisted;
 - `closed_at` remains null;
-- exactly one minimal Resolution/Entitlement row is created in `authorized` state;
-- customer-visible status becomes approved / processing;
-- notification materialization follows the frozen event policy.
+- exactly one minimal Resolution row created in `authorized`;
+- customer projection becomes accepted / processing.
 
 No Roll, Center execution assignment, Warranty mutation or Transfer occurs automatically.
 
-## `rejected`
+## Rejected
 
-Atomic consequences:
-
-- Claim status → `rejected`;
-- final decision fields/events persisted;
+- Claim → `rejected`;
+- final decision persisted;
 - `closed_at` set;
-- no Resolution created.
+- no Resolution.
 
-## `cancelled`
+## Cancelled
 
-V1 is an Admin-only bounded correction/closure path for cases such as confirmed duplicate, submitted-in-error or customer withdrawal communicated through ordinary support.
+Bounded Admin closure for confirmed duplicate, submitted-in-error or customer withdrawal.
 
-It requires a reason/event and sets `closed_at`.
+Allowed after review has started, including while one requested inspection is pending. It sets `closed_at`; any pending inspection becomes non-actionable without deleting history.
 
-It is not a substitute for rejection and cannot be used after material has been consumed in R.
+Cancellation is not available after approval because the case has entered R's immutable fulfillment path.
 
 ---
 
@@ -374,111 +357,113 @@ It is not a substitute for rejection and cannot be used after material has been 
 
 ## 9.1 Remedy kinds
 
-V1 intentionally needs only the PPF operational remedies already established by the approved flow:
+V1 has only:
 
-- `reinstall_only` — approved corrective installation/service without consuming a new Protection Giants Roll;
-- `replacement_roll_reinstall` — consume one replacement physical Roll as Claim fulfillment and reinstall.
+- `service_reinstall` — corrective service/reinstall without consuming a new Protection Giants Roll;
+- `replacement_roll_reinstall` — use one replacement physical Roll as Claim fulfillment and reinstall.
 
-Do not add money/refund/credit remedy types.
-
-A future materially different product remedy requires an explicit Product Decision.
+No money/refund/credit remedy types exist.
 
 ## 9.2 Performing Center
 
-Admin assigns one operationally active Center.
+Admin assigns one operationally active Center. Original activating Center may be used but is not mandatory.
 
-The original activating Center may be used but is not mandatory.
-
-If an assigned Center becomes inactive before completion, Admin may reassign the unresolved Resolution with reason/event, subject to material-allocation rules below.
-
-No Center can assign itself to arbitrary Claims.
+If assigned Center becomes unavailable before completion, Admin may reassign subject to material state. A reserved Roll allocation must be explicitly released before Center reassignment.
 
 ## 9.3 Replacement Roll movement
 
-The existing Custody/Transfer engine remains authoritative.
+Existing Custody/Transfer remains authoritative.
 
-R does **not** auto-transfer a Roll when a Claim is approved or a Center is assigned.
+If desired replacement material is elsewhere:
 
-If the desired replacement Roll is not already in confirmed custody of the performing Center, Company/ordinary authorized parties use the existing Transfer workflow explicitly. After confirmed receipt, R may allocate the Roll to the Resolution.
+1. do not allocate it yet;
+2. use ordinary Transfer;
+3. recipient Center confirms receipt;
+4. only then may R allocate that Roll to the Resolution.
 
-This ordering deliberately avoids teaching the Transfer engine to carry a special pre-reserved Claim Roll across custody boundaries.
+R never auto-creates a Transfer.
 
 ## 9.4 Replacement Roll allocation
 
-Before allocation, the authoritative R mutation revalidates at minimum that the Roll:
+At allocation the Roll must be unopened, otherwise eligible, have no effective Warranty, have no blocking issue/recovery/transfer state, and be in confirmed custody of the assigned performing Center.
 
-- belongs to a generated/non-voided Production source;
-- is not already terminally consumed/unavailable;
-- has no effective customer Warranty;
-- is not already opened into the normal customer-Warranty path;
-- is not blocked by unresolved Pre-install Issue/Recovery state;
-- has no active pending Transfer reservation;
-- is not allocated to another Claim Resolution;
-- is confirmed current custody of the assigned performing Center.
-
-Allocation creates an exclusive reservation state:
+Allocation states:
 
 ```text
 reserved
-released   (before use only)
+released
 consumed
 ```
 
-Only one active `reserved` allocation may exist per Roll.
+Only one active reserved/consumed Claim relationship may own a Roll.
 
 ### While `reserved`
 
-Normal Transfer, normal Roll Opening and Warranty Activation must fail closed for that Roll.
+The Roll is exclusive Claim material:
 
-To move/reassign material, release the allocation explicitly first; then ordinary Transfer may occur.
+- ordinary Transfer blocked;
+- customer Warranty Activation blocked;
+- another Claim allocation blocked.
+
+But reservation does **not** suppress the real physical opening/quality path:
+
+1. the exact assigned performing Center may create the existing immutable Cube J Roll Opening for that reserved Roll;
+2. after opening, if a suspected defect appears before use, the same Cube K Pre-install Issue workflow is available;
+3. a `submitted` issue blocks R completion/consumption until Company resolves it;
+4. `cleared_for_use` or `reported_in_error` allows fulfillment to continue;
+5. `return_required` prevents Claim consumption; Admin releases the unused allocation, then the existing Cube J Opened Roll Recovery path may handle physical return.
+
+No second Claim-specific opening or quality subsystem is created.
+
+### If allocation is released
+
+Release is allowed only before Claim consumption.
+
+If Roll is still unopened, ordinary eligibility may resume subject to every existing rule.
+
+If Roll was already opened, release does not undo that physical fact. Cube J Opening and any Cube K history remain authoritative; ordinary Transfer remains governed by opened-Roll rules.
 
 ### When `consumed`
 
-The Roll is permanently Claim Fulfillment material.
-
-It must be blocked from:
+The Roll is permanently Claim Fulfillment material and is blocked from:
 
 - Warranty Activation;
-- ordinary Roll Opening/Recovery paths;
 - future Claim allocation;
-- ordinary Transfer inventory;
-- reuse as available stock.
+- ordinary Transfer/reuse;
+- new Roll Opening;
+- new Pre-install Issue/Recovery paths that imply pre-use material.
 
-Its own Cube N public Warranty resolver must derive terminal `unavailable_for_warranty` when no effective Warranty exists.
+Its own Cube N public Warranty resolver derives terminal `unavailable_for_warranty` when no effective Warranty exists.
 
-Confirmed custody history remains the existing operational history; consumption does not invent a fake customer Operational Party or automatic custody transfer to the vehicle/customer.
+Confirmed custody history remains operational history; consumption does not create a fake customer Operational Party.
 
 ---
 
 # 10. Resolution completion
 
-A Resolution may complete only when its remedy-specific prerequisites are satisfied.
+## `service_reinstall`
 
-## `reinstall_only`
-
-Requires:
-
-- assigned active performing Center at execution time;
-- completion note;
-- bounded private completion image evidence;
-- Center completion actor/time;
-- Admin confirmation only if the final Cube R implementation review proves it is necessary to prevent a real authority gap. Do not add a second approval step by default.
+Requires assigned active performing Center, completion note, private completion images, and authoritative completion actor/time.
 
 ## `replacement_roll_reinstall`
 
 Requires additionally:
 
-- exactly one Claim Roll allocation;
-- Roll allocation transitioned to `consumed` in the same authoritative completion boundary or in a prior explicit use step that cannot be undone;
-- no second Warranty created for the replacement Roll.
+- exactly one allocation still `reserved`;
+- exactly one existing Cube J Opening for the allocated Roll, created by the assigned performing Center after reservation;
+- no currently `submitted` Pre-install Issue;
+- no historical `return_required` Pre-install outcome;
+- Roll still in confirmed custody of performing Center;
+- exact allocated Roll verified/scanned at completion;
+- no second Warranty exists.
 
 Final completion atomically:
 
+- allocation `reserved → consumed` when replacement is used;
 - Resolution → `completed`;
-- completion event persisted;
+- completion event/evidence metadata persisted;
 - Claim `closed_at` set;
 - original Warranty remains issued with unchanged coverage timestamps;
-- service history becomes visible through bounded Warranty/Claim reads;
 - customer status derives `تم تنفيذ المعالجة`.
 
 ---
@@ -491,91 +476,92 @@ Claims never extend, restart or replace original coverage timestamps.
 
 ## Warranty `voided_in_error`
 
-Cube M void mutation must be extended at Q/R integration time to reject while an open Claim (`closed_at is null`) exists.
+Cube M void mutation rejects while an open Claim (`closed_at is null`) exists.
 
-No automatic Claim cancellation is permitted.
+No automatic Claim/Resolution cancellation.
 
-## Natural Warranty expiry
+## Natural expiry
 
-Expiry blocks **new** Claim creation but never terminates a previously valid open Claim.
+Expiry blocks new Claim creation but never terminates a previously valid Claim/Resolution.
 
 ## Warranty corrections
 
-Cube M bounded customer/vehicle correction remains possible only if it does not violate Claim evidence/history integrity. Implementation review must ensure Claim reads use the current corrected customer/vehicle fields where those are legitimately mutable, while immutable Product/Center/policy snapshots remain historical.
+Claim reads may reflect Cube M's legitimate mutable customer/vehicle corrections where applicable; immutable Product/Center/policy issuance snapshots remain historical.
 
 ---
 
 # 12. Cross-cube Roll compatibility matrix
 
-| Operation on physical Roll | Normal Roll | Claim-allocated `reserved` Roll | Claim `consumed` Roll |
-| --- | --- | --- | --- |
-| ordinary Transfer | existing rules | blocked until explicit allocation release | blocked |
-| Roll Opening | existing rules | blocked | blocked |
-| Pre-install Issue | existing rules | blocked from entering normal pre-Warranty path | blocked |
-| Warranty Activation | existing rules | blocked | blocked |
-| Claim allocation | eligible if all R rules pass | same Resolution only | blocked |
-| Cube N public Warranty state | existing resolver | transient hold not publicly disclosed | `unavailable_for_warranty` if no effective Warranty |
+| Operation on physical Roll | Normal Roll | Claim `reserved`, unopened | Claim `reserved`, opened | Claim `consumed` |
+| --- | --- | --- | --- | --- |
+| ordinary Transfer | existing rules | blocked until release | blocked by Claim reservation + Cube J opening | blocked |
+| Cube J Roll Opening | existing rules | allowed only for exact assigned Claim-performing Center/context | already opened / duplicate blocked | blocked |
+| Cube K Pre-install Issue | existing rules | not eligible until opened | allowed under existing K rules | blocked |
+| Warranty Activation | existing rules | blocked | blocked while Claim reservation exists; K rules also apply | blocked |
+| Claim allocation | eligible if all R rules pass | same Resolution only | no new allocation | blocked |
+| allocation release | n/a | allowed before use | allowed before use; does not undo Opening | impossible |
+| Cube N public Warranty state | existing resolver | ordinary pre-activation presentation | ordinary presentation subject to existing lifecycle until consumed | `unavailable_for_warranty` if no effective Warranty |
 
-R implementation owns the **minimal compatibility guards** required to enforce this table. It must not redesign completed Transfer/Open/Activation engines.
+R owns only the minimal compatibility guards/exceptions required to enforce this matrix. It must not redesign Transfer/J/K/M/N.
 
 ---
 
 # 13. Notification contract
 
-Claims reuse Cube L's four-way separation:
+Claims reuse Cube L's separation of domain truth, durable Inbox, attention policy and best-effort Push.
 
-- domain truth;
-- durable Inbox;
-- attention policy;
-- best-effort Push.
+Recommended event catalog:
 
-Recommended V1 event catalog:
+| Event | Recipient | Intent |
+| --- | --- | --- |
+| Claim submitted | active Admin profiles | action required |
+| Inspection requested/reassigned | assigned Center | action required |
+| Inspection submitted | active Admin profiles | action required |
+| Claim approved/rejected/cancelled | relevant internal users; customer uses verified page | bounded |
+| Resolution assigned/reassigned | performing Center | action required |
+| Replacement Roll reserved | Center/Admin only if it changes required action | bounded |
+| Resolution completed | relevant Admin/Center | informational/bounded |
 
-| Event | Recipient | Inbox | Push intent |
-| --- | --- | --- | --- |
-| Claim submitted | active Admin profiles | yes | action-required |
-| Inspection requested/reassigned | assigned Center profiles | yes | action-required |
-| Inspection submitted | active Admin profiles | yes | action-required |
-| Claim approved/rejected/cancelled | internal relevant profiles; customer uses verified page, not Web Push | yes where authenticated recipient exists | bounded |
-| Resolution assigned/reassigned | performing Center profiles | yes | action-required |
-| Replacement material ready/allocated | relevant Center/Admin only when action is required | yes | bounded |
-| Resolution completed | Admin + performing Center as relevant | yes | informational/bounded |
-
-Customer SMS/email/WhatsApp notifications are not introduced by P/Q/R.
+Customer SMS/email/WhatsApp is not introduced.
 
 ---
 
 # 14. Security and privacy invariants
 
-1. Anonymous role never gets direct `SELECT`/mutation access to Claims, Claim evidence, inspections, resolutions or allocations.
-2. Customer actions use narrow server/RPC boundaries bound to Public Code resolution + registered phone verification.
+1. Anonymous role never gets direct table/Storage access to Claims, evidence, inspections, Resolutions or allocations.
+2. Customer actions use narrow server/RPC boundaries bound to Public Code + registered-phone verification.
 3. Claim Number is never an authorization credential.
-4. Direct Data API mutations must not bypass lifecycle RPCs/server actions.
-5. Evidence buckets remain private and object paths must not contain raw phone, VIN, customer name or public code.
-6. Admin gets Company-wide Claim authority; Center receives only specifically assigned inspection/fulfillment access.
-7. Agent/Dealer receive no V1 Claim decision access unless a future Product Decision explicitly introduces it.
-8. Notification payloads remain privacy-safe and do not place Claim evidence/customer PII on lock screens.
-9. All authoritative state transitions write immutable domain events/audit evidence.
-10. Concurrency-sensitive mutations lock the authoritative Claim/Warranty/Roll rows in deterministic order and revalidate current truth in the transaction rather than trust stale UI state.
+4. Direct Data API writes cannot bypass lifecycle mutations.
+5. Evidence paths contain no raw phone, VIN, customer name or Public Code.
+6. Admin has Company-wide Claims authority; Center sees only assigned inspection/fulfillment work.
+7. Agent/Dealer receive no V1 adjudication authority.
+8. Notification payloads remain privacy-safe.
+9. All authoritative transitions produce immutable events/audit evidence.
+10. Concurrency-sensitive mutations revalidate current truth under deterministic locking rather than trust stale UI state.
 
 ---
 
-# 15. Concurrency / race scenarios that must be permanently tested
+# 15. Permanent race/regression scenarios
 
-The P/Q/R quality gate must include at least:
+P/Q/R quality gates must cover at least:
 
-- two simultaneous customer submissions for one Warranty → exactly one open Claim;
-- Warranty expires between form load and submit → authoritative submit rejects new Claim;
-- Claim submits just before expiry → committed valid Claim survives later expiry;
-- Admin decision attempted twice → one deterministic terminal decision;
-- inspection submission races reassignment → only the current valid assignment wins;
-- Warranty void-in-error races Claim submission → deterministic valid winner, never voided Warranty + open Claim contradiction;
-- Warranty void-in-error races approved/incomplete Resolution → void blocked;
-- two Resolutions attempt to allocate same Roll → one winner;
-- Claim allocation races ordinary Transfer/Roll Opening/Warranty Activation → one valid owner of the Roll lifecycle;
-- allocation release races material consumption → consumed state cannot be resurrected;
-- Resolution completion races second Claim submission → either old Claim closes then later submission may evaluate normally, or second submission sees the open-case lock; no overlap;
-- replacement Roll consumed then public Warranty resolver queried → terminally unavailable, never `not_activated` eligible behavior.
+- simultaneous customer submissions → exactly one open Claim;
+- Warranty expires between render and submit → new Claim rejected;
+- valid Claim commits before expiry → survives later expiry;
+- Warranty void races Claim submission → one deterministic valid winner;
+- two Admin final decisions → one terminal adjudication;
+- inspection submit races reassignment/cancellation → one valid winner;
+- Q approval retry → exactly one `authorized` Resolution;
+- two Resolutions allocate same Roll → one winner;
+- allocation races ordinary Transfer → one winner;
+- exact Claim-performing Center opening reserved Roll succeeds; unrelated/stale opening attempt fails;
+- Pre-install Issue submitted on reserved/opened replacement Roll blocks Claim completion;
+- `return_required` cannot be consumed; release + existing Recovery remains possible;
+- allocation release races completion → either release wins and completion fails or completion consumes and release fails;
+- Warranty void races incomplete Resolution → void blocked;
+- second Claim races R completion → no overlapping open cases;
+- consumed Roll later attempts Transfer/Open/Issue/Activation → blocked;
+- consumed Roll public Warranty resolver → terminal unavailable.
 
 ---
 
@@ -583,114 +569,116 @@ The P/Q/R quality gate must include at least:
 
 ## Cube P — Customer Warranty Claim Intake
 
-Owns only:
+Owns:
 
-- Claim schema foundation + Claim Number;
-- open-case invariant foundation;
+- Claim schema + Claim Number;
+- `closed_at` / one-open-case foundation;
 - issue taxonomy;
-- customer phone verification boundary;
-- required private intake image evidence;
+- customer phone verification;
+- required private intake images;
 - customer submit flow;
-- `submitted` state + initial event;
-- narrow verified customer Claim read/status;
-- Admin new-Claim notification materialization.
+- `submitted` event;
+- narrow verified customer status;
+- Admin new-Claim notification.
 
-Does not own Admin review, inspection, final decision, Resolution or replacement Roll.
+Does not own review, inspection, decision, Resolution or replacement material.
 
 ## Cube Q — Claim Review, Inspection & Decision
 
 Owns:
 
-- Admin Claims queue/detail;
-- `under_review` / `awaiting_inspection` transitions;
+- Admin queue/detail;
+- `under_review` / `awaiting_inspection`;
 - one formal inspection + reassignment;
-- Center inspection UI/evidence submission;
-- Company decision `approved | rejected | cancelled`;
+- bounded cancellation while inspection is pending;
+- Center inspection submission;
+- Company `approved | rejected | cancelled`;
 - `closed_at` on rejected/cancelled;
-- minimal one-to-one `authorized` Resolution/Entitlement creation on approval;
-- Warranty void-in-error open-Claim guard;
-- decision/inspection notifications and timeline.
+- one minimal `authorized` Resolution on approval;
+- Warranty void open-Claim guard;
+- decision/inspection timeline + notifications.
 
-Does not own performing Center assignment for remedy, Roll allocation/consumption, reinstall completion or finance.
+Does not own remedy, performing Center, Roll allocation/consumption, reinstall or finance.
 
 ## Cube R — Approved Claim Resolution / Replacement & Reinstall
 
 Owns:
 
 - authorized Resolution processing;
-- remedy kind;
+- `service_reinstall | replacement_roll_reinstall`;
 - performing Center assignment/reassignment;
-- replacement Roll candidate/read boundary;
+- replacement Roll candidate boundary;
 - allocation reservation/release/consumption;
-- minimal compatibility guards in Transfer / Opening / Activation / Public Warranty resolver;
-- service/reinstall completion evidence;
-- Resolution completion;
-- Claim `closed_at` finalization;
-- Warranty service history projection;
-- customer resolved status;
-- fulfillment notifications.
+- narrow Claim-reserved Cube J Opening compatibility;
+- reuse of Cube K issue/quality path before replacement consumption;
+- completion evidence;
+- Resolution completion + Claim `closed_at`;
+- Warranty service history;
+- customer completed projection;
+- fulfillment notifications;
+- minimal Transfer/J/K/M/N compatibility guards.
 
-Does not own finance, automatic Warranty renewal, new customer QR, or generic aftersales/ticket system.
+Does not own finance, automatic Warranty renewal, new customer QR or generic aftersales/ticketing.
 
 ---
 
 # 17. Implementation sequence and gates
 
-## Stage 1 — P
+## Stage P
 
-1. re-fetch latest `main`;
-2. freeze P Spec against exact base;
-3. implement only P;
-4. database/RLS/storage/security review;
+1. fetch latest `main`;
+2. revalidate/freeze P against exact base;
+3. implement P only;
+4. database/RLS/Storage/security review;
 5. hosted customer mobile acceptance;
-6. independent second review;
-7. merge P.
+6. independent second audit;
+7. merge.
 
-P alone is **not** Production Claims launch approval.
+P alone is not Production Claims launch approval.
 
-## Stage 2 — Q
+## Stage Q
 
-Repeat from updated `main`. Revalidate P contracts and Cube M void compatibility. Merge only after Q-specific quality gate and independent review.
+Repeat from merged P `main`; revalidate P contracts and Cube M void compatibility. Merge only after Q-specific gate and independent audit.
 
-P+Q still do not authorize Production launch of approved Claims if R fulfillment is required operationally.
+## Stage R
 
-## Stage 3 — R
+Repeat from merged Q `main`; revalidate Transfer/J/K/M/N compatibility and run real replacement-material staging scenarios.
 
-Repeat from updated `main`. Revalidate Transfer/Open/Activation/Public Warranty compatibility. Qualify full end-to-end scenario including a real replacement-material flow in Staging.
+## Claims Macro GO
 
-## Macro GO gate
+Claims V1 is operationally complete only after:
 
-Claims V1 becomes operationally complete only after:
-
-- P quality gate PASS;
-- Q quality gate PASS;
-- R quality gate PASS;
-- full end-to-end Customer Warranty → Claim → optional Inspection → Decision → Resolution scenario PASS;
-- security/privacy review PASS;
-- no dead-end state from Center suspension, Warranty expiry, Roll allocation or failed Transfer;
-- existing Cube M/N/L and relevant Transfer/Open/Activation regressions remain PASS.
+- P gate PASS;
+- Q gate PASS;
+- R gate PASS;
+- full customer Claim → optional inspection → decision → service/replacement completion PASS;
+- replacement Roll opening + pre-install quality exception PASS;
+- security/privacy PASS;
+- no dead end from Center suspension, Warranty expiry, Roll defect, allocation release or failed Transfer;
+- relevant M/N/L + Transfer/J/K regressions PASS.
 
 ---
 
 # 18. Explicit architecture non-goals
 
-Do not add during P/Q/R unless a new Product Decision requires it:
+Do not add during P/Q/R without a new Product Decision:
 
-- generic ticket/helpdesk engine;
-- multi-step arbitrary workflow builder;
+- generic helpdesk/ticket engine;
+- arbitrary workflow builder;
 - comments/chat;
 - customer account/OTP;
-- manual public claim search;
-- AI decision automation;
-- agent/dealer adjudication;
+- public Claim search;
+- AI adjudication;
+- Agent/Dealer adjudication;
 - SLA/escalation engine;
 - finance/accounting/invoicing;
 - refund/credit remedy types;
 - automatic Transfer;
-- replacement inventory separate from physical Rolls;
+- replacement inventory separate from tracked Rolls;
+- second Roll Opening/pre-install quality system;
 - renewed Warranty after replacement;
 - new customer QR/public identity;
 - video evidence;
-- background/cron processes when an explicit synchronous lifecycle action is sufficient.
+- cron/background processes when explicit synchronous lifecycle actions are sufficient.
 
-The design intentionally remains narrow: it completes the physical Product/Warranty service lifecycle without turning Protection Giants into an ERP or generic support suite.
+The design completes the physical Product/Warranty service lifecycle without turning Protection Giants into an ERP or generic support suite.
