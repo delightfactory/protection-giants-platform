@@ -1,0 +1,54 @@
+name: Temporary Cube O Type Sync
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260825150000_cube_o_warranty_print_identity_read.sql"
+      - ".github/workflows/tmp-cube-o-sync-types.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync-types:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start and rebuild local database
+        run: |
+          supabase start
+          supabase db reset --local --no-seed
+
+      - name: Generate public database types
+        run: supabase gen types typescript --local > lib/supabase/database.types.ts
+
+      - name: Commit generated types if changed
+        run: |
+          if git diff --quiet -- lib/supabase/database.types.ts; then
+            echo "Generated types already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/supabase/database.types.ts
+          git commit -m "chore(cube-o): sync generated database types"
+          git push origin "HEAD:${{ github.head_ref }}"
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
