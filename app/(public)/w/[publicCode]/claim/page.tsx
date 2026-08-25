@@ -24,14 +24,23 @@ export default async function WarrantyClaimPage({ params }: Props) {
     getFreshClaimAccess(publicCode),
   ]);
 
+  const publicProductName =
+    publicWarranty.kind === "active"
+    || publicWarranty.kind === "expired"
+    || publicWarranty.kind === "not_activated"
+    || publicWarranty.kind === "no_current_warranty_after_void"
+    || publicWarranty.kind === "unavailable_for_warranty"
+      ? publicWarranty.productName
+      : null;
+
   return (
     <main className={styles.page}>
       <div className={styles.wrap}>
         <CustomerClaimIntake
           publicCode={publicCode}
           initialContext={access?.context ?? null}
-          publicProductName={publicWarranty?.productName ?? null}
-          publicState={publicWarranty?.state ?? null}
+          publicProductName={publicProductName}
+          publicState={publicWarranty.kind === "not_found" ? null : publicWarranty.kind}
         />
       </div>
     </main>
