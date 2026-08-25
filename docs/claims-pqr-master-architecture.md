@@ -3,7 +3,7 @@
 **Status:** APPROVED architecture baseline / implementation Specs require final review  
 **Date:** 2026-08-25  
 **Baseline:** `main` at `53125d64091f64366cd111ef4b4b7eb9e53a49b4`  
-**Product decisions:** `docs/claims-product-decisions-amendment.md` (PD-063 through PD-075)  
+**Product decisions:** `docs/claims-product-decisions-amendment.md` (PD-063 through PD-076)  
 **Depends on:** Cube M Warranty Activation, Cube N Public Warranty Access, Cube L Notifications/PWA, existing Operational Party / Center foundation, Roll Custody & Transfers, Cube J Roll Opening, and Cube K Pre-install Issue  
 **Purpose:** freeze one coherent end-to-end Claims architecture before P, Q and R are implemented separately.
 
@@ -18,7 +18,8 @@ If Intake, adjudication and replacement/reinstall were designed independently, t
 - adding Claim states that later need to be repurposed as fulfillment states;
 - changing Claim ownership or customer verification after public launch;
 - leaving approved Claims without an authoritative fulfillment handoff or mistake-correction boundary;
-- making a replacement Roll accidentally eligible for a second Warranty or using the wrong SKU;
+- making a replacement Roll accidentally eligible for a second Warranty or bypassing the intended replacement-Product policy;
+- hard-coding same-Product replacement so a later controlled Product substitution would require reopening the whole lifecycle;
 - bypassing physical Roll Opening / pre-install quality history when replacement material is used;
 - letting Warranty `voided_in_error`, Transfer, Roll Opening or Activation race with Claim state;
 - adding an unnecessary accounting/ticketing subsystem to solve an operational lifecycle problem.
@@ -258,7 +259,9 @@ Existing Custody/Transfer remains authoritative:
 
 No auto-Transfer.
 
-## 9.4 Replacement Roll eligibility / same SKU
+## 9.4 Replacement Product Eligibility Policy
+
+Replacement Product compatibility is intentionally centralized behind one authoritative policy boundary rather than scattered equality checks.
 
 At allocation the Roll must be:
 
@@ -266,11 +269,41 @@ At allocation the Roll must be:
 - **unopened**;
 - in confirmed custody of assigned Center;
 - without effective Warranty/transfer conflict/previous Claim consumption;
-- **same Product/SKU as the original Warranty**.
+- accepted by the authoritative **Replacement Product Eligibility Policy**.
 
-V1 never silently substitutes another Product/SKU. Cross-product substitution needs a later explicit Product Decision.
+The policy consumes the original Warranty's canonical `product_id` and the candidate Roll's canonical `product_id`.
 
-Allocation states:
+### V1 policy
+
+V1 returns eligible only when:
+
+```text
+candidate_roll.product_id = original_warranty.product_id
+```
+
+Therefore the user-visible V1 behavior is still **same Product/SKU by default and in practice**.
+
+However, this equality is implemented **inside the single policy boundary**, not as a permanent Claim/Resolution/allocation schema assumption. Candidate reads and the allocation mutation must both consume the same authoritative policy result.
+
+A successful allocation snapshots a server-generated `product_eligibility_basis`, e.g. the stable V1 basis `same_product_default`. The basis is audit/history data, never client input.
+
+Future Company-approved alternative Product/SKU mapping can extend this policy/configuration without changing:
+
+- Claim identity or adjudication;
+- Resolution states;
+- Roll allocation relationship;
+- Transfer/Custody;
+- Cube J Opening;
+- Cube K quality handling;
+- Claim consumption;
+- original Warranty term;
+- original customer QR/Public Code.
+
+No compatibility matrix or substitution UI is built in V1 because no alternative Products are currently enabled.
+
+A later policy change is prospective and does not retroactively invalidate an allocation that was valid under its recorded eligibility basis.
+
+Allocation states remain:
 
 ```text
 reserved
@@ -323,13 +356,16 @@ Assigned active Center + note + private images.
 
 Additionally requires:
 
-- one reserved allocation;
-- same-SKU Roll still in assigned Center custody;
+- one reserved allocation created under the authoritative Replacement Product Eligibility Policy;
+- recorded `product_eligibility_basis` from allocation time;
+- exact allocated Roll still in assigned Center custody;
 - existing Cube J Opening by that Center after reservation;
 - no pending Cube K issue;
 - no historical `return_required`;
 - exact allocated Roll verified/scanned;
 - no second Warranty.
+
+Completion does **not** re-run a newer Product-substitution policy to reinterpret historical allocation eligibility. It verifies the exact authoritative allocation and unchanged Roll/Product identity. A future policy change therefore does not silently invalidate work already authorized under the recorded allocation basis.
 
 Completion transaction:
 
@@ -359,7 +395,7 @@ Completion transaction:
 | Cube J Opening | existing | exact assigned Claim Center only | duplicate blocked | blocked |
 | Cube K Issue | existing | not yet eligible | allowed under K | blocked |
 | Warranty Activation | existing | blocked | blocked | blocked |
-| Claim allocation | eligible if R checks pass | same Resolution only | no new allocation | blocked |
+| Claim allocation | eligible if R + Product-policy checks pass | same Resolution only | no new allocation | blocked |
 | allocation release | n/a | allowed before use | allowed before use; Opening persists | impossible |
 | Cube N Warranty state | existing | ordinary pre-activation | ordinary subject to current lifecycle | unavailable if no effective Warranty |
 
@@ -396,7 +432,8 @@ No customer SMS/email/WhatsApp.
 7. Agent/Dealer no adjudication;
 8. privacy-safe notification payloads;
 9. immutable transition events;
-10. deterministic locking/revalidation for Warranty/Claim/Roll races.
+10. deterministic locking/revalidation for Warranty/Claim/Roll races;
+11. `product_eligibility_basis` is server-derived policy evidence, never user-supplied authority.
 
 ---
 
@@ -413,7 +450,9 @@ Must test:
 - approval-in-error cancellation succeeds only while Resolution untouched authorized;
 - same correction denied after Resolution assigned;
 - same Roll allocation race → one winner;
-- wrong-SKU Roll allocation rejected;
+- different-Product Roll rejected by current V1 replacement policy;
+- same-Product Roll accepted through the centralized policy boundary;
+- allocation stores authoritative product eligibility basis;
 - allocation vs ordinary Transfer;
 - exact Claim Center Opening succeeds; stale/unrelated Opening fails;
 - replacement pre-install issue vs completion;
@@ -437,7 +476,7 @@ Admin queue/detail, review, one inspection/reassignment, bounded cancellation, C
 
 ## R — Approved Claim Resolution / Replacement & Reinstall
 
-Remedy, Center assignment/reassignment, same-SKU replacement candidate, reservation/release/consumption, Claim-reserved Cube J Opening, Cube K quality reuse, completion evidence, Claim closure, service history, customer completion projection and minimal compatibility guards. No finance/new Warranty/new QR.
+Remedy, Center assignment/reassignment, policy-driven replacement candidate eligibility with same-Product V1 default, eligibility-basis snapshot, reservation/release/consumption, Claim-reserved Cube J Opening, Cube K quality reuse, completion evidence, Claim closure, service history, customer completion projection and minimal compatibility guards. No finance/new Warranty/new QR.
 
 ---
 
@@ -449,8 +488,9 @@ Then Q from merged P → qualify P regressions + Q → audit → merge.
 
 Then R from merged Q → qualify Transfer/J/K/M/N/L + P/Q/R → hosted full material flow → audit → merge.
 
-**Claims Macro GO** only after full customer Claim → optional inspection → decision → optional Transfer → same-SKU replacement allocation → Cube J Opening → optional Cube K Issue → completion → Claim closure passes with:
+**Claims Macro GO** only after full customer Claim → optional inspection → decision → optional Transfer → V1-policy-approved replacement allocation → Cube J Opening → optional Cube K Issue → completion → Claim closure passes with:
 
+- V1 same-Product default enforced by the centralized eligibility policy rather than hard schema coupling;
 - no second Warranty;
 - original expiry/Public Code unchanged;
 - no finance;
@@ -462,4 +502,4 @@ Then R from merged Q → qualify Transfer/J/K/M/N/L + P/Q/R → hosted full mate
 
 # 18. Non-goals
 
-No generic helpdesk/workflow builder, comments/chat, customer account/OTP, public Claim search, AI adjudication, Agent/Dealer adjudication, SLA engine, finance/invoicing/refunds, automatic Transfer, second inventory/Open/quality engine, cross-SKU substitution, renewed Warranty, new customer QR, video evidence, or unnecessary cron/background workflow.
+No generic helpdesk/workflow builder, comments/chat, customer account/OTP, public Claim search, AI adjudication, Agent/Dealer adjudication, SLA engine, finance/invoicing/refunds, automatic Transfer, second inventory/Open/quality engine, cross-Product substitution enablement/configuration in V1, unused generic compatibility engine, renewed Warranty, new customer QR, video evidence, or unnecessary cron/background workflow.
