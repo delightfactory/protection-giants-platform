@@ -16,6 +16,7 @@ import {
   WARRANTY_CLAIM_ALLOWED_IMAGES,
   WARRANTY_CLAIM_EVIDENCE_BUCKET,
   WARRANTY_CLAIM_MAX_IMAGES,
+  type WarrantyClaimEvidenceMime,
   type WarrantyClaimEvidenceReference,
   type WarrantyClaimSubmitResult,
   type WarrantyClaimUploadResult,
@@ -43,10 +44,8 @@ type StorageListObject = {
   metadata?: Record<string, unknown> | null;
 };
 
-function safeSubmitError(message: string | undefined): string {
-  return message && EXPOSED_SUBMIT_ERRORS.has(message)
-    ? message
-    : "PG_CLAIM_SUBMIT_FAILED";
+function authoritativeSubmitError(message: string | undefined): string | null {
+  return message && EXPOSED_SUBMIT_ERRORS.has(message) ? message : null;
 }
 
 function evidenceFileName(path: string): string {
@@ -70,6 +69,41 @@ function storageMetadata(object: StorageListObject): { mimeType: string; sizeByt
 
   if (!mime || !Number.isFinite(size) || size < 1) return null;
   return { mimeType: mime, sizeBytes: size };
+}
+
+function detectWarrantyClaimImageMime(bytes: Buffer): WarrantyClaimEvidenceMime | null {
+  if (
+    bytes.length >= 3
+    && bytes[0] === 0xff
+    && bytes[1] === 0xd8
+    && bytes[2] === 0xff
+  ) {
+    return "image/jpeg";
+  }
+
+  if (
+    bytes.length >= 8
+    && bytes[0] === 0x89
+    && bytes[1] === 0x50
+    && bytes[2] === 0x4e
+    && bytes[3] === 0x47
+    && bytes[4] === 0x0d
+    && bytes[5] === 0x0a
+    && bytes[6] === 0x1a
+    && bytes[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+
+  if (
+    bytes.length >= 12
+    && bytes.toString("ascii", 0, 4) === "RIFF"
+    && bytes.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return "image/webp";
+  }
+
+  return null;
 }
 
 async function cleanupEvidence(paths: string[]): Promise<boolean> {
@@ -116,10 +150,14 @@ export async function uploadWarrantyClaimEvidence(
     return { ok: false, code: "PG_CLAIM_EVIDENCE_TYPE_INVALID" };
   }
 
-  const digest = createHash("sha256")
-    .update(Buffer.from(await file.arrayBuffer()))
-    .digest("hex");
-  const extension = WARRANTY_CLAIM_ALLOWED_IMAGES[file.type];
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const detectedMime = detectWarrantyClaimImageMime(bytes);
+  if (!detectedMime || detectedMime !== file.type) {
+    return { ok: false, code: "PG_CLAIM_EVIDENCE_TYPE_INVALID" };
+  }
+
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  const extension = WARRANTY_CLAIM_ALLOWED_IMAGES[detectedMime];
   const storagePath = `${access.payload.draftId}/${digest}.${extension}`;
   const fileName = evidenceFileName(storagePath);
   const admin = createSupabaseAdminClient();
@@ -133,12 +171,12 @@ export async function uploadWarrantyClaimEvidence(
   const existing = (existingObjects ?? []).find((object) => object.name === fileName);
   if (existing) {
     const metadata = storageMetadata(existing as StorageListObject);
-    if (!metadata || metadata.mimeType !== file.type || metadata.sizeBytes !== file.size) {
+    if (!metadata || metadata.mimeType !== detectedMime || metadata.sizeBytes !== bytes.length) {
       return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
     }
     return {
       ok: true,
-      evidence: { storagePath, mimeType: file.type, sizeBytes: file.size },
+      evidence: { storagePath, mimeType: detectedMime, sizeBytes: bytes.length },
     };
   }
 
@@ -148,8 +186,8 @@ export async function uploadWarrantyClaimEvidence(
 
   const { error: uploadError } = await admin.storage
     .from(WARRANTY_CLAIM_EVIDENCE_BUCKET)
-    .upload(storagePath, file, {
-      contentType: file.type,
+    .upload(storagePath, bytes, {
+      contentType: detectedMime,
       cacheControl: "3600",
       upsert: false,
     });
@@ -158,7 +196,7 @@ export async function uploadWarrantyClaimEvidence(
 
   return {
     ok: true,
-    evidence: { storagePath, mimeType: file.type, sizeBytes: file.size },
+    evidence: { storagePath, mimeType: detectedMime, sizeBytes: bytes.length },
   };
 }
 
@@ -270,8 +308,20 @@ export async function submitWarrantyClaim(input: {
     return { ok: true, claimId: row.claim_id, claimNumber: row.claim_number };
   }
 
-  // If the database committed but the network response was lost, preserve the
-  // successful Claim and evidence rather than compensating committed truth.
+  // A named domain rejection is authoritative: the database transaction rolled
+  // back and staged evidence may be compensated. Never reinterpret a request
+  // conflict as a successful retry merely because that request id already exists.
+  const domainError = authoritativeSubmitError(error?.message);
+  if (domainError) {
+    const cleaned = await cleanupEvidence(evidence.map((item) => item.storagePath));
+    if (!cleaned) return { ok: false, code: "PG_CLAIM_EVIDENCE_COMPENSATION_FAILED" };
+    return { ok: false, code: domainError };
+  }
+
+  // Unknown/transport failure is ambiguous. First resolve an already-committed
+  // request. If that lookup cannot prove the Claim exists, preserve the staged
+  // evidence and the caller's request id for a safe same-request retry. Deleting
+  // here could race a server-side commit whose HTTP response was lost.
   const { data: existing, error: existingError } = await admin.rpc(
     "get_customer_warranty_claim_by_request",
     {
@@ -286,8 +336,5 @@ export async function submitWarrantyClaim(input: {
     return { ok: true, claimId: row.claim_id, claimNumber: row.claim_number };
   }
 
-  const cleaned = await cleanupEvidence(evidence.map((item) => item.storagePath));
-  if (!cleaned) return { ok: false, code: "PG_CLAIM_EVIDENCE_COMPENSATION_FAILED" };
-
-  return { ok: false, code: safeSubmitError(error?.message) };
+  return { ok: false, code: "PG_CLAIM_SUBMIT_AMBIGUOUS" };
 }
