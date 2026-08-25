@@ -352,3 +352,51 @@ Customer coverage remains based on the issuance snapshots until a future explici
 Cube M does not create the public Warranty authorization credential. The later Public Warranty Access / Verification cube owns a cryptographically strong, non-enumerable public token and stable public Warranty URL.
 
 The approved future vehicle, Warranty-card and invoice QR copies must point to that secure public identity. SKU, Roll serial, ERP serial, Transfer ID and the non-secret Warranty Number must not be used as substitutes for the public authorization token.
+
+### PD-051 — Customer Warranty public identity is permanently owned by the physical Roll
+**Status:** Approved — 2026-08-25
+
+The customer-facing public Warranty credential belongs to the physical Roll, not to a particular Warranty row. Every new Roll receives exactly one cryptographically strong, random, non-enumerable public code atomically as part of Roll creation; a new operational Roll must not commit without that identity.
+
+The public code is permanent. It is not derived from SKU, Roll serial, ERP serial, Transfer ID, Warranty Number, VIN or another business identifier, and it is not rotated, reassigned or replaced when a Warranty is corrected, voided in error, legitimately reactivated or naturally expires.
+
+This decision supersedes PD-050 only where its wording implied that the public credential would be allocated to a Warranty after Activation. PD-050 remains authoritative that Warranty Number and other human/operational identifiers are not public authorization credentials. PD-031's contextual outer-Roll QR remains a separate unchanged identity surface.
+
+### PD-052 — One stable canonical Warranty URL is reused by every customer QR copy and reprint
+**Status:** Approved — 2026-08-25
+
+The permanent production public Warranty URL is `https://protectiongiants.com/w/<PUBLIC-CODE>`. The vehicle, Warranty-card and invoice copies for one Roll all use this exact Roll-owned identity, and every later reprint must reproduce the same URL.
+
+Deployment, hosting or internal routing changes must preserve the `/w/<PUBLIC-CODE>` contract. Vercel preview URLs, staging hostnames and operational portal hostnames must never become the printed production Warranty identity.
+
+### PD-053 — Public Warranty verification is bearer-link access only in V1
+**Status:** Approved — 2026-08-25
+
+Viewing the public Warranty page requires no customer account, login, password or OTP. Possession of the high-entropy `/w/<PUBLIC-CODE>` URL is sufficient for the approved read-only public projection.
+
+V1 provides no public manual lookup by Warranty Number, VIN/chassis, vehicle plate, Roll serial, ERP serial, SKU, customer phone/email/name or similar enumerable identifiers. Malformed and unknown public codes use the same generic invalid-link response and reveal no existence hints.
+
+### PD-054 — The Roll-owned public identity resolves the current real Warranty lifecycle
+**Status:** Approved — 2026-08-25
+
+Before Activation, a valid public identity confirms the Roll/Product is genuine and registered and states that Warranty is not yet activated. If a mistaken Warranty is later `voided_in_error`, the public identity remains valid but exposes no historical void details; until a legitimate new Warranty exists it states only that there is no current Warranty.
+
+A later legitimate reactivation after `voided_in_error` is shown automatically through the same public URL and carries its new Warranty Number. Natural Warranty expiry keeps the same URL permanently verifiable with status `expired` and never makes the Roll eligible for a second Warranty. A Roll that becomes terminally unavailable before any effective Warranty shows only that it is unavailable for Warranty activation.
+
+If contradictory data prevents one authoritative state from being determined, the public resolver must fail closed rather than guess or select an arbitrary Warranty. Once an effective issued Warranty exists, later ordinary Roll/Product/Center operational metadata changes do not silently change or cancel the customer Warranty.
+
+### PD-055 — Public Warranty projection is minimal and snapshot-based
+**Status:** Approved — 2026-08-25
+
+For an effective Warranty, the V1 public page may display only Warranty Number, derived status, Product name, Activation/start date, coverage end date, activating/installation Center name, vehicle make, vehicle model and vehicle year when present.
+
+Customer name, phone, email, VIN/chassis, vehicle plate, Roll serial, ERP serial, internal UUIDs, custody/Transfer history, Opening/Issue details, audit events and correction/void reasons are not part of the anonymous public projection.
+
+Before Activation, Product identity comes from the immutable Production Order snapshot belonging to the Roll. After Activation, Product/Center/coverage facts come from the Warranty issuance snapshots. Cube M's allowed customer/vehicle correction updates may be reflected where the corrected field is part of the approved public projection.
+
+### PD-056 — Cube N freezes public Warranty access but defers Claims, printing and analytics
+**Status:** Approved — 2026-08-25
+
+Cube N Public Warranty Access / Verification owns the permanent Roll public identity, stable `/w/` URL, narrow resolver, Arabic mobile-first public page, lifecycle states, anti-enumeration behavior and security/privacy regression coverage.
+
+Cube N does not render or print the customer QR labels, implement vehicle/Warranty-card/invoice layouts, expose a Claims button or Claims workflow, build QR scan/view analytics, add customer login/OTP, or add multilingual UI. The next customer Warranty print slice reuses the already-frozen `/w/<PUBLIC-CODE>` identity and the existing shared QR reliability foundation.
