@@ -105,6 +105,7 @@ async function prepareClaimPayload(
   const registered = await rpc("register_customer_warranty_claim_draft_evidence", {
     p_draft_id: draftId,
     p_warranty_id: fixture.warrantyId,
+    p_verified_phone_normalized: fixture.normalizedPhone,
     p_storage_path: storagePath,
     p_mime_type: "image/jpeg",
     p_size_bytes: 128,
@@ -155,7 +156,7 @@ const order = await rpc("create_production_order", {
   p_request_id: randomUUID(),
   p_product_id: product.id,
   p_production_date: "2026-08-25",
-  p_lots: [{ quantity: 5, source_reference: "CUBE-P-RACES" }],
+  p_lots: [{ quantity: 6, source_reference: "CUBE-P-RACES" }],
   p_source_reference: "CUBE-P-RACES",
   p_notes: "Cube P concurrency fixtures",
 }, adminToken, anonKey);
@@ -166,8 +167,8 @@ const rollsResult = await rest(
   `rolls?production_order_id=eq.${encodeURIComponent(order.body)}&select=id,serial_number&order=serial_number.asc`,
   adminToken,
 );
-assert(rollsResult.response.ok && Array.isArray(rollsResult.body) && rollsResult.body.length === 5,
-  `Cube P races require five fresh Rolls: ${rollsResult.response.status} ${JSON.stringify(rollsResult.body)}`);
+assert(rollsResult.response.ok && Array.isArray(rollsResult.body) && rollsResult.body.length === 6,
+  `Cube P races require six fresh Rolls: ${rollsResult.response.status} ${JSON.stringify(rollsResult.body)}`);
 
 for (const roll of rollsResult.body) {
   runSql(`
@@ -382,12 +383,73 @@ for (let index = 0; index < rollsResult.body.length; index += 1) {
     `Phone-correction race left an inconsistent Claim count: claimOk=${claimResult.response.ok} open=${openCount}`);
 }
 
-// Race 4 — final submit versus a second-tab evidence removal. The draft row is
+// Race 4 — evidence registration versus legitimate phone correction. Both
+// operations serialize on the Warranty row. Registration may win only if it
+// acquires the old-phone truth first; after correction commits, the old phone
+// must never register another staged object.
+{
+  const fixture = fixtures[4];
+  const correctedPhone = "+201066688844";
+  const draftId = randomUUID();
+  const opened = await rpc("open_customer_warranty_claim_draft", {
+    p_draft_id: draftId,
+    p_warranty_id: fixture.warrantyId,
+    p_verified_phone_normalized: fixture.normalizedPhone,
+    p_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+  });
+  assert(opened.response.ok && opened.body === draftId,
+    `Could not open evidence/phone race draft: ${opened.response.status} ${JSON.stringify(opened.body)}`);
+  const firstPath = `${draftId}/${"e".repeat(64)}.jpg`;
+  const [registerResult, correctionResult] = await Promise.all([
+    rpc("register_customer_warranty_claim_draft_evidence", {
+      p_draft_id: draftId,
+      p_warranty_id: fixture.warrantyId,
+      p_verified_phone_normalized: fixture.normalizedPhone,
+      p_storage_path: firstPath,
+      p_mime_type: "image/jpeg",
+      p_size_bytes: 128,
+    }),
+    rpc("correct_warranty_details", {
+      p_action_request_id: randomUUID(),
+      p_warranty_id: fixture.warrantyId,
+      p_customer_name: fixture.customerName,
+      p_customer_phone: correctedPhone,
+      p_customer_email: fixture.customerEmail,
+      p_vehicle_make: fixture.vehicleMake,
+      p_vehicle_model: fixture.vehicleModel,
+      p_vehicle_year: fixture.vehicleYear,
+      p_vehicle_plate: fixture.vehiclePlate,
+      p_vehicle_color: fixture.vehicleColor,
+      p_vehicle_vin: fixture.vehicleVin,
+      p_reason: "Cube P concurrent evidence registration versus phone correction verification.",
+    }, adminToken, anonKey),
+  ]);
+  assert(correctionResult.response.ok,
+    `Evidence/phone correction must commit: ${correctionResult.response.status} ${JSON.stringify(correctionResult.body)}`);
+  if (!registerResult.response.ok) {
+    assert(registerResult.body?.message === "PG_CLAIM_VERIFICATION_STALE",
+      `Evidence registration loser must fail stale: ${JSON.stringify(registerResult.body)}`);
+  } else {
+    assert(registerResult.body === true, "Evidence registration winner must return true.");
+  }
+  await expectRpcError("register_customer_warranty_claim_draft_evidence", {
+    p_draft_id: draftId,
+    p_warranty_id: fixture.warrantyId,
+    p_verified_phone_normalized: fixture.normalizedPhone,
+    p_storage_path: `${draftId}/${"f".repeat(64)}.jpg`,
+    p_mime_type: "image/jpeg",
+    p_size_bytes: 128,
+  }, "PG_CLAIM_VERIFICATION_STALE");
+  assert(querySql(`select customer_phone from public.warranties where id = ${sqlUuid(fixture.warrantyId)}`) === correctedPhone,
+    "Evidence/phone race must finish with the corrected phone authoritative.");
+}
+
+// Race 5 — final submit versus a second-tab evidence removal. The draft row is
 // the physical-evidence serialization anchor. Exactly one operation may reserve
 // the staged image: Claim success closes the draft and removal fails closed, or
 // removal marks delete_pending and Claim submit rejects the now-missing staged set.
 {
-  const fixture = fixtures[4];
+  const fixture = fixtures[5];
   const claim = await prepareClaimPayload(fixture, { suffix: "claim-versus-remove" });
   const storagePath = claim.p_evidence[0].storage_path;
 
@@ -396,6 +458,7 @@ for (let index = 0; index < rollsResult.body.length; index += 1) {
     rpc("unregister_customer_warranty_claim_draft_evidence", {
       p_draft_id: claim.p_draft_id,
       p_warranty_id: fixture.warrantyId,
+      p_verified_phone_normalized: fixture.normalizedPhone,
       p_storage_path: storagePath,
     }),
   ]);

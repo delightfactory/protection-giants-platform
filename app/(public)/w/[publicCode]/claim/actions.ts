@@ -119,6 +119,9 @@ function draftMutationError(message: string | undefined, fallback: string): stri
       return "PG_CLAIM_EVIDENCE_COUNT_INVALID";
     case "PG_CLAIM_DRAFT_EVIDENCE_DELETING":
       return "PG_CLAIM_EVIDENCE_REMOVE_FAILED";
+    case "PG_CLAIM_WARRANTY_EXPIRED":
+    case "PG_CLAIM_WARRANTY_UNAVAILABLE":
+      return "PG_CLAIM_NOT_SUBMITTABLE";
     default:
       return fallback;
   }
@@ -132,6 +135,7 @@ async function registerDraftEvidence(
   const { data, error } = await admin.rpc("register_customer_warranty_claim_draft_evidence", {
     p_draft_id: access.payload.draftId,
     p_warranty_id: access.payload.warrantyId,
+    p_verified_phone_normalized: access.currentPhoneNormalized,
     p_storage_path: evidence.storagePath,
     p_mime_type: evidence.mimeType,
     p_size_bytes: evidence.sizeBytes,
@@ -157,6 +161,7 @@ async function reserveDraftEvidenceRemoval(
   const { data, error } = await admin.rpc("unregister_customer_warranty_claim_draft_evidence", {
     p_draft_id: access.payload.draftId,
     p_warranty_id: access.payload.warrantyId,
+    p_verified_phone_normalized: access.currentPhoneNormalized,
     p_storage_path: storagePath,
   });
 

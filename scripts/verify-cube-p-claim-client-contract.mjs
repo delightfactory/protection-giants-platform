@@ -83,6 +83,12 @@ assert(
   "Both fresh and pre-existing content-addressed Storage objects must be registered in the locked private draft before they are accepted by the client.",
 );
 assert(
+  actions.includes("p_verified_phone_normalized: access.currentPhoneNormalized")
+    && actions.slice(actions.indexOf("async function registerDraftEvidence"), actions.indexOf("async function reserveDraftEvidenceRemoval")).includes("p_verified_phone_normalized: access.currentPhoneNormalized")
+    && actions.slice(actions.indexOf("async function reserveDraftEvidenceRemoval"), actions.indexOf("async function finalizeDraftEvidenceRemoval")).includes("p_verified_phone_normalized: access.currentPhoneNormalized"),
+  "Evidence register/remove must pass the current normalized Warranty phone into the transactional DB freshness boundary, not rely only on an earlier server read.",
+);
+assert(
   actions.includes('"unregister_customer_warranty_claim_draft_evidence"')
     && actions.includes('"finalize_customer_warranty_claim_draft_evidence_removal"'),
   "Evidence removal helpers must be wired to the private draft reserve/finalize RPCs.",

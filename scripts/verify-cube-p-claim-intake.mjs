@@ -130,8 +130,8 @@ const customerServiceFunctions = [
   "public.get_customer_warranty_claim_by_request(uuid,uuid)",
   "public.create_customer_warranty_claim(uuid,uuid,text,text,uuid,text,text,text,jsonb)",
   "public.open_customer_warranty_claim_draft(uuid,uuid,text,timestamp with time zone)",
-  "public.register_customer_warranty_claim_draft_evidence(uuid,uuid,text,text,bigint)",
-  "public.unregister_customer_warranty_claim_draft_evidence(uuid,uuid,text)",
+  "public.register_customer_warranty_claim_draft_evidence(uuid,uuid,text,text,text,bigint)",
+  "public.unregister_customer_warranty_claim_draft_evidence(uuid,uuid,text,text)",
   "public.finalize_customer_warranty_claim_draft_evidence_removal(uuid,uuid,text)",
   "public.claim_expired_warranty_claim_draft_cleanup_candidates(integer)",
   "public.finalize_expired_warranty_claim_draft_cleanup(uuid)",
@@ -226,6 +226,7 @@ assert(upload.response.ok, `Could not upload Cube P private evidence fixture: ${
 const registered = await rpc("register_customer_warranty_claim_draft_evidence", {
   p_draft_id: draftId,
   p_warranty_id: warrantyId,
+  p_verified_phone_normalized: verified.normalized_phone,
   p_storage_path: storagePath,
   p_mime_type: "image/jpeg",
   p_size_bytes: imageBytes.length,
@@ -273,6 +274,7 @@ assert(querySql(`select count(*) from private.warranty_claim_draft_evidence wher
 await expectRpcError("unregister_customer_warranty_claim_draft_evidence", {
   p_draft_id: draftId,
   p_warranty_id: warrantyId,
+  p_verified_phone_normalized: verified.normalized_phone,
   p_storage_path: storagePath,
 }, "PG_CLAIM_DRAFT_CLOSED");
 
@@ -358,6 +360,26 @@ const secondFixture = querySql(`
 assert(secondFixture.length === 11 && secondFixture[0], "Second active Warranty fixture is required for stale-phone verification.");
 const [w2, phone2, code2, name2, email2, make2, model2, year2, plate2, color2, vin2] = secondFixture;
 const verified2 = one(await rpc("verify_customer_warranty_claim_phone", { p_public_code: code2, p_phone: phone2 }), "Verify second Warranty");
+const staleEvidenceDraft = randomUUID();
+const staleEvidencePath = `${staleEvidenceDraft}/${"c".repeat(64)}.jpg`;
+const staleDraftOpened = await rpc("open_customer_warranty_claim_draft", {
+  p_draft_id: staleEvidenceDraft,
+  p_warranty_id: w2,
+  p_verified_phone_normalized: verified2.normalized_phone,
+  p_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+});
+assert(staleDraftOpened.response.ok && staleDraftOpened.body === staleEvidenceDraft,
+  `Could not open stale-phone evidence draft: ${staleDraftOpened.response.status} ${JSON.stringify(staleDraftOpened.body)}`);
+const staleEvidenceRegistered = await rpc("register_customer_warranty_claim_draft_evidence", {
+  p_draft_id: staleEvidenceDraft,
+  p_warranty_id: w2,
+  p_verified_phone_normalized: verified2.normalized_phone,
+  p_storage_path: staleEvidencePath,
+  p_mime_type: "image/jpeg",
+  p_size_bytes: 128,
+});
+assert(staleEvidenceRegistered.response.ok && staleEvidenceRegistered.body === true,
+  `Could not seed stale-phone evidence registry: ${staleEvidenceRegistered.response.status} ${JSON.stringify(staleEvidenceRegistered.body)}`);
 const correctedPhone = "+201099988877";
 const correction = await rpc("correct_warranty_details", {
   p_action_request_id: randomUUID(),
@@ -374,6 +396,21 @@ const correction = await rpc("correct_warranty_details", {
   p_reason: "Cube P stale verification freshness test.",
 }, adminToken, anonKey);
 assert(correction.response.ok, `Could not correct Warranty phone fixture: ${correction.response.status} ${JSON.stringify(correction.body)}`);
+
+await expectRpcError("register_customer_warranty_claim_draft_evidence", {
+  p_draft_id: staleEvidenceDraft,
+  p_warranty_id: w2,
+  p_verified_phone_normalized: verified2.normalized_phone,
+  p_storage_path: `${staleEvidenceDraft}/${"d".repeat(64)}.jpg`,
+  p_mime_type: "image/jpeg",
+  p_size_bytes: 128,
+}, "PG_CLAIM_VERIFICATION_STALE");
+await expectRpcError("unregister_customer_warranty_claim_draft_evidence", {
+  p_draft_id: staleEvidenceDraft,
+  p_warranty_id: w2,
+  p_verified_phone_normalized: verified2.normalized_phone,
+  p_storage_path: staleEvidencePath,
+}, "PG_CLAIM_VERIFICATION_STALE");
 
 const staleDraft = randomUUID();
 await expectRpcError("create_customer_warranty_claim", {
