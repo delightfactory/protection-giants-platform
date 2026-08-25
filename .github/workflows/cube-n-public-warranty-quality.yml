@@ -18,6 +18,7 @@ name: Cube N Public Warranty Quality
       - "docs/cube-n-public-warranty-access-verification-spec.md"
       - "docs/cube-n-final-spec-review-amendment.md"
       - "docs/pre-cube-n-public-warranty-status-amendment.md"
+      - "docs/post-cube-n-canonical-status-amendment.md"
       - "docs/product-decisions.md"
 
 permissions:
