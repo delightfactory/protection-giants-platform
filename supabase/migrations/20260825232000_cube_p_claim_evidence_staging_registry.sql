@@ -31,6 +31,7 @@ create table private.warranty_claim_draft_evidence (
   storage_path text primary key,
   mime_type text not null,
   size_bytes bigint not null,
+  state text not null default 'staged',
   created_at timestamptz not null default now(),
 
   constraint warranty_claim_draft_evidence_path_shape
@@ -43,6 +44,8 @@ create table private.warranty_claim_draft_evidence (
     check (mime_type in ('image/jpeg', 'image/png', 'image/webp')),
   constraint warranty_claim_draft_evidence_size_allowed
     check (size_bytes > 0 and size_bytes <= 8388608),
+  constraint warranty_claim_draft_evidence_state_allowed
+    check (state in ('staged', 'delete_pending')),
   constraint warranty_claim_draft_evidence_extension_matches_mime
     check (
       (mime_type = 'image/jpeg' and storage_path ~ '\.jpg$')
@@ -52,7 +55,7 @@ create table private.warranty_claim_draft_evidence (
 );
 
 create index warranty_claim_draft_evidence_draft_idx
-  on private.warranty_claim_draft_evidence (draft_id, created_at, storage_path);
+  on private.warranty_claim_draft_evidence (draft_id, state, created_at, storage_path);
 
 revoke all on table private.warranty_claim_drafts
   from public, anon, authenticated, service_role;
@@ -62,7 +65,7 @@ revoke all on table private.warranty_claim_draft_evidence
 comment on table private.warranty_claim_drafts is
   'Cube P transient server-only evidence orchestration registry. A draft row is the serialization anchor for upload/remove/final-submit races; submitted rows remain as a tombstone so a stale remove can never delete committed Claim evidence.';
 comment on table private.warranty_claim_draft_evidence is
-  'Cube P server-only staged evidence registry. Rows are registered only after Storage upload succeeds and become the authoritative evidence set consumed by Claim submit.';
+  'Cube P server-only staged evidence registry. staged rows may be consumed by Claim submit; delete_pending rows are excluded from submit but retained until Storage deletion succeeds or stale-draft cleanup reclaims them.';
 
 create function public.open_customer_warranty_claim_draft(
   p_draft_id uuid,
@@ -95,10 +98,13 @@ begin
     raise exception using errcode = '22023', message = 'PG_CLAIM_DRAFT_EXPIRY_INVALID';
   end if;
 
+  -- Share the same Warranty row serialization anchor as Cube M correction/void
+  -- so a verification-success draft is never opened from a stale committed phone.
   select warranty.*
     into v_warranty
   from public.warranties warranty
-  where warranty.id = p_warranty_id;
+  where warranty.id = p_warranty_id
+  for update;
 
   if not found
     or v_warranty.record_state <> 'issued'
@@ -212,9 +218,16 @@ begin
     then
       raise exception using errcode = '23505', message = 'PG_CLAIM_DRAFT_EVIDENCE_CONFLICT';
     end if;
+
+    if v_existing.state = 'delete_pending' then
+      raise exception using errcode = '23514', message = 'PG_CLAIM_DRAFT_EVIDENCE_DELETING';
+    end if;
+
     return true;
   end if;
 
+  -- Count all retained paths, including delete_pending, so repeated Storage
+  -- failures cannot grow one live draft beyond the frozen five-object bound.
   select count(*)
     into v_count
   from private.warranty_claim_draft_evidence evidence
@@ -228,12 +241,14 @@ begin
     draft_id,
     storage_path,
     mime_type,
-    size_bytes
+    size_bytes,
+    state
   ) values (
     p_draft_id,
     v_path,
     v_mime,
-    p_size_bytes
+    p_size_bytes,
+    'staged'
   );
 
   return true;
@@ -245,6 +260,8 @@ revoke all on function public.register_customer_warranty_claim_draft_evidence(uu
 grant execute on function public.register_customer_warranty_claim_draft_evidence(uuid, uuid, text, text, bigint)
   to service_role;
 
+-- Reserve one staged object for deletion under the same draft-row lock used by
+-- final Claim submission. No Storage deletion happens until this commit succeeds.
 create function public.unregister_customer_warranty_claim_draft_evidence(
   p_draft_id uuid,
   p_warranty_id uuid,
@@ -257,6 +274,7 @@ set search_path = ''
 as $$
 declare
   v_draft private.warranty_claim_drafts%rowtype;
+  v_evidence private.warranty_claim_draft_evidence%rowtype;
   v_path text := btrim(coalesce(p_storage_path, ''));
 begin
   if p_draft_id is null
@@ -284,12 +302,25 @@ begin
     raise exception using errcode = '42501', message = 'PG_CLAIM_VERIFICATION_STALE';
   end if;
 
-  delete from private.warranty_claim_draft_evidence evidence
+  select evidence.*
+    into v_evidence
+  from private.warranty_claim_draft_evidence evidence
   where evidence.draft_id = p_draft_id
     and evidence.storage_path = v_path;
 
-  -- Idempotent true also lets the server retry cleanup of an object whose draft
-  -- metadata was already removed but whose previous Storage delete failed.
+  if not found then
+    -- Idempotent retry after the row was finalized. The caller may safely retry
+    -- Storage deletion because a submitted draft would have failed above.
+    return true;
+  end if;
+
+  if v_evidence.state = 'staged' then
+    update private.warranty_claim_draft_evidence evidence
+    set state = 'delete_pending'
+    where evidence.draft_id = p_draft_id
+      and evidence.storage_path = v_path;
+  end if;
+
   return true;
 end;
 $$;
@@ -297,6 +328,62 @@ $$;
 revoke all on function public.unregister_customer_warranty_claim_draft_evidence(uuid, uuid, text)
   from public, anon, authenticated, service_role;
 grant execute on function public.unregister_customer_warranty_claim_draft_evidence(uuid, uuid, text)
+  to service_role;
+
+create function public.finalize_customer_warranty_claim_draft_evidence_removal(
+  p_draft_id uuid,
+  p_warranty_id uuid,
+  p_storage_path text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_draft private.warranty_claim_drafts%rowtype;
+  v_path text := btrim(coalesce(p_storage_path, ''));
+begin
+  if p_draft_id is null
+    or p_warranty_id is null
+    or v_path !~ ('^' || p_draft_id::text || '/[0-9a-f]{64}\.(jpg|png|webp)$')
+  then
+    raise exception using errcode = '22023', message = 'PG_CLAIM_DRAFT_INVALID';
+  end if;
+
+  select draft.*
+    into v_draft
+  from private.warranty_claim_drafts draft
+  where draft.id = p_draft_id
+  for update;
+
+  if not found then
+    return true;
+  end if;
+
+  if v_draft.warranty_id <> p_warranty_id then
+    raise exception using errcode = '22023', message = 'PG_CLAIM_DRAFT_INVALID';
+  end if;
+
+  -- A submitted draft is a tombstone protecting committed evidence. Its private
+  -- staging rows are already removed in the Claim transaction, so there is
+  -- nothing to finalize and no permission to infer a new deletion.
+  if v_draft.state = 'submitted' then
+    return true;
+  end if;
+
+  delete from private.warranty_claim_draft_evidence evidence
+  where evidence.draft_id = p_draft_id
+    and evidence.storage_path = v_path
+    and evidence.state = 'delete_pending';
+
+  return true;
+end;
+$$;
+
+revoke all on function public.finalize_customer_warranty_claim_draft_evidence_removal(uuid, uuid, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.finalize_customer_warranty_claim_draft_evidence_removal(uuid, uuid, text)
   to service_role;
 
 create function public.claim_expired_warranty_claim_draft_cleanup_candidates(
@@ -514,6 +601,8 @@ begin
     end if;
   end loop;
 
+  -- Lost-response retries are serialized before current lifecycle checks so a
+  -- request that committed immediately before expiry still resolves its result.
   perform pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended(p_request_id::text, 0)
   );
@@ -598,7 +687,7 @@ begin
     raise exception using errcode = '23505', message = 'PG_CLAIM_OPEN_EXISTS';
   end if;
 
-  -- The draft row serializes final submit against every registered remove.
+  -- The draft row serializes final submit against register/unregister/cleanup.
   select draft.*
     into v_draft
   from private.warranty_claim_drafts draft
@@ -620,7 +709,8 @@ begin
   select count(*)
     into v_registered_count
   from private.warranty_claim_draft_evidence evidence
-  where evidence.draft_id = p_draft_id;
+  where evidence.draft_id = p_draft_id
+    and evidence.state = 'staged';
 
   if v_registered_count <> v_evidence_count
     or exists (
@@ -630,6 +720,7 @@ begin
         select 1
         from private.warranty_claim_draft_evidence evidence
         where evidence.draft_id = p_draft_id
+          and evidence.state = 'staged'
           and evidence.storage_path = input_item ->> 'storage_path'
           and evidence.mime_type = input_item ->> 'mime_type'
           and evidence.size_bytes = (input_item ->> 'size_bytes')::bigint
@@ -681,6 +772,7 @@ begin
     v_submitted_at
   from private.warranty_claim_draft_evidence evidence
   where evidence.draft_id = p_draft_id
+    and evidence.state = 'staged'
   order by evidence.created_at, evidence.storage_path;
 
   insert into public.warranty_claim_events (
@@ -703,6 +795,12 @@ begin
     v_submitted_at
   );
 
+  -- Public immutable evidence is now authoritative. Drop transient per-object
+  -- registry rows and keep only the submitted draft tombstone for stale-tab
+  -- deletion protection/idempotent lifecycle evidence.
+  delete from private.warranty_claim_draft_evidence evidence
+  where evidence.draft_id = p_draft_id;
+
   update private.warranty_claim_drafts draft
   set
     state = 'submitted',
@@ -719,14 +817,16 @@ grant execute on function public.create_customer_warranty_claim(uuid, uuid, text
   to service_role;
 
 comment on function public.open_customer_warranty_claim_draft(uuid, uuid, text, timestamptz) is
-  'Cube P service-only creation of a short-lived evidence draft after current registered-phone verification. No browser role may create or browse drafts.';
+  'Cube P service-only creation of a short-lived evidence draft after current registered-phone verification. Warranty row locking serializes draft opening with Cube M correction/void.';
 comment on function public.register_customer_warranty_claim_draft_evidence(uuid, uuid, text, text, bigint) is
-  'Cube P service-only staged evidence registration after Storage upload succeeds. Draft-row locking enforces the five-image cap and serializes against final submit.';
+  'Cube P service-only staged evidence registration after Storage upload succeeds. Draft-row locking enforces the five-object cap and serializes against final submit/removal.';
 comment on function public.unregister_customer_warranty_claim_draft_evidence(uuid, uuid, text) is
-  'Cube P service-only pre-Storage-delete reservation. It refuses submitted/cleanup drafts so a stale tab cannot delete evidence already committed to a Claim.';
+  'Cube P service-only pre-Storage-delete reservation. It marks evidence delete_pending under the draft lock and refuses submitted/cleanup drafts so a stale tab cannot delete committed Claim evidence.';
+comment on function public.finalize_customer_warranty_claim_draft_evidence_removal(uuid, uuid, text) is
+  'Cube P finalizes one delete_pending registry row only after the server confirms Storage deletion. A failed Storage deletion remains discoverable for retry/stale cleanup.';
 comment on function public.claim_expired_warranty_claim_draft_cleanup_candidates(integer) is
-  'Cube P bounded stale-draft cleanup claim. Expired open drafts become cleanup_pending and return only private Storage paths for server-side deletion.';
+  'Cube P bounded stale-draft cleanup claim. Expired open drafts become cleanup_pending and return all retained private Storage paths for server-side deletion.';
 comment on function public.finalize_expired_warranty_claim_draft_cleanup(uuid) is
   'Cube P finalizes stale draft cleanup only after the server confirms Storage deletion; failed Storage cleanup remains retryable.';
 comment on function public.create_customer_warranty_claim(uuid, uuid, text, text, uuid, text, text, text, jsonb) is
-  'Cube P authoritative service-only Claim intake transaction. Warranty and draft locks revalidate current phone, active coverage, one-open-case and the exact registered evidence set before immutable Claim/event commit.';
+  'Cube P authoritative service-only Claim intake transaction. Warranty and draft locks revalidate current phone, active coverage, one-open-case and the exact staged evidence set before immutable Claim/event commit.';
