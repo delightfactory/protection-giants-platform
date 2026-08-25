@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -14,13 +15,6 @@ const exposedSupportErrors = new Set([
   "PG_WARRANTY_CORRECTION_REASON_INVALID",
   "PG_WARRANTY_ALREADY_VOIDED",
 ]);
-
-type RpcResult = {
-  data: unknown;
-  error: { message?: string } | null;
-};
-
-type DynamicRpc = (name: string, args: Record<string, unknown>) => PromiseLike<RpcResult>;
 
 export type WarrantySupportResult =
   | { ok: true; eventId: string }
@@ -57,11 +51,8 @@ function validateIds(requestId: string, warrantyId: string): string | null {
   return null;
 }
 
-async function callSupportRpc(name: string, args: Record<string, unknown>): Promise<WarrantySupportResult> {
-  const supabase = await createSupabaseServerClient();
-  const rpc = supabase.rpc.bind(supabase) as unknown as DynamicRpc;
-  const { data, error } = await rpc(name, args);
-  if (error) return { ok: false, code: supportError(error.message) };
+function parseSupportResult(data: unknown, errorMessage?: string): WarrantySupportResult {
+  if (errorMessage) return { ok: false, code: supportError(errorMessage) };
   if (typeof data !== "string" || !uuidPattern.test(data)) {
     return { ok: false, code: "PG_WARRANTY_SUPPORT_FAILED" };
   }
@@ -72,7 +63,7 @@ export async function correctWarrantyDetails(input: CorrectWarrantyDetailsInput)
   const idError = validateIds(input.requestId, input.warrantyId);
   if (idError) return { ok: false, code: idError };
 
-  const result = await callSupportRpc("correct_warranty_details", {
+  const args = {
     p_action_request_id: input.requestId,
     p_warranty_id: input.warrantyId,
     p_customer_name: input.customerName,
@@ -85,7 +76,11 @@ export async function correctWarrantyDetails(input: CorrectWarrantyDetailsInput)
     p_vehicle_color: input.vehicleColor,
     p_vehicle_vin: input.vehicleVin,
     p_reason: input.reason,
-  });
+  } as unknown as Database["public"]["Functions"]["correct_warranty_details"]["Args"];
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("correct_warranty_details", args);
+  const result = parseSupportResult(data, error?.message);
 
   if (result.ok) {
     revalidatePath("/operations/warranties");
@@ -98,11 +93,15 @@ export async function voidWarrantyInError(input: VoidWarrantyInput): Promise<War
   const idError = validateIds(input.requestId, input.warrantyId);
   if (idError) return { ok: false, code: idError };
 
-  const result = await callSupportRpc("void_warranty_in_error", {
+  const args = {
     p_action_request_id: input.requestId,
     p_warranty_id: input.warrantyId,
     p_reason: input.reason,
-  });
+  } satisfies Database["public"]["Functions"]["void_warranty_in_error"]["Args"];
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("void_warranty_in_error", args);
+  const result = parseSupportResult(data, error?.message);
 
   if (result.ok) {
     revalidatePath("/operations/warranties");
