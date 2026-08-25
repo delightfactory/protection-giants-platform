@@ -34,6 +34,18 @@ assert(access.includes("get_customer_warranty_claim_context"),
   "Every sensitive customer context read must re-read authoritative Warranty state/phone.");
 assert(access.includes("draftId") && access.includes("publicCodeHash"),
   "Short-lived Claim context must bind both staged evidence namespace and permanent Warranty identity without storing raw Public Code.");
+const customerContextType = domain.slice(
+  domain.indexOf("export type CustomerWarrantyClaimContext"),
+  domain.indexOf("export type WarrantyClaimVerificationResult"),
+);
+const customerContextMapper = access.slice(
+  access.indexOf("function toCustomerContext"),
+  access.indexOf("async function cleanupExpiredClaimDrafts"),
+);
+assert(!customerContextType.includes("warrantyId") && !customerContextMapper.includes("warrantyId:"),
+  "Customer-facing verified Claim context must not serialize the internal Warranty UUID; server authorization keeps it only in the signed payload/server RPC boundary.");
+assert(!claimClient.includes("warrantyId"),
+  "Customer Claim client must not depend on or expose the internal Warranty UUID.");
 assert(access.includes("ensureFreshClaimDraft") && access.includes("open_customer_warranty_claim_draft"),
   "The first sensitive evidence upload must open/revalidate one server-owned draft under the current Warranty phone.");
 assert(

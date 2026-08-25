@@ -52,7 +52,6 @@ export type CustomerClaimSummary = {
 };
 
 export type CustomerWarrantyClaimContext = {
-  warrantyId: string;
   publicState: "active" | "expired";
   canSubmitNewClaim: boolean;
   productName: string;

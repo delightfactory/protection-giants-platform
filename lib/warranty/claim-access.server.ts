@@ -183,7 +183,6 @@ function toCustomerContext(row: ClaimContextRow): CustomerWarrantyClaimContext {
     : [];
 
   return {
-    warrantyId: row.warranty_id,
     publicState: row.public_state,
     canSubmitNewClaim: row.can_submit_new_claim,
     productName: row.product_name,
