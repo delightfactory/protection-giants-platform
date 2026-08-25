@@ -8,6 +8,7 @@ name: Cube N Public Warranty Quality
       - "supabase/**"
       - "scripts/verify-cube-n-roll-public-identity.mjs"
       - "scripts/verify-cube-n-public-warranty-resolver.mjs"
+      - "scripts/verify-cube-n-public-warranty-ui.mjs"
       - ".github/workflows/cube-n-public-warranty-quality.yml"
       - "app/(public)/w/**"
       - "app/(public)/warranty/**"
@@ -63,6 +64,9 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-n-public-warranty-resolver.mjs
+
+      - name: Verify Cube N N3 public Warranty UI contract
+        run: node scripts/verify-cube-n-public-warranty-ui.mjs
 
       - name: Stop local stack
         if: always()
