@@ -115,19 +115,38 @@ for (const table of ["warranty_claims", "warranty_claim_events", "warranty_claim
   }
 }
 
+for (const table of ["private.warranty_claim_drafts", "private.warranty_claim_draft_evidence"]) {
+  for (const role of ["anon", "authenticated", "service_role"]) {
+    for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
+      assert(querySql(`select has_table_privilege('${role}', '${table}', '${privilege}')`) === "f",
+        `${role} unexpectedly has ${privilege} on ${table}.`);
+    }
+  }
+}
+
+const customerServiceFunctions = [
+  "public.verify_customer_warranty_claim_phone(text,text)",
+  "public.get_customer_warranty_claim_context(text,uuid)",
+  "public.get_customer_warranty_claim_by_request(uuid,uuid)",
+  "public.create_customer_warranty_claim(uuid,uuid,text,text,uuid,text,text,text,jsonb)",
+  "public.open_customer_warranty_claim_draft(uuid,uuid,text,timestamp with time zone)",
+  "public.register_customer_warranty_claim_draft_evidence(uuid,uuid,text,text,bigint)",
+  "public.unregister_customer_warranty_claim_draft_evidence(uuid,uuid,text)",
+  "public.finalize_customer_warranty_claim_draft_evidence_removal(uuid,uuid,text)",
+  "public.claim_expired_warranty_claim_draft_cleanup_candidates(integer)",
+  "public.finalize_expired_warranty_claim_draft_cleanup(uuid)",
+];
+
 for (const role of ["anon", "authenticated"]) {
-  for (const signature of [
-    "public.verify_customer_warranty_claim_phone(text,text)",
-    "public.get_customer_warranty_claim_context(text,uuid)",
-    "public.get_customer_warranty_claim_by_request(uuid,uuid)",
-    "public.create_customer_warranty_claim(uuid,uuid,text,text,uuid,text,text,text,jsonb)",
-  ]) {
+  for (const signature of customerServiceFunctions) {
     assert(querySql(`select has_function_privilege('${role}', '${signature}', 'EXECUTE')`) === "f",
       `${role} unexpectedly can execute ${signature}.`);
   }
 }
-assert(querySql("select has_function_privilege('service_role', 'public.create_customer_warranty_claim(uuid,uuid,text,text,uuid,text,text,text,jsonb)', 'EXECUTE')") === "t",
-  "service_role must have explicit Claim creation execute privilege.");
+for (const signature of customerServiceFunctions) {
+  assert(querySql(`select has_function_privilege('service_role', '${signature}', 'EXECUTE')`) === "t",
+    `service_role must have explicit execute privilege on ${signature}.`);
+}
 
 const bucket = querySql(`
   select concat_ws('|', public, file_size_limit, array_to_string(allowed_mime_types, ','))
@@ -183,8 +202,18 @@ assert(contextBefore.can_submit_new_claim === true && contextBefore.current_open
 assert(Array.isArray(contextBefore.recent_closed_claims), "Context closed-Claim history must be an array.");
 
 const draftId = randomUUID();
+const draftExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+const openedDraft = await rpc("open_customer_warranty_claim_draft", {
+  p_draft_id: draftId,
+  p_warranty_id: warrantyId,
+  p_verified_phone_normalized: verified.normalized_phone,
+  p_expires_at: draftExpiresAt,
+});
+assert(openedDraft.response.ok && openedDraft.body === draftId,
+  `Could not open Cube P Claim draft: ${openedDraft.response.status} ${JSON.stringify(openedDraft.body)}`);
+
 const requestId = randomUUID();
-const imageBytes = Buffer.from("cube-p-private-evidence");
+const imageBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from("cube-p-private-evidence")]);
 const digest = createHash("sha256").update(imageBytes).digest("hex");
 const storagePath = `${draftId}/${digest}.jpg`;
 const upload = await request(`/storage/v1/object/warranty-claim-evidence/${storagePath}`, {
@@ -193,6 +222,20 @@ const upload = await request(`/storage/v1/object/warranty-claim-evidence/${stora
   contentType: "image/jpeg",
 });
 assert(upload.response.ok, `Could not upload Cube P private evidence fixture: ${upload.response.status} ${JSON.stringify(upload.body)}`);
+
+const registered = await rpc("register_customer_warranty_claim_draft_evidence", {
+  p_draft_id: draftId,
+  p_warranty_id: warrantyId,
+  p_storage_path: storagePath,
+  p_mime_type: "image/jpeg",
+  p_size_bytes: imageBytes.length,
+});
+assert(registered.response.ok && registered.body === true,
+  `Could not register Cube P staged evidence: ${registered.response.status} ${JSON.stringify(registered.body)}`);
+assert(querySql(`
+  select count(*) from private.warranty_claim_draft_evidence
+  where draft_id = ${sqlUuid(draftId)} and state = 'staged';
+`) === "1", "One physical staged image must have one private staged registry row.");
 
 const claimPayload = {
   p_request_id: requestId,
@@ -218,6 +261,21 @@ assert(querySql(`select count(*) from public.warranty_claim_evidence where claim
   "Successful Claim must persist required evidence metadata.");
 assert(querySql(`select count(*) from public.warranty_claim_events where claim_id = ${sqlUuid(created.claim_id)} and event_kind = 'submitted'`) === "1",
   "Successful Claim must append one submitted event.");
+assert(querySql(`
+  select concat_ws('|', state, submitted_claim_id)
+  from private.warranty_claim_drafts
+  where id = ${sqlUuid(draftId)};
+`) === `submitted|${created.claim_id}`,
+  "Successful Claim must atomically close its draft as a submitted tombstone.");
+assert(querySql(`select count(*) from private.warranty_claim_draft_evidence where draft_id = ${sqlUuid(draftId)}`) === "0",
+  "Transient per-object draft registry rows must be removed after immutable Claim evidence is committed.");
+
+await expectRpcError("unregister_customer_warranty_claim_draft_evidence", {
+  p_draft_id: draftId,
+  p_warranty_id: warrantyId,
+  p_storage_path: storagePath,
+}, "PG_CLAIM_DRAFT_CLOSED");
+
 assert(querySql(`
   select count(*)
   from public.warranty_claim_events event
@@ -388,5 +446,37 @@ await expectRpcError("create_customer_warranty_claim", {
   p_description: "هذه المطالبة الجديدة بعد انتهاء التغطية يجب رفضها.",
   p_evidence: [{ storage_path: `${expiredDraft}/${"b".repeat(64)}.jpg`, mime_type: "image/jpeg", size_bytes: 100 }],
 }, "PG_CLAIM_WARRANTY_EXPIRED");
+
+// Expired drafts become cleanup_pending in bounded batches and retain every
+// known staged/delete-pending path until the server confirms Storage cleanup.
+const cleanupDraftId = randomUUID();
+const cleanupPath = `${cleanupDraftId}/${"c".repeat(64)}.jpg`;
+runSql(`
+  insert into private.warranty_claim_drafts (
+    id, warranty_id, state, expires_at, created_at
+  ) values (
+    ${sqlUuid(cleanupDraftId)}, ${sqlUuid(w2)}, 'open',
+    now() - interval '1 minute', now() - interval '2 minutes'
+  );
+
+  insert into private.warranty_claim_draft_evidence (
+    draft_id, storage_path, mime_type, size_bytes, state
+  ) values (
+    ${sqlUuid(cleanupDraftId)}, '${cleanupPath}', 'image/jpeg', 100, 'delete_pending'
+  );
+`);
+const cleanupCandidates = await rpc("claim_expired_warranty_claim_draft_cleanup_candidates", { p_limit: 10 });
+assert(cleanupCandidates.response.ok && Array.isArray(cleanupCandidates.body),
+  `Could not claim expired draft cleanup candidates: ${cleanupCandidates.response.status} ${JSON.stringify(cleanupCandidates.body)}`);
+const cleanupCandidate = cleanupCandidates.body.find((candidate) => candidate.draft_id === cleanupDraftId);
+assert(cleanupCandidate && Array.isArray(cleanupCandidate.storage_paths) && cleanupCandidate.storage_paths.includes(cleanupPath),
+  `Expired cleanup candidate must retain the pending Storage path: ${JSON.stringify(cleanupCandidates.body)}`);
+assert(querySql(`select state from private.warranty_claim_drafts where id = ${sqlUuid(cleanupDraftId)}`) === "cleanup_pending",
+  "Claimed stale draft must become cleanup_pending before external Storage work.");
+const cleanupFinalized = await rpc("finalize_expired_warranty_claim_draft_cleanup", { p_draft_id: cleanupDraftId });
+assert(cleanupFinalized.response.ok && cleanupFinalized.body === true,
+  `Could not finalize expired draft cleanup: ${cleanupFinalized.response.status} ${JSON.stringify(cleanupFinalized.body)}`);
+assert(querySql(`select count(*) from private.warranty_claim_drafts where id = ${sqlUuid(cleanupDraftId)}`) === "0",
+  "Finalized stale cleanup must remove the private draft and cascade its evidence registry.");
 
 console.log("Cube P customer Warranty Claim intake database contracts verified.");
