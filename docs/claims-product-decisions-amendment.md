@@ -108,7 +108,7 @@ Category selection never proves coverage or automatically determines the decisio
 Unlike normal Warranty Activation and unlike optional pre-install evidence, a V1 customer Warranty Claim requires image evidence. Images are private operational evidence. V1 does not accept video.
 
 ### PD-068 — Protection Giants Company/Admin alone makes the final V1 Claim decision
-**Status:** Approved — 2026-08-25
+**Status:** Approved — 2026-08-25; correction boundary clarified 2026-08-25
 
 Only active Protection Giants Admin/Company may transition a Claim to the final adjudication outcomes:
 
@@ -121,6 +121,8 @@ Country Agents, Dealers and Centers do not receive Claim approval/rejection auth
 A Center may act as a technical evidence provider only when Company requests a physical inspection under Cube Q.
 
 Every final decision requires the authoritative actor/time, an internal reason, a bounded customer-facing explanation, and immutable audit/timeline evidence. Claims are never deleted to correct an operational mistake.
+
+**Narrow approval-in-error correction:** if Company approved a Claim by mistake but physical fulfillment has not started, active Admin may transition that Claim to `cancelled` only while the one-to-one Resolution remains untouched in `authorized` state. The original approval event and authorized Resolution row remain historical evidence; the cancellation closes the Claim and makes that untouched Resolution non-actionable. Once Cube R has assigned the Resolution to a performing Center, this correction path is no longer available. There is no generic Undo/reopen of approved Claims.
 
 ### PD-069 — Physical inspection is optional, Center-provided evidence, and must not create a dead end
 **Status:** Approved — 2026-08-25
@@ -186,7 +188,9 @@ A physical Roll intended for an approved Claim remains an ordinary tracked Roll 
 
 V1 does not invent a second replacement inventory or bypass ordinary custody.
 
-Final Claim allocation occurs only when the Roll is otherwise eligible, still unopened, and is in confirmed custody of the performing Center. Allocation reserves it exclusively for that Resolution. While reserved it cannot enter another Claim, ordinary Transfer, or customer Warranty Activation unless the allocation is explicitly released first.
+Final Claim allocation occurs only when the Roll is otherwise eligible, still unopened, **belongs to the same Product/SKU as the original Warranty**, and is in confirmed custody of the performing Center. V1 does not silently substitute a different Product/SKU as replacement material; a future cross-product substitution policy requires a new explicit Product Decision.
+
+Allocation reserves the Roll exclusively for that Resolution. While reserved it cannot enter another Claim, ordinary Transfer, or customer Warranty Activation unless the allocation is explicitly released first.
 
 **Operational clarification:** reservation must not erase the real physical opening/quality-control lifecycle. The exact assigned performing Center may physically open the reserved replacement Roll through the existing immutable Cube J Roll Opening record. If a suspected defect is then discovered before use, the same Roll may enter the existing Cube K Pre-install Issue path. A pending issue or `return_required` outcome blocks Claim consumption. `cleared_for_use` or `reported_in_error` permits the approved Claim fulfillment to continue subject to every other rule. If Company decides `return_required`, the unused Claim allocation must be explicitly released before the existing Opened Roll Recovery path handles physical return. No Claim-specific second opening or quality engine is introduced.
 
@@ -299,6 +303,7 @@ The Claims series does not create:
 - automatic Roll Transfer as a side effect of approval;
 - a second inventory/custody subsystem;
 - a second Roll Opening or pre-install quality subsystem for replacement material;
+- automatic cross-Product/SKU replacement substitution;
 - automatic Warranty renewal after replacement;
 - a new customer QR/public credential.
 
