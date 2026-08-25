@@ -9,15 +9,18 @@ import {
 import { cookies } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseAdminEnv } from "@/lib/supabase/env";
-import type {
-  CustomerClaimSummary,
-  CustomerWarrantyClaimContext,
-  WarrantyClaimCategory,
+import {
+  WARRANTY_CLAIM_EVIDENCE_BUCKET,
+  type CustomerClaimSummary,
+  type CustomerWarrantyClaimContext,
+  type WarrantyClaimCategory,
 } from "@/lib/warranty/claim-intake";
 
 const ACCESS_VERSION = 1;
 const ACCESS_MAX_AGE_SECONDS = 20 * 60;
 const PUBLIC_CODE_PATTERN = /^[0-9a-f]{64}$/;
+const CLEANUP_BATCH_SIZE = 10;
+const CLEANUP_STORAGE_LIST_LIMIT = 100;
 
 type ClaimAccessPayload = {
   v: 1;
@@ -52,6 +55,11 @@ type ClaimContextRow = {
   vehicle_year: number | null;
   current_open_claim: unknown;
   recent_closed_claims: unknown;
+};
+
+type DraftCleanupRow = {
+  draft_id: string;
+  storage_paths: string[] | null;
 };
 
 export type FreshClaimAccess = {
@@ -191,6 +199,44 @@ function toCustomerContext(row: ClaimContextRow): CustomerWarrantyClaimContext {
   };
 }
 
+async function cleanupExpiredClaimDrafts(): Promise<void> {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.rpc("claim_expired_warranty_claim_draft_cleanup_candidates", {
+    p_limit: CLEANUP_BATCH_SIZE,
+  });
+  if (error || !Array.isArray(data)) return;
+
+  for (const candidate of data as DraftCleanupRow[]) {
+    if (!candidate?.draft_id) continue;
+
+    // Storage is the authoritative source for physical staged objects. Listing
+    // the private draft folder also catches a rare upload that succeeded while
+    // its DB registration response failed, so stale cleanup cannot leak orphans.
+    const { data: objects, error: listError } = await admin.storage
+      .from(WARRANTY_CLAIM_EVIDENCE_BUCKET)
+      .list(candidate.draft_id, { limit: CLEANUP_STORAGE_LIST_LIMIT });
+    if (listError) continue;
+
+    const actualPaths = (objects ?? [])
+      .map((object) => object.name)
+      .filter((name): name is string => typeof name === "string" && name.length > 0)
+      .map((name) => `${candidate.draft_id}/${name}`);
+
+    if (actualPaths.length > 0) {
+      const { error: removeError } = await admin.storage
+        .from(WARRANTY_CLAIM_EVIDENCE_BUCKET)
+        .remove(actualPaths);
+      if (removeError) continue;
+    }
+
+    const { error: finalizeError } = await admin.rpc(
+      "finalize_expired_warranty_claim_draft_cleanup",
+      { p_draft_id: candidate.draft_id },
+    );
+    if (finalizeError) continue;
+  }
+}
+
 export function isClaimPublicCode(value: string): boolean {
   return PUBLIC_CODE_PATTERN.test(value);
 }
@@ -207,6 +253,15 @@ export async function verifyPhoneAndIssueClaimAccess(publicCode: string, phone: 
   if (error || !Array.isArray(data) || data.length !== 1) return false;
   const row = data[0] as VerifiedPhoneRow;
   if (!row.warranty_id || !row.normalized_phone) return false;
+
+  // Best-effort bounded reclamation only after a legitimate verification, so
+  // invalid-phone traffic cannot amplify Storage work. Failure never blocks the
+  // customer's valid Claim access; cleanup_pending rows remain retryable.
+  try {
+    await cleanupExpiredClaimDrafts();
+  } catch {
+    // Intentionally best effort; durable draft state remains the retry source.
+  }
 
   const now = Math.floor(Date.now() / 1000);
   const payload: ClaimAccessPayload = {
@@ -277,4 +332,18 @@ export async function getFreshClaimAccess(publicCode: string): Promise<FreshClai
     currentPhoneNormalized: row.current_phone_normalized,
     context: toCustomerContext(row),
   };
+}
+
+export async function ensureFreshClaimDraft(access: FreshClaimAccess): Promise<boolean> {
+  if (access.context.publicState !== "active" || !access.context.canSubmitNewClaim) return false;
+
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.rpc("open_customer_warranty_claim_draft", {
+    p_draft_id: access.payload.draftId,
+    p_warranty_id: access.payload.warrantyId,
+    p_verified_phone_normalized: access.currentPhoneNormalized,
+    p_expires_at: new Date(access.payload.expiresAt * 1000).toISOString(),
+  });
+
+  return !error && data === access.payload.draftId;
 }
