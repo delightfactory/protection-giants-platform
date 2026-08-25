@@ -109,6 +109,17 @@ const identityCountBefore = querySql(`
 `);
 assert(identityCountBefore === "1", "Lifecycle Roll must begin with exactly one permanent Public Code.");
 
+// Cube M's activation-engine verification deliberately exercises its own
+// historical void/reactivation before this test runs. Preserve that history
+// rather than assuming this Roll begins with zero voided Warranty rows.
+const voidedCountBefore = Number(querySql(`
+  select count(*)
+  from public.warranties
+  where roll_id = ${sqlUuid(rollId)} and record_state = 'voided_in_error';
+`));
+assert(Number.isInteger(voidedCountBefore) && voidedCountBefore >= 0,
+  "Could not establish the preexisting voided-Warranty history count.");
+
 const initialPublic = await resolve(publicCode);
 assert(initialPublic.public_state === "active",
   `Initial public state must be active: ${JSON.stringify(initialPublic)}`);
@@ -202,10 +213,12 @@ assert(querySql(`
   from public.warranties
   where roll_id = ${sqlUuid(rollId)} and record_state = 'issued';
 `) === "1", "Lifecycle must retain exactly one effective issued Warranty per Roll.");
-assert(querySql(`
+const voidedCountAfter = Number(querySql(`
   select count(*)
   from public.warranties
   where roll_id = ${sqlUuid(rollId)} and record_state = 'voided_in_error';
-`) === "1", "Mistaken Warranty history must remain preserved after reactivation.");
+`));
+assert(voidedCountAfter === voidedCountBefore + 1,
+  `N4 must preserve prior mistaken-activation history and add exactly one new voided Warranty: before=${voidedCountBefore}, after=${voidedCountAfter}`);
 
 console.log("Cube N N4 permanent Public Code lifecycle verification PASS");
