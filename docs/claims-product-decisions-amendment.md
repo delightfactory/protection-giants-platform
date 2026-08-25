@@ -182,13 +182,13 @@ The platform does **not** determine or persist in V1:
 Those matters remain direct commercial arrangements outside this lifecycle.
 
 ### PD-072 — A replacement Roll remains a normal tracked physical Roll until Claim allocation, then becomes protected Claim material
-**Status:** Approved — 2026-08-25; operational clarification 2026-08-25
+**Status:** Approved — 2026-08-25; operational clarification 2026-08-25; replacement-policy clarification 2026-08-25
 
 A physical Roll intended for an approved Claim remains an ordinary tracked Roll and may move through the existing Custody/Transfer lifecycle before it is allocated to fulfillment.
 
 V1 does not invent a second replacement inventory or bypass ordinary custody.
 
-Final Claim allocation occurs only when the Roll is otherwise eligible, still unopened, **belongs to the same Product/SKU as the original Warranty**, and is in confirmed custody of the performing Center. V1 does not silently substitute a different Product/SKU as replacement material; a future cross-product substitution policy requires a new explicit Product Decision.
+Final Claim allocation occurs only when the Roll is otherwise eligible, still unopened, passes the authoritative **Replacement Product Eligibility Policy** defined by PD-076, and is in confirmed custody of the performing Center.
 
 Allocation reserves the Roll exclusively for that Resolution. While reserved it cannot enter another Claim, ordinary Transfer, or customer Warranty Activation unless the allocation is explicitly released first.
 
@@ -245,6 +245,27 @@ After registered-phone verification, the customer may receive a narrow Claim/ser
 - completion state.
 
 Internal reasons, audit identities, private evidence, technical diagnosis detail, replacement Roll serial/ERP identity, custody/Transfer history and internal UUIDs remain private.
+
+### PD-076 — Replacement Product eligibility is policy-driven; same Product is the V1 default, not a hard structural invariant
+**Status:** Approved — 2026-08-25
+
+For V1, the default and only enabled replacement-material policy is:
+
+> the replacement Roll belongs to the same canonical Product/SKU as the original Warranty.
+
+However, **same Product is a policy decision, not a permanent schema invariant**.
+
+Cube R must therefore centralize Product compatibility behind one authoritative Replacement Product Eligibility boundary used by both candidate reads and the final allocation mutation. V1 evaluates that policy as eligible only when the candidate Roll's canonical `product_id` equals the original Warranty's canonical `product_id`.
+
+The Claim, Resolution, allocation, Transfer, Opening, consumption, Warranty and public-identity data models must not be designed around a hard assumption that replacement material can never come from a different Product. In particular, the allocation schema must not use a database CHECK, relationship shape, or client-supplied rule that permanently encodes Product equality.
+
+When a replacement Roll is successfully allocated, the platform records a server-generated **product eligibility basis** identifying the policy result used at allocation time. In V1 that basis represents the same-Product default. The customer/Admin does not type or choose that basis manually.
+
+A future explicit Company decision may allow selected alternative Products/SKUs or a controlled substitution mapping. That future change should extend only the centralized Replacement Product Eligibility policy/configuration and its Admin-facing configuration if needed; it must not require redesigning the core Claim/Resolution lifecycle, Roll allocation identity, Transfer/Custody, Cube J Opening, Cube K quality handling, consumption, original Warranty term, or customer QR identity.
+
+A policy change is prospective. It does not retroactively invalidate or reinterpret a Roll allocation that was validly authorized under the recorded eligibility basis at its allocation time.
+
+No cross-Product/SKU substitution is enabled in V1. This decision creates the extension seam only; it does **not** justify building an unused compatibility matrix, generic substitution engine, or Product mapping UI now.
 
 ---
 
@@ -303,7 +324,8 @@ The Claims series does not create:
 - automatic Roll Transfer as a side effect of approval;
 - a second inventory/custody subsystem;
 - a second Roll Opening or pre-install quality subsystem for replacement material;
-- automatic cross-Product/SKU replacement substitution;
+- cross-Product/SKU substitution enablement/configuration in V1;
+- an unused generic Product compatibility/substitution engine;
 - automatic Warranty renewal after replacement;
 - a new customer QR/public credential.
 
