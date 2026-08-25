@@ -34,6 +34,15 @@ assert(access.includes("get_customer_warranty_claim_context"),
   "Every sensitive customer context read must re-read authoritative Warranty state/phone.");
 assert(access.includes("draftId") && access.includes("publicCodeHash"),
   "Short-lived Claim context must bind both staged evidence namespace and permanent Warranty identity without storing raw Public Code.");
+assert(access.includes("ensureFreshClaimDraft") && access.includes("open_customer_warranty_claim_draft"),
+  "The first sensitive evidence upload must open/revalidate one server-owned draft under the current Warranty phone.");
+assert(
+  access.includes("claim_expired_warranty_claim_draft_cleanup_candidates")
+    && access.includes("finalize_expired_warranty_claim_draft_cleanup")
+    && access.includes(".list(candidate.draft_id")
+    && access.includes(".remove(actualPaths)"),
+  "Successful verification must run bounded best-effort stale draft cleanup against the actual private Storage folder, including unregistered upload orphans.",
+);
 
 assert(actions.includes("uploadWarrantyClaimEvidence") && actions.includes("removeWarrantyClaimEvidence"),
   "Claim intake must provide server-controlled staged image upload/removal.");
@@ -55,17 +64,36 @@ assert(
     && actions.includes(".upload(storagePath, bytes"),
   "Server upload must validate JPEG/PNG/WebP file signatures and upload the inspected bytes rather than trusting browser MIME alone.",
 );
+assert(
+  actions.includes("register_customer_warranty_claim_draft_evidence")
+    && actions.includes("registerDraftEvidence(access, evidence)"),
+  "Both fresh and pre-existing content-addressed Storage objects must be registered in the locked private draft before they are accepted by the client.",
+);
+
+const removeFunctionIndex = actions.indexOf("export async function removeWarrantyClaimEvidence");
+const unregisterIndex = actions.indexOf('"unregister_customer_warranty_claim_draft_evidence"', removeFunctionIndex);
+const storageRemoveIndex = actions.indexOf(".remove([storagePath])", removeFunctionIndex);
+const finalizeRemovalIndex = actions.indexOf('"finalize_customer_warranty_claim_draft_evidence_removal"');
+assert(
+  removeFunctionIndex >= 0
+    && unregisterIndex > removeFunctionIndex
+    && storageRemoveIndex > unregisterIndex
+    && finalizeRemovalIndex >= 0,
+  "Evidence removal must reserve delete_pending in DB before Storage deletion and finalize registry removal only after physical deletion succeeds.",
+);
+assert(actions.includes("delete_pending metadata") && actions.includes("stale-draft cleanup"),
+  "Failed physical deletion must remain cleanup-visible instead of becoming an untracked orphan.");
 
 const domainErrorIndex = actions.indexOf("const domainError = authoritativeSubmitError");
-const domainCompensationIndex = actions.lastIndexOf("cleanupEvidence(");
+const lockedCompensationIndex = actions.indexOf("safelyDiscardUncommittedEvidence", domainErrorIndex);
 const committedLookupIndex = actions.indexOf('"get_customer_warranty_claim_by_request"');
 const ambiguousReturnIndex = actions.indexOf('code: "PG_CLAIM_SUBMIT_AMBIGUOUS"');
 assert(
   domainErrorIndex >= 0
-    && domainCompensationIndex > domainErrorIndex
-    && committedLookupIndex > domainCompensationIndex
+    && lockedCompensationIndex > domainErrorIndex
+    && committedLookupIndex > lockedCompensationIndex
     && ambiguousReturnIndex > committedLookupIndex,
-  "Only authoritative DB rejections may compensate evidence; unknown/transport ambiguity must resolve committed idempotency and otherwise preserve evidence for same-request retry.",
+  "Authoritative submit rejection may compensate only through the locked draft lifecycle; unknown/transport ambiguity must resolve idempotency and otherwise preserve evidence for same-request retry.",
 );
 assert(actions.includes("p_warranty_id: access.payload.warrantyId"),
   "Final Claim submit must take Warranty ownership only from the signed server context, not customer input.");
@@ -99,4 +127,4 @@ for (const forbiddenOperation of [
 assert(claimClient.includes("لا يعني قبول أو رفض المطالبة تلقائيًا"),
   "Customer intake should explicitly explain that category selection is not an adjudication decision.");
 
-console.log("Cube P customer Claim client/security contracts verified.");
+console.log("Cube P customer Claim client/security/Storage orchestration contracts verified.");
