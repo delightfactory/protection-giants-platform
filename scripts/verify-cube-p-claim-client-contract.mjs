@@ -41,8 +41,12 @@ assert(actions.includes("getFreshClaimAccess(publicCode)") && actions.includes("
   "Upload and final submit must both revalidate the current verified customer context.");
 assert(actions.includes("WARRANTY_CLAIM_MAX_IMAGES") && domain.includes("8 * 1024 * 1024"),
   "Claim intake must enforce the frozen 1..5 / 8 MiB image bounds.");
-assert(actions.includes("createSupabaseAdminClient") && actions.includes("warranty-claim-evidence"),
-  "Private evidence writes must remain server-controlled through the admin Storage client.");
+assert(
+  actions.includes("createSupabaseAdminClient")
+    && actions.includes("WARRANTY_CLAIM_EVIDENCE_BUCKET")
+    && domain.includes('WARRANTY_CLAIM_EVIDENCE_BUCKET = "warranty-claim-evidence"'),
+  "Private evidence writes must remain server-controlled and use the canonical private Claim evidence bucket constant.",
+);
 assert(actions.includes("get_customer_warranty_claim_by_request") && actions.includes("cleanupEvidence"),
   "Ambiguous final submit must resolve committed idempotency before evidence compensation.");
 assert(actions.includes("p_warranty_id: access.payload.warrantyId"),
