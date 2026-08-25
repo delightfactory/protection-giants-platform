@@ -63,6 +63,9 @@ for (const copy of [
   includes(page, copy, `Public Warranty page is missing required Arabic copy: ${copy}`);
 }
 
+// Cube N remains an anonymous minimal projection. Cube P is allowed to add only
+// one same-origin affordance that enters the separately phone-verified Claim
+// surface; no Claim record, status, evidence or customer identity may leak here.
 for (const forbidden of [
   "customerName",
   "customerPhone",
@@ -72,16 +75,44 @@ for (const forbidden of [
   "rollSerial",
   "erpSerial",
   "voidReason",
-  "claim",
-  "Claim",
   "OTP",
 ]) {
   assert(!page.includes(forbidden) && !serverMap.includes(forbidden), `Public Warranty surface leaked deferred/private field or action ${forbidden}.`);
 }
 
+for (const privateClaimFragment of [
+  "currentOpenClaim",
+  "recentClosedClaims",
+  "claimNumber",
+  "claimId",
+  "claimStatusLabel",
+  "evidenceCount",
+  "evidencePaths",
+  "submitWarrantyClaim",
+  "verifyWarrantyClaimPhone",
+  "getFreshClaimAccess",
+  "warranty_claims",
+  "warranty_claim_events",
+  "warranty_claim_evidence",
+]) {
+  assert(!page.includes(privateClaimFragment), `Anonymous Warranty page leaked private Claim projection/action ${privateClaimFragment}.`);
+}
+assert(!serverMap.includes("claim") && !serverMap.includes("Claim"),
+  "Cube N anonymous resolver must remain completely unaware of Claim data/lifecycle state.");
+
+includes(page, 'import Link from "next/link"', "Cube P Claim affordance must use the framework same-origin Link component.");
+includes(page, 'view.kind === "active" || view.kind === "expired"',
+  "Claim entry affordance must remain bounded to effective active/expired Warranty states only.");
+includes(page, '<Link href={`/w/${publicCode}/claim`}>',
+  "Public Warranty may link only to the permanent-code-scoped, phone-verified Claim entry route.");
+includes(page, 'view.kind === "active" ? "طلب خدمة الضمان" : "متابعة المطالبات"',
+  "Active and expired Warranty states need the frozen Cube P customer-safe Claim affordance copy.");
+const hrefCount = (page.match(/\bhref=/g) ?? []).length;
+assert(hrefCount === 1, `Anonymous Warranty page must contain exactly one bounded navigation affordance; found ${hrefCount}.`);
+assert(!/href\s*=\s*["']https?:/i.test(page), "Bearer Warranty page must not add outbound external links.");
+
 assert(!/<form\b/i.test(page), "Public Warranty bearer page must not add a manual lookup form.");
 assert(!/<input\b/i.test(page), "Public Warranty bearer page must not add identifier search inputs.");
-assert(!page.includes("href="), "Bearer page should not add outbound/navigation links that are unnecessary for verification.");
 
 includes(notFound, "تعذر العثور على ضمان بهذا الرابط", "Unknown/malformed links need one generic Arabic invalid-link state.");
 assert(!notFound.includes("publicCode"), "Invalid-link UI must never echo the submitted bearer code.");
