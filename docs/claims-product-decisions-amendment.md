@@ -146,7 +146,7 @@ Approval creates or authorizes exactly one independent Resolution/Entitlement re
 - void or rewrite the original Warranty;
 - move Roll custody;
 - create/receive a Transfer;
-- open a replacement Roll through the normal Warranty-opening path;
+- open a replacement Roll;
 - allocate or consume replacement material;
 - mark reinstall complete.
 
@@ -179,18 +179,22 @@ The platform does **not** determine or persist in V1:
 
 Those matters remain direct commercial arrangements outside this lifecycle.
 
-### PD-072 — A replacement Roll remains a normal tracked physical Roll until claim allocation, then becomes protected Claim material
-**Status:** Approved — 2026-08-25
+### PD-072 — A replacement Roll remains a normal tracked physical Roll until Claim allocation, then becomes protected Claim material
+**Status:** Approved — 2026-08-25; operational clarification 2026-08-25
 
 A physical Roll intended for an approved Claim remains an ordinary tracked Roll and may move through the existing Custody/Transfer lifecycle before it is allocated to fulfillment.
 
 V1 does not invent a second replacement inventory or bypass ordinary custody.
 
-Final Claim allocation occurs only when the Roll is otherwise eligible and is in confirmed custody of the performing Center. Allocation reserves it exclusively for that Resolution. A reserved Roll cannot simultaneously enter another Claim, normal Transfer, normal Roll Opening or customer Warranty Activation unless the allocation is explicitly released first.
+Final Claim allocation occurs only when the Roll is otherwise eligible, still unopened, and is in confirmed custody of the performing Center. Allocation reserves it exclusively for that Resolution. While reserved it cannot enter another Claim, ordinary Transfer, or customer Warranty Activation unless the allocation is explicitly released first.
+
+**Operational clarification:** reservation must not erase the real physical opening/quality-control lifecycle. The exact assigned performing Center may physically open the reserved replacement Roll through the existing immutable Cube J Roll Opening record. If a suspected defect is then discovered before use, the same Roll may enter the existing Cube K Pre-install Issue path. A pending issue or `return_required` outcome blocks Claim consumption. `cleared_for_use` or `reported_in_error` permits the approved Claim fulfillment to continue subject to every other rule. If Company decides `return_required`, the unused Claim allocation must be explicitly released before the existing Opened Roll Recovery path handles physical return. No Claim-specific second opening or quality engine is introduced.
 
 Once the Center records actual use for the approved Claim, the Roll becomes permanently consumed as **Claim Fulfillment material**. It can never issue an independent customer Warranty or be reused/transferred as ordinary available inventory.
 
-A released allocation made before physical use restores ordinary eligibility subject to all other current Roll rules; a consumed allocation is terminal.
+A released allocation made before physical use restores only the eligibility allowed by all other current Roll rules. If the Roll had already been physically opened, releasing the Claim allocation does not make it unopened again; Cube J's irreversible opening and any Cube K issue history remain authoritative.
+
+A consumed allocation is terminal.
 
 ### PD-073 — Replacement/reinstall preserves the original Warranty term and original customer public identity
 **Status:** Approved — 2026-08-25
@@ -268,6 +272,9 @@ Decision        Center inspection
                                 ↓
                         Center/material execution
                                 ↓
+               replacement Roll opening/quality
+                     check when replacement is used
+                                ↓
                          service completion
                                 ↓
                      Claim end-to-end closed
@@ -291,6 +298,7 @@ The Claims series does not create:
 - accounting, invoices, credits, reimbursements or payment settlement;
 - automatic Roll Transfer as a side effect of approval;
 - a second inventory/custody subsystem;
+- a second Roll Opening or pre-install quality subsystem for replacement material;
 - automatic Warranty renewal after replacement;
 - a new customer QR/public credential.
 
