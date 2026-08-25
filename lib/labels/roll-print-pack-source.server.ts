@@ -33,7 +33,12 @@ export async function loadRollWarrantyPrintIdentities(
     p_production_order_id: productionOrderId,
   });
 
-  if (error) throw error;
+  if (error) {
+    if (error.message === "PG_ROLL_PRINT_IDENTITY_INCOMPLETE") {
+      throw new RollPrintPackSourceError("Warranty print identity source is incomplete for this Production Order.");
+    }
+    throw error;
+  }
 
   const warrantyIdentities = new Map<string, RollWarrantyPrintIdentity>();
   for (const row of data ?? []) {
