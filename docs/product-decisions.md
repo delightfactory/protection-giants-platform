@@ -400,3 +400,43 @@ Before Activation, Product identity comes from the immutable Production Order sn
 Cube N Public Warranty Access / Verification owns the permanent Roll public identity, stable `/w/` URL, narrow resolver, Arabic mobile-first public page, lifecycle states, anti-enumeration behavior and security/privacy regression coverage.
 
 Cube N does not render or print the customer QR labels, implement vehicle/Warranty-card/invoice layouts, expose a Claims button or Claims workflow, build QR scan/view analytics, add customer login/OTP, or add multilingual UI. The next customer Warranty print slice reuses the already-frozen `/w/<PUBLIC-CODE>` identity and the existing shared QR reliability foundation.
+
+### PD-057 — Three customer Warranty QR stickers are identical
+**Status:** Approved — 2026-08-25
+
+Each physical Roll produces three customer-facing Warranty QR stickers for the vehicle, Warranty card/certificate and invoice. All three are visually and technically identical and reuse the same permanent Roll-owned Cube N Public Code and exact same Warranty URL. They are not separate identities or customer-facing template variants.
+
+### PD-058 — Customer Warranty stickers are safe to generate before Activation
+**Status:** Approved — 2026-08-25
+
+Warranty stickers are generated from the Roll's permanent identity at production time. They therefore do not contain customer data, Warranty Number, vehicle data, Activation/coverage dates, Center data or any other value that is not stable at Roll production time.
+
+The durable customer-facing content is Protection Giants identity, a concise Warranty verification instruction and the permanent Warranty QR. Stable Product identity may come only from the immutable Production Order snapshot.
+
+### PD-059 — One Roll Print Pack is the primary print grouping
+**Status:** Approved — 2026-08-25
+
+The operational print unit is one complete Roll Print Pack containing Outer Roll copy 1, Outer Roll copy 2 and three identical Warranty QR copies for the same physical Roll.
+
+Labels from another Roll must not be interleaved inside the Pack. Chunk/file boundaries occur only between complete Roll Packs and never split one Roll's approved set.
+
+### PD-060 — Print output must visibly separate one Roll Pack from the next
+**Status:** Approved — 2026-08-25
+
+Preview/PDF output must make each Roll's complete five-piece set visually obvious. A non-customer guide/separator may display Roll Serial and pack ordinal outside cut areas but must not expose the Warranty Public Code.
+
+The preferred Master Pack composition places the two Outer copies together and the three identical Warranty stickers together on one Roll-specific master page.
+
+### PD-061 — Hardware-specific imposition is isolated and must not be guessed
+**Status:** Approved — 2026-08-25
+
+Roll Pack identity, membership, grouping, templates, QR payloads, chunking and deterministic reprint are frozen independently from the real printer/media/RIP profile.
+
+Media dimensions, margins, gaps, bleed, cut contour, registration marks, printer/RIP requirements and final physical label dimensions remain pending real physical validation. When confirmed, they are implemented as a narrow print-profile patch rather than a redesign of Cube O.
+
+### PD-062 — Production Warranty QR printing requires the canonical-domain release gate
+**Status:** Approved — 2026-08-25
+
+The permanent customer Warranty QR payload is `https://protectiongiants.com/w/<PUBLIC-CODE>`. Development/staging proof output may exist before Production routing is attached, but customer Production printing is not authorized until the canonical domain route is connected, HTTPS is verified, and a real printed QR opens the expected Production Warranty page.
+
+Vercel preview/staging hostnames must never become the permanent printed customer Warranty identity. Cube O does not add the historically deferred bag/case, inner-Roll or separate ERP labels; any later approved label content must reuse the existing print foundation.
