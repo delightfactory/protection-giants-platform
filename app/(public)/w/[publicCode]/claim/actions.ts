@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   clearClaimAccess,
+  ensureFreshClaimDraft,
   getFreshClaimAccess,
   isClaimPublicCode,
   verifyPhoneAndIssueClaimAccess,
+  type FreshClaimAccess,
 } from "@/lib/warranty/claim-access.server";
 import {
   isWarrantyClaimCategory,
@@ -37,6 +39,7 @@ const EXPOSED_SUBMIT_ERRORS = new Set([
   "PG_CLAIM_WARRANTY_EXPIRED",
   "PG_CLAIM_OPEN_EXISTS",
   "PG_CLAIM_REQUEST_CONFLICT",
+  "PG_CLAIM_DRAFT_CLOSED",
 ]);
 
 type StorageListObject = {
@@ -106,11 +109,97 @@ function detectWarrantyClaimImageMime(bytes: Buffer): WarrantyClaimEvidenceMime 
   return null;
 }
 
-async function cleanupEvidence(paths: string[]): Promise<boolean> {
-  if (paths.length === 0) return true;
+function draftMutationError(message: string | undefined, fallback: string): string {
+  switch (message) {
+    case "PG_CLAIM_VERIFICATION_STALE":
+      return "PG_CLAIM_VERIFICATION_STALE";
+    case "PG_CLAIM_DRAFT_CLOSED":
+      return "PG_CLAIM_NOT_SUBMITTABLE";
+    case "PG_CLAIM_DRAFT_EVIDENCE_LIMIT":
+      return "PG_CLAIM_EVIDENCE_COUNT_INVALID";
+    case "PG_CLAIM_DRAFT_EVIDENCE_DELETING":
+      return "PG_CLAIM_EVIDENCE_REMOVE_FAILED";
+    default:
+      return fallback;
+  }
+}
+
+async function registerDraftEvidence(
+  access: FreshClaimAccess,
+  evidence: WarrantyClaimEvidenceReference,
+): Promise<{ ok: true } | { ok: false; code: string; authoritative: boolean }> {
   const admin = createSupabaseAdminClient();
-  const { error } = await admin.storage.from(WARRANTY_CLAIM_EVIDENCE_BUCKET).remove(paths);
-  return !error;
+  const { data, error } = await admin.rpc("register_customer_warranty_claim_draft_evidence", {
+    p_draft_id: access.payload.draftId,
+    p_warranty_id: access.payload.warrantyId,
+    p_storage_path: evidence.storagePath,
+    p_mime_type: evidence.mimeType,
+    p_size_bytes: evidence.sizeBytes,
+  });
+
+  if (!error && data === true) return { ok: true };
+
+  const authoritative = Boolean(error?.message?.startsWith("PG_CLAIM_"));
+  return {
+    ok: false,
+    code: draftMutationError(error?.message, authoritative
+      ? "PG_CLAIM_EVIDENCE_UPLOAD_FAILED"
+      : "PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS"),
+    authoritative,
+  };
+}
+
+async function reserveDraftEvidenceRemoval(
+  access: FreshClaimAccess,
+  storagePath: string,
+): Promise<{ ok: true } | { ok: false; code: string }> {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.rpc("unregister_customer_warranty_claim_draft_evidence", {
+    p_draft_id: access.payload.draftId,
+    p_warranty_id: access.payload.warrantyId,
+    p_storage_path: storagePath,
+  });
+
+  if (!error && data === true) return { ok: true };
+  return {
+    ok: false,
+    code: draftMutationError(error?.message, "PG_CLAIM_EVIDENCE_REMOVE_FAILED"),
+  };
+}
+
+async function finalizeDraftEvidenceRemoval(
+  access: FreshClaimAccess,
+  storagePath: string,
+): Promise<boolean> {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.rpc(
+    "finalize_customer_warranty_claim_draft_evidence_removal",
+    {
+      p_draft_id: access.payload.draftId,
+      p_warranty_id: access.payload.warrantyId,
+      p_storage_path: storagePath,
+    },
+  );
+  return !error && data === true;
+}
+
+async function safelyDiscardUncommittedEvidence(
+  access: FreshClaimAccess,
+  paths: string[],
+): Promise<void> {
+  const admin = createSupabaseAdminClient();
+
+  for (const storagePath of paths) {
+    const reserved = await reserveDraftEvidenceRemoval(access, storagePath);
+    if (!reserved.ok) continue;
+
+    const { error: removeError } = await admin.storage
+      .from(WARRANTY_CLAIM_EVIDENCE_BUCKET)
+      .remove([storagePath]);
+    if (removeError) continue;
+
+    await finalizeDraftEvidenceRemoval(access, storagePath);
+  }
 }
 
 export async function verifyWarrantyClaimPhone(
@@ -143,6 +232,9 @@ export async function uploadWarrantyClaimEvidence(
   const access = await getFreshClaimAccess(publicCode);
   if (!access) return { ok: false, code: "PG_CLAIM_VERIFICATION_REQUIRED" };
   if (!access.context.canSubmitNewClaim) return { ok: false, code: "PG_CLAIM_NOT_SUBMITTABLE" };
+  if (!(await ensureFreshClaimDraft(access))) {
+    return { ok: false, code: "PG_CLAIM_VERIFICATION_STALE" };
+  }
 
   const validation = validateWarrantyClaimImage(file);
   if (validation) return { ok: false, code: validation };
@@ -160,6 +252,11 @@ export async function uploadWarrantyClaimEvidence(
   const extension = WARRANTY_CLAIM_ALLOWED_IMAGES[detectedMime];
   const storagePath = `${access.payload.draftId}/${digest}.${extension}`;
   const fileName = evidenceFileName(storagePath);
+  const evidence: WarrantyClaimEvidenceReference = {
+    storagePath,
+    mimeType: detectedMime,
+    sizeBytes: bytes.length,
+  };
   const admin = createSupabaseAdminClient();
 
   const { data: existingObjects, error: listError } = await admin.storage
@@ -174,10 +271,11 @@ export async function uploadWarrantyClaimEvidence(
     if (!metadata || metadata.mimeType !== detectedMime || metadata.sizeBytes !== bytes.length) {
       return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
     }
-    return {
-      ok: true,
-      evidence: { storagePath, mimeType: detectedMime, sizeBytes: bytes.length },
-    };
+
+    const registered = await registerDraftEvidence(access, evidence);
+    return registered.ok
+      ? { ok: true, evidence }
+      : { ok: false, code: registered.code };
   }
 
   if ((existingObjects ?? []).length >= WARRANTY_CLAIM_MAX_IMAGES) {
@@ -194,10 +292,18 @@ export async function uploadWarrantyClaimEvidence(
 
   if (uploadError) return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
 
-  return {
-    ok: true,
-    evidence: { storagePath, mimeType: detectedMime, sizeBytes: bytes.length },
-  };
+  const registered = await registerDraftEvidence(access, evidence);
+  if (registered.ok) return { ok: true, evidence };
+
+  // A named DB rejection proves registration rolled back, so this newly uploaded
+  // uncommitted object may be compensated. Unknown/transport ambiguity preserves
+  // it; retrying the same file reuses the content-addressed path and idempotent
+  // registration. Expired-draft cleanup lists the actual Storage folder, so even
+  // an unregistered object cannot grow into a permanent orphan.
+  if (registered.authoritative) {
+    await admin.storage.from(WARRANTY_CLAIM_EVIDENCE_BUCKET).remove([storagePath]);
+  }
+  return { ok: false, code: registered.code };
 }
 
 export async function removeWarrantyClaimEvidence(
@@ -214,11 +320,26 @@ export async function removeWarrantyClaimEvidence(
     return { ok: false, code: "PG_CLAIM_EVIDENCE_INVALID" };
   }
 
+  // DB reservation comes first. If Claim submit won the draft lock, this fails
+  // as closed and Storage is never touched. If removal wins, submit can no longer
+  // consume this path because it is delete_pending.
+  const reserved = await reserveDraftEvidenceRemoval(access, storagePath);
+  if (!reserved.ok) return reserved;
+
   const admin = createSupabaseAdminClient();
-  const { error } = await admin.storage.from(WARRANTY_CLAIM_EVIDENCE_BUCKET).remove([storagePath]);
-  return error
-    ? { ok: false, code: "PG_CLAIM_EVIDENCE_REMOVE_FAILED" }
-    : { ok: true };
+  const { error } = await admin.storage
+    .from(WARRANTY_CLAIM_EVIDENCE_BUCKET)
+    .remove([storagePath]);
+  if (error) {
+    // Keep delete_pending metadata. A user retry or bounded stale-draft cleanup
+    // still knows the path and can complete physical deletion safely.
+    return { ok: false, code: "PG_CLAIM_EVIDENCE_REMOVE_FAILED" };
+  }
+
+  const finalized = await finalizeDraftEvidenceRemoval(access, storagePath);
+  return finalized
+    ? { ok: true }
+    : { ok: false, code: "PG_CLAIM_EVIDENCE_REMOVE_FAILED" };
 }
 
 async function authoritativeEvidence(
@@ -279,6 +400,7 @@ export async function submitWarrantyClaim(input: {
 
   const access = await getFreshClaimAccess(input.publicCode);
   if (!access) return { ok: false, code: "PG_CLAIM_VERIFICATION_REQUIRED" };
+  if (!access.context.canSubmitNewClaim) return { ok: false, code: "PG_CLAIM_NOT_SUBMITTABLE" };
 
   const evidence = await authoritativeEvidence(access.payload.draftId, input.evidencePaths);
   if (!evidence) return { ok: false, code: "PG_CLAIM_EVIDENCE_INVALID" };
@@ -308,20 +430,27 @@ export async function submitWarrantyClaim(input: {
     return { ok: true, claimId: row.claim_id, claimNumber: row.claim_number };
   }
 
-  // A named domain rejection is authoritative: the database transaction rolled
-  // back and staged evidence may be compensated. Never reinterpret a request
-  // conflict as a successful retry merely because that request id already exists.
   const domainError = authoritativeSubmitError(error?.message);
   if (domainError) {
-    const cleaned = await cleanupEvidence(evidence.map((item) => item.storagePath));
-    if (!cleaned) return { ok: false, code: "PG_CLAIM_EVIDENCE_COMPENSATION_FAILED" };
-    return { ok: false, code: domainError };
+    // Compensate only through the locked draft lifecycle. If this request had
+    // actually committed earlier, its draft tombstone is submitted and every
+    // unregister fails closed, preserving committed Claim evidence.
+    await safelyDiscardUncommittedEvidence(
+      access,
+      evidence.map((item) => item.storagePath),
+    );
+    return {
+      ok: false,
+      code: domainError === "PG_CLAIM_DRAFT_CLOSED"
+        ? "PG_CLAIM_NOT_SUBMITTABLE"
+        : domainError,
+    };
   }
 
-  // Unknown/transport failure is ambiguous. First resolve an already-committed
-  // request. If that lookup cannot prove the Claim exists, preserve the staged
-  // evidence and the caller's request id for a safe same-request retry. Deleting
-  // here could race a server-side commit whose HTTP response was lost.
+  // Unknown/transport failure is ambiguous. Resolve an already-committed request
+  // first. If the lookup cannot prove the Claim exists, preserve staged evidence
+  // and the same request id; deleting here could race a DB commit whose response
+  // was lost.
   const { data: existing, error: existingError } = await admin.rpc(
     "get_customer_warranty_claim_by_request",
     {
