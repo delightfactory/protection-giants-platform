@@ -1906,6 +1906,17 @@ export type Database = {
         Args: { p_party_type: string }
         Returns: string
       }
+      get_internal_warranty_audit: {
+        Args: { p_warranty_id: string }
+        Returns: {
+          actor_profile_id: string
+          change_snapshot: Json
+          created_at: string
+          event_id: string
+          event_kind: string
+          reason: string
+        }[]
+      }
       get_internal_warranty_detail: {
         Args: { p_warranty_id: string }
         Returns: {
