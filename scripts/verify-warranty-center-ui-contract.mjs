@@ -24,13 +24,11 @@ includes(operations, 'href: "/operations/warranties"', "Center operations landin
 const centerModuleBlock = operations.slice(operations.indexOf("const centerModules"), operations.indexOf("function modulesForRole"));
 includes(centerModuleBlock, "warrantyModule", "Warranty module must be reachable from Center operations.");
 
-for (const [label, source] of [
-  ["activation", activatePage],
-  ["registry", registry],
-  ["detail", detail],
-]) {
-  includes(source, 'profile.role !== "center"', `${label} route must remain Center-only in Increment 4.`);
-  includes(source, 'redirect("/access-denied")', `${label} route must fail closed for non-Center roles.`);
+includes(activatePage, 'profile.role !== "center"', "Warranty activation route must remain Center-only.");
+includes(activatePage, 'redirect("/access-denied")', "Warranty activation route must fail closed for non-Center roles.");
+for (const [label, source] of [["registry", registry], ["detail", detail]]) {
+  includes(source, 'profile.role !== "center" && profile.role !== "admin"', `${label} route must allow only Center/Admin internal Warranty readers.`);
+  includes(source, 'redirect("/access-denied")', `${label} route must fail closed for Agent/Dealer roles.`);
 }
 
 includes(actions, 'rpc("resolve_warranty_activation_candidate"', "Activation preflight must call the authoritative Candidate RPC.");
@@ -71,7 +69,7 @@ for (const forbiddenField of [
   "evidencePaths",
   "photoUpload",
 ]) {
-  assert(!flow.includes(forbiddenField), `Increment 4 must not add deferred field ${forbiddenField}.`);
+  assert(!flow.includes(forbiddenField), `Center Activation must not add deferred field ${forbiddenField}.`);
 }
 
 for (const state of [
@@ -90,6 +88,7 @@ includes(registry, 'rpc("list_internal_warranties"', "Warranty registry must use
 includes(detail, 'rpc("get_internal_warranty_detail"', "Warranty detail must use the bounded detail RPC.");
 includes(registry, "LocalDateTime", "Warranty registry timestamps must use LocalDateTime.");
 includes(detail, "LocalDateTime", "Warranty detail timestamps must use LocalDateTime.");
+includes(detail, "المركز لا يستطيع تعديل بيانات هذا الضمان أو إلغاءه", "Center detail must retain its explicit read-only support boundary.");
 
 const warrantyAppSources = [activatePage, registry, detail, actions].join("\n");
 assert(!/\.from\(["']warranties["']\)/.test(warrantyAppSources), "Center Warranty UI must never read the warranties table directly.");
@@ -102,8 +101,8 @@ for (const forbiddenSurface of [
   "WarrantyQr",
   "PrintWarranty",
 ]) {
-  assert(!warrantyAppSources.includes(forbiddenSurface) && !flow.includes(forbiddenSurface),
-    `Increment 4 must not leak deferred surface ${forbiddenSurface}.`);
+  assert(!actions.includes(forbiddenSurface) && !flow.includes(forbiddenSurface) && !activatePage.includes(forbiddenSurface),
+    `Center Activation surface must not leak ${forbiddenSurface}.`);
 }
 
 includes(flowCss, "min-height: 48px", "Primary Warranty flow controls must preserve field/mobile touch target sizing.");
