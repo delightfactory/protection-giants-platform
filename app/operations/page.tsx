@@ -25,6 +25,13 @@ const warrantyModule = {
   icon: "production" as const,
 };
 
+const claimModule = {
+  href: "/operations/claims",
+  title: "مطالبات الضمان",
+  description: "مراجعة مطالبات العملاء وسياق الضمان والمرفقات والفحص وسجل القرار.",
+  icon: "production" as const,
+};
+
 const adminModules = [
   { href: "/operations/users", title: "الحسابات التشغيلية", description: "المستخدمون والأدوار والارتباطات التشغيلية.", icon: "users" as const },
   { href: "/operations/agents", title: "وكلاء الدول", description: "إدارة وكلاء الدول وهويتهم وحالتهم التشغيلية وTransfer ID.", icon: "users" as const },
@@ -35,6 +42,7 @@ const adminModules = [
   { href: "/operations/rolls", title: "عهدة اللفات", description: "مراجعة حامل العهدة المؤكد حاليًا لكل لفة وحالة أهلية أمر الإنتاج.", icon: "production" as const },
   issueModule,
   warrantyModule,
+  claimModule,
   transferModule,
 ];
 

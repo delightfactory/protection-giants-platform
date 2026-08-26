@@ -9,6 +9,8 @@ name: Cube Q Claim Review Quality
       - "lib/supabase/database.types.ts"
       - "scripts/verify-cube-q-claim-*.mjs"
       - "scripts/verify-cube-p-claim-intake.mjs"
+      - "app/operations/claims/**"
+      - "app/operations/page.tsx"
       - ".github/workflows/cube-q-claim-review-quality.yml"
       - "docs/cube-q-claim-review-inspection-decision-spec.md"
       - "docs/cube-q-pd078-pending-inspection-reopen-clarification.md"
