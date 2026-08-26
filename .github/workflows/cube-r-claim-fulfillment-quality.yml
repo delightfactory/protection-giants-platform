@@ -1,6 +1,18 @@
 name: Cube R Claim Fulfillment Quality
 
 on:
+  push:
+    branches:
+      - agent/cube-r-claim-resolution-fulfillment
+    paths:
+      - "supabase/migrations/*cube_r*"
+      - "scripts/verify-cube-r-claim-*.mjs"
+      - "lib/supabase/database.types.ts"
+      - "app/operations/claim-resolutions/**"
+      - "components/claims/**"
+      - ".github/workflows/cube-r-claim-fulfillment-quality.yml"
+      - "docs/cube-r-claim-resolution-replacement-reinstall-spec.md"
+      - "docs/claims-pqr-final-spec-review-amendment.md"
   pull_request:
     branches:
       - main
