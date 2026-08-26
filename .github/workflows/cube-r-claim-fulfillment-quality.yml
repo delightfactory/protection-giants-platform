@@ -4,6 +4,7 @@ name: Cube R Claim Fulfillment Quality
 # pushes are the authoritative incremental gate while P/Q/R remain stacked.
 # Current gate covers Product policy, Resolution state, assignment/corrections,
 # replacement Roll allocation persistence and reserve/release lifecycle.
+# Canonical generated DB types are part of the same-HEAD qualification contract.
 on:
   push:
     branches:
