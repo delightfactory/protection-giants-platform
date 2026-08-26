@@ -1,9 +1,9 @@
 -- Cube Q — Claim Review, Inspection & Decision, notification integration
--- Project immutable Claim events into the existing Cube L per-Profile Inbox.
--- No new notification transport, customer messaging channel, or workflow state is
--- introduced here.
+-- Extend the existing Cube P -> Cube L Claim event projector in place. The
+-- existing trigger is deliberately reused; no second Claim notification path or
+-- transport is introduced here.
 
-create function private.materialize_warranty_claim_notification_event()
+create or replace function private.materialize_warranty_claim_notification_event()
 returns trigger
 language plpgsql
 security definer
@@ -11,6 +11,7 @@ set search_path = ''
 as $$
 declare
   v_claim public.warranty_claims%rowtype;
+  v_warranty public.warranties%rowtype;
   v_company_party_id uuid;
   v_inspection public.warranty_claim_inspections%rowtype;
   v_target_party_id uuid;
@@ -32,14 +33,18 @@ begin
     raise exception using errcode = '23514', message = 'PG_NOTIFICATION_CLAIM_MISSING';
   end if;
 
-  -- review_started is intentionally silent: the acting Admin already knows that
-  -- review began, and there is no new task for another operational party.
-  if new.event_kind = 'review_started' then
-    return new;
-  end if;
-
-  -- New customer Claim -> Company/Admin action.
+  -- Preserve the frozen Cube P submitted notification contract exactly. Q adds
+  -- professional Claim pages, but does not rewrite or fork the P event identity.
   if new.event_kind = 'submitted' then
+    select warranty.*
+      into v_warranty
+    from public.warranties warranty
+    where warranty.id = v_claim.warranty_id;
+
+    if not found then
+      raise exception using errcode = '23514', message = 'PG_NOTIFICATION_CLAIM_WARRANTY_MISSING';
+    end if;
+
     select party.id
       into v_company_party_id
     from public.operational_parties party
@@ -48,6 +53,13 @@ begin
     if v_company_party_id is null then
       raise exception using errcode = '23514', message = 'PG_NOTIFICATION_COMPANY_PARTY_MISSING';
     end if;
+
+    v_body := btrim(left(
+      'تم استلام المطالبة ' || v_claim.claim_number
+        || ' على ' || v_warranty.product_name_snapshot
+        || ' — ' || v_warranty.vehicle_make || ' ' || v_warranty.vehicle_model || '.',
+      300
+    ));
 
     insert into public.notifications (
       recipient_profile_id,
@@ -63,13 +75,13 @@ begin
     )
     select
       recipients.profile_id,
-      'claim.submitted',
+      'warranty.claim_submitted',
       'warranty_claim',
       v_source_event_key,
       'action_required',
       'مطالبة ضمان جديدة تحتاج مراجعة',
-      'تم استلام المطالبة ' || v_claim.claim_number || '. افتح المطالبة لبدء المراجعة.',
-      '/operations/claims/' || v_claim.id::text,
+      v_body,
+      null,
       true,
       new.created_at
     from private.notification_party_profile_ids(v_company_party_id) recipients
@@ -79,9 +91,15 @@ begin
     return new;
   end if;
 
-  -- Inspection request/reassignment -> currently assigned Center only. The action
-  -- points to the Center queue rather than a detail URL so historical Inbox rows
-  -- remain safe after later reassignment/cancellation.
+  -- Starting review is the acting Admin's own action and creates no new task for
+  -- another operational party.
+  if new.event_kind = 'review_started' then
+    return new;
+  end if;
+
+  -- Inspection request/reassignment -> currently assigned Center only. Historical
+  -- Inbox rows point to the queue, which remains safe after later reassignment or
+  -- cancellation.
   if new.event_kind in ('inspection_requested', 'inspection_reassigned') then
     begin
       v_inspection_id := nullif(new.event_data ->> 'inspection_id', '')::uuid;
@@ -218,10 +236,8 @@ begin
     end if;
   end if;
 
-  -- PD-078 can restore the same requested inspection after a mistaken ordinary
-  -- cancellation. The task must not silently reappear after the Center was told
-  -- that it disappeared, so the same immutable correction event also projects a
-  -- fresh action-required Center notification.
+  -- PD-078 may restore the same requested inspection after an erroneous ordinary
+  -- cancellation. Re-notify that Center so the task cannot silently reappear.
   if new.event_kind = 'decision_reopened_for_correction'
     and new.event_data ->> 'resumed_status' = 'awaiting_inspection'
   then
@@ -276,7 +292,7 @@ begin
 
   -- Final decisions and bounded corrections are internal Company visibility only.
   -- Exclude the acting Admin to avoid self-success noise. Customer status remains
-  -- exclusively on the verified customer Claim projection.
+  -- on the verified customer Claim projection.
   if new.event_kind not in (
     'approved',
     'rejected',
@@ -364,10 +380,5 @@ $$;
 revoke all on function private.materialize_warranty_claim_notification_event()
   from public, anon, authenticated, service_role;
 
-create trigger warranty_claim_events_notification_materializer
-  after insert on public.warranty_claim_events
-  for each row
-  execute function private.materialize_warranty_claim_notification_event();
-
 comment on function private.materialize_warranty_claim_notification_event() is
-  'Cube Q bounded Cube L projector for Claim-domain events. New Claims and actionable inspection changes notify the exact operational party, final decisions/corrections are Inbox-only for other active Admins, customer messaging stays on the verified Claim projection, and Push never controls Claim state.';
+  'Cube Q extension of the frozen Cube P/Cube L Claim projector. Submitted semantics remain unchanged; actionable inspection changes route to the exact Center/Admin party, final decisions/corrections are Inbox-only for other active Admins, and Push never controls Claim state.';
