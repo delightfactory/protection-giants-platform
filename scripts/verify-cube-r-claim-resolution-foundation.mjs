@@ -1,4 +1,4 @@
-// Cube R persistence/state verifier remains allocation-free while later mutation RPCs are still absent.
+// Cube R persistence/state verifier remains focused on Resolution structure while later mutation RPCs are still absent.
 import { execFileSync } from "node:child_process";
 
 function assert(condition, message) {
@@ -49,25 +49,12 @@ function sqlUuid(value) {
 }
 
 const expectedColumns = [
-  "id",
-  "claim_id",
-  "status",
-  "authorized_by_profile_id",
-  "authorized_at",
-  "created_at",
-  "updated_at",
-  "remedy_kind",
-  "performing_center_party_id",
-  "assigned_by_profile_id",
-  "assigned_at",
-  "completed_by_profile_id",
-  "completion_actor_kind",
-  "completion_note",
-  "completed_at",
-  "cancelled_by_profile_id",
-  "cancellation_reason",
-  "customer_cancellation_message",
-  "cancelled_at",
+  "id", "claim_id", "status", "authorized_by_profile_id", "authorized_at",
+  "created_at", "updated_at", "remedy_kind", "performing_center_party_id",
+  "assigned_by_profile_id", "assigned_at", "completed_by_profile_id",
+  "completion_actor_kind", "completion_note", "completed_at",
+  "cancelled_by_profile_id", "cancellation_reason",
+  "customer_cancellation_message", "cancelled_at",
 ].join(",");
 
 const resolutionColumns = querySql(`
@@ -127,8 +114,6 @@ assert(triggerNames.has("warranty_claim_resolution_events_immutable"),
 assert(!triggerNames.has("warranty_claim_resolutions_q_immutable"),
   "Cube Q blanket Resolution immutability trigger must be replaced, not stacked with R.");
 
-assert(querySql(`select to_regclass('public.warranty_claim_resolution_roll_allocations') is null;`) === "t",
-  "Resolution foundation increment must not introduce Roll allocation persistence yet.");
 assert(querySql(`
   select count(*) = 0
   from pg_catalog.pg_proc p
@@ -140,14 +125,12 @@ assert(querySql(`
       'complete_warranty_claim_resolution',
       'cancel_assigned_claim_resolution_for_customer_withdrawal'
     );
-`) === "t", "Later Cube R mutation RPCs must remain absent at the initial-assignment checkpoint.");
+`) === "t", "Later Cube R mutation RPCs must remain absent at this checkpoint.");
 
 const authorizedFixture = querySql(`
   select concat_ws('|', resolution.id, claim.id, claim.status,
-    resolution.status,
-    resolution.remedy_kind is null,
-    resolution.performing_center_party_id is null,
-    resolution.assigned_at is null)
+    resolution.status, resolution.remedy_kind is null,
+    resolution.performing_center_party_id is null, resolution.assigned_at is null)
   from public.warranty_claim_resolutions resolution
   join public.warranty_claims claim on claim.id = resolution.claim_id
   where resolution.status = 'authorized'
@@ -170,8 +153,7 @@ const actorFixture = querySql(`
   join public.operational_parties center_party
     on center_party.party_type = 'center'
    and center_party.installation_center_id = center_profile.installation_center_id
-  join public.installation_centers center
-    on center.id = center_profile.installation_center_id
+  join public.installation_centers center on center.id = center_profile.installation_center_id
   where center_profile.role = 'center'
     and center_profile.status = 'active'
     and center.status = 'active'
@@ -185,36 +167,26 @@ const [adminProfileId, centerProfileId, centerPartyId] = actorFixture;
 runSql(`
 begin;
 update public.warranty_claim_resolutions
-set
-  status = 'assigned',
-  remedy_kind = 'service_reinstall',
+set status = 'assigned', remedy_kind = 'service_reinstall',
   performing_center_party_id = ${sqlUuid(centerPartyId)},
   assigned_by_profile_id = ${sqlUuid(adminProfileId)},
   assigned_at = authorized_at + interval '1 second',
   updated_at = authorized_at + interval '1 second'
 where id = ${sqlUuid(resolutionId)};
-
 update public.warranty_claim_resolutions
-set
-  status = 'completed',
-  completed_by_profile_id = ${sqlUuid(centerProfileId)},
+set status = 'completed', completed_by_profile_id = ${sqlUuid(centerProfileId)},
   completion_actor_kind = 'center',
   completion_note = 'Verified Cube R service completion evidence note.',
   completed_at = assigned_at + interval '1 second',
   updated_at = assigned_at + interval '1 second'
 where id = ${sqlUuid(resolutionId)};
-
 do $$
 begin
   if not exists (
     select 1 from public.warranty_claim_resolutions
-    where id = ${sqlUuid(resolutionId)}
-      and status = 'completed'
-      and completion_actor_kind = 'center'
-      and cancelled_at is null
-  ) then
-    raise exception 'CUBE_R_COMPLETED_SHAPE_ASSERTION_FAILED';
-  end if;
+    where id = ${sqlUuid(resolutionId)} and status = 'completed'
+      and completion_actor_kind = 'center' and cancelled_at is null
+  ) then raise exception 'CUBE_R_COMPLETED_SHAPE_ASSERTION_FAILED'; end if;
 end;
 $$;
 rollback;
@@ -223,37 +195,27 @@ rollback;
 runSql(`
 begin;
 update public.warranty_claim_resolutions
-set
-  status = 'assigned',
-  remedy_kind = 'replacement_roll_reinstall',
+set status = 'assigned', remedy_kind = 'replacement_roll_reinstall',
   performing_center_party_id = ${sqlUuid(centerPartyId)},
   assigned_by_profile_id = ${sqlUuid(adminProfileId)},
   assigned_at = authorized_at + interval '1 second',
   updated_at = authorized_at + interval '1 second'
 where id = ${sqlUuid(resolutionId)};
-
 update public.warranty_claim_resolutions
-set
-  status = 'cancelled',
-  cancelled_by_profile_id = ${sqlUuid(adminProfileId)},
+set status = 'cancelled', cancelled_by_profile_id = ${sqlUuid(adminProfileId)},
   cancellation_reason = 'Customer declined the authorized physical service after assignment.',
   customer_cancellation_message = 'تم إغلاق تنفيذ الخدمة بناءً على عدم رغبة العميل في استكمال المعالجة.',
   cancelled_at = assigned_at + interval '1 second',
   updated_at = assigned_at + interval '1 second'
 where id = ${sqlUuid(resolutionId)};
-
 do $$
 begin
   if not exists (
     select 1 from public.warranty_claim_resolutions
-    where id = ${sqlUuid(resolutionId)}
-      and status = 'cancelled'
-      and completed_at is null
-      and cancellation_reason is not null
+    where id = ${sqlUuid(resolutionId)} and status = 'cancelled'
+      and completed_at is null and cancellation_reason is not null
       and customer_cancellation_message is not null
-  ) then
-    raise exception 'CUBE_R_CANCELLED_SHAPE_ASSERTION_FAILED';
-  end if;
+  ) then raise exception 'CUBE_R_CANCELLED_SHAPE_ASSERTION_FAILED'; end if;
 end;
 $$;
 rollback;
@@ -262,9 +224,7 @@ rollback;
 expectSqlFailure(`
 begin;
 update public.warranty_claim_resolutions
-set
-  status = 'completed',
-  completed_by_profile_id = ${sqlUuid(centerProfileId)},
+set status = 'completed', completed_by_profile_id = ${sqlUuid(centerProfileId)},
   completion_actor_kind = 'center',
   completion_note = 'Invalid completion without assignment must fail structurally.',
   completed_at = authorized_at + interval '1 second',
@@ -276,26 +236,19 @@ commit;
 expectSqlFailure(`
 begin;
 update public.warranty_claim_resolutions
-set
-  status = 'assigned',
-  remedy_kind = 'service_reinstall',
+set status = 'assigned', remedy_kind = 'service_reinstall',
   performing_center_party_id = ${sqlUuid(centerPartyId)},
   assigned_by_profile_id = ${sqlUuid(adminProfileId)},
   assigned_at = authorized_at + interval '1 second',
   updated_at = authorized_at + interval '1 second'
 where id = ${sqlUuid(resolutionId)};
 update public.warranty_claim_resolutions
-set
-  status = 'completed',
-  completed_by_profile_id = ${sqlUuid(centerProfileId)},
-  completion_actor_kind = 'center',
-  completion_note = 'Terminal Resolution cannot be edited after completion.',
-  completed_at = assigned_at + interval '1 second',
-  updated_at = assigned_at + interval '1 second'
+set status = 'completed', completed_by_profile_id = ${sqlUuid(centerProfileId)},
+  completion_actor_kind = 'center', completion_note = 'Terminal Resolution cannot be edited after completion.',
+  completed_at = assigned_at + interval '1 second', updated_at = assigned_at + interval '1 second'
 where id = ${sqlUuid(resolutionId)};
 update public.warranty_claim_resolutions
-set completion_note = 'Attempted terminal rewrite must fail.'
-where id = ${sqlUuid(resolutionId)};
+set completion_note = 'Attempted terminal rewrite must fail.' where id = ${sqlUuid(resolutionId)};
 commit;
 `, "PG_CLAIM_RESOLUTION_TERMINAL");
 
