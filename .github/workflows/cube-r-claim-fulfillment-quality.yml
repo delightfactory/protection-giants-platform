@@ -2,8 +2,8 @@ name: Cube R Claim Fulfillment Quality
 
 # R is intentionally developed before its workflow exists on main, so branch
 # pushes are the authoritative incremental gate while P/Q/R remain stacked.
-# Current gate covers Product policy, Resolution state, assignment/corrections
-# and replacement Roll allocation persistence.
+# Current gate covers Product policy, Resolution state, assignment/corrections,
+# replacement Roll allocation persistence and reserve/release lifecycle.
 on:
   push:
     branches:
@@ -111,6 +111,12 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-r-claim-assignment-corrections.mjs
+
+      - name: Verify Cube R replacement Roll reservation lifecycle
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-r-claim-roll-reservation-lifecycle.mjs
 
       - name: Generate public database types
         run: |

@@ -117,13 +117,8 @@ for (const fragment of [
   assert(indexDefinitions.includes(fragment), `Allocation index drift; missing ${fragment}.`);
 }
 
-assert(querySql(`
-  select count(*) = 0
-  from pg_proc p
-  join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public'
-    and p.proname in ('reserve_claim_resolution_roll', 'release_claim_resolution_roll');
-`) === "t", "Persistence-only allocation increment must not expose reserve/release RPCs yet.");
+// This verifier owns persistence/state invariants only. Reserve/release API presence
+// is verified by the later lifecycle verifier so this foundation remains cumulative-aware.
 
 const actorId = querySql(`
   select id from public.profiles where role = 'admin' and status = 'active' order by id limit 1;
@@ -206,8 +201,7 @@ insert into public.${table} (
 );
 update public.${table}
 set
-  status = 'consumed',
-  consumed_by_profile_id = ${sqlUuid(actorId)},
+  status = 'consumed', consumed_by_profile_id = ${sqlUuid(actorId)},
   consumed_at = reserved_at + interval '1 second'
 where id = ${sqlUuid(consumedId)};
 do $$
