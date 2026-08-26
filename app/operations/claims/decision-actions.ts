@@ -68,9 +68,13 @@ function validateIdentity(requestId: string, claimId: string, requestError: stri
   return null;
 }
 
-function normalizeDecisionInput(input: ClaimDecisionInput, requestError: string) {
+type NormalizedDecisionInput =
+  | { ok: true; reason: string; customerMessage: string }
+  | { ok: false; code: string };
+
+function normalizeDecisionInput(input: ClaimDecisionInput, requestError: string): NormalizedDecisionInput {
   const identityError = validateIdentity(input.requestId, input.claimId, requestError);
-  if (identityError) return { error: identityError } as const;
+  if (identityError) return { ok: false, code: identityError };
 
   const reason = input.reason.trim();
   const customerMessage = input.customerMessage.trim();
@@ -80,10 +84,10 @@ function normalizeDecisionInput(input: ClaimDecisionInput, requestError: string)
     || customerMessage.length < 5
     || customerMessage.length > 1000
   ) {
-    return { error: "PG_CLAIM_DECISION_TEXT_INVALID" } as const;
+    return { ok: false, code: "PG_CLAIM_DECISION_TEXT_INVALID" };
   }
 
-  return { reason, customerMessage } as const;
+  return { ok: true, reason, customerMessage };
 }
 
 function revalidateClaimDecision(claimId: string) {
@@ -96,7 +100,7 @@ function revalidateClaimDecision(claimId: string) {
 
 export async function approveClaimDecision(input: ClaimDecisionInput): Promise<ClaimDecisionActionResult> {
   const normalized = normalizeDecisionInput(input, "PG_CLAIM_DECISION_REQUEST_INVALID");
-  if ("error" in normalized) return { ok: false, code: normalized.error };
+  if (!normalized.ok) return { ok: false, code: normalized.code };
 
   const args = {
     p_action_request_id: input.requestId,
@@ -114,7 +118,7 @@ export async function approveClaimDecision(input: ClaimDecisionInput): Promise<C
 
 export async function rejectClaimDecision(input: ClaimDecisionInput): Promise<ClaimDecisionActionResult> {
   const normalized = normalizeDecisionInput(input, "PG_CLAIM_DECISION_REQUEST_INVALID");
-  if ("error" in normalized) return { ok: false, code: normalized.error };
+  if (!normalized.ok) return { ok: false, code: normalized.code };
 
   const args = {
     p_action_request_id: input.requestId,
@@ -132,7 +136,7 @@ export async function rejectClaimDecision(input: ClaimDecisionInput): Promise<Cl
 
 export async function cancelClaimDecision(input: ClaimDecisionInput): Promise<ClaimDecisionActionResult> {
   const normalized = normalizeDecisionInput(input, "PG_CLAIM_CANCEL_REQUEST_INVALID");
-  if ("error" in normalized) return { ok: false, code: normalized.error };
+  if (!normalized.ok) return { ok: false, code: normalized.code };
 
   const args = {
     p_action_request_id: input.requestId,
