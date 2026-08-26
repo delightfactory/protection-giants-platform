@@ -71,6 +71,12 @@ jobs:
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-p-claim-hardening.mjs
 
+      - name: Verify Cube P phone throttle active-block precedence
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-p-phone-throttle-window.mjs
+
       - name: Verify Cube P concurrency and idempotency races
         run: |
           eval "$(supabase status -o env)"
