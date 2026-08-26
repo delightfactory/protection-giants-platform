@@ -2331,6 +2331,15 @@ export type Database = {
         }
         Returns: string
       }
+      change_warranty_claim_resolution_remedy: {
+        Args: {
+          p_action_request_id: string
+          p_reason: string
+          p_remedy_kind: string
+          p_resolution_id: string
+        }
+        Returns: string
+      }
       claim_expired_warranty_claim_draft_cleanup_candidates: {
         Args: { p_limit?: number }
         Returns: {
@@ -2957,6 +2966,15 @@ export type Database = {
           p_center_party_id: string
           p_claim_id: string
           p_reason: string
+        }
+        Returns: string
+      }
+      reassign_warranty_claim_resolution: {
+        Args: {
+          p_action_request_id: string
+          p_performing_center_party_id: string
+          p_reason: string
+          p_resolution_id: string
         }
         Returns: string
       }

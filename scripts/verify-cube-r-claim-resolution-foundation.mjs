@@ -114,18 +114,22 @@ assert(triggerNames.has("warranty_claim_resolution_events_immutable"),
 assert(!triggerNames.has("warranty_claim_resolutions_q_immutable"),
   "Cube Q blanket Resolution immutability trigger must be replaced, not stacked with R.");
 
-assert(querySql(`
-  select count(*) = 0
+// This verifier runs against the cumulative R schema. Historical increment-level CI
+// already proved that the foundation commit itself exposed no later mutation RPCs.
+// Keep the permanent foundation contract focused on state shape, immutability and
+// table security; each later R surface is owned by its dedicated verifier.
+const correctionSurfaceCount = Number(querySql(`
+  select count(*)
   from pg_catalog.pg_proc p
   join pg_catalog.pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public'
     and p.proname in (
       'reassign_warranty_claim_resolution',
-      'change_claim_resolution_remedy',
-      'complete_warranty_claim_resolution',
-      'cancel_assigned_claim_resolution_for_customer_withdrawal'
+      'change_warranty_claim_resolution_remedy'
     );
-`) === "t", "Later Cube R mutation RPCs must remain absent at this checkpoint.");
+`));
+assert(correctionSurfaceCount === 0 || correctionSurfaceCount === 2,
+  `Cube R assignment-correction surface must be absent or complete, found ${correctionSurfaceCount} functions.`);
 
 const authorizedFixture = querySql(`
   select concat_ws('|', resolution.id, claim.id, claim.status,
