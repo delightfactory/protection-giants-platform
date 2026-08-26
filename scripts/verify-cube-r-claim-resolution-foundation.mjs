@@ -1,3 +1,4 @@
+// Cube R exact-head qualification verifier: persistence/state foundation remains intentionally allocation-free.
 import { execFileSync } from "node:child_process";
 
 function assert(condition, message) {
