@@ -197,15 +197,16 @@ begin
     raise exception using errcode = '23514', message = 'PG_NOTIFICATION_COMPANY_PARTY_MISSING';
   end if;
 
-  -- Cube L enforces body <= 300 characters. Warranty metadata is legitimately
-  -- wider, so P must bound the projector output rather than allow a valid Claim
-  -- to roll back because Product/vehicle text happens to be long.
-  v_body := left(
+  -- Cube L enforces body <= 300 characters and requires body=btrim(body).
+  -- Warranty metadata is legitimately wider, so P must bound and normalize the
+  -- projector output rather than allow a valid Claim to roll back merely because
+  -- truncation lands on an internal whitespace character.
+  v_body := btrim(left(
     'تم استلام المطالبة ' || v_claim.claim_number
       || ' على ' || v_warranty.product_name_snapshot
       || ' — ' || v_warranty.vehicle_make || ' ' || v_warranty.vehicle_model || '.',
     300
-  );
+  ));
 
   insert into public.notifications (
     recipient_profile_id,
@@ -242,4 +243,4 @@ revoke all on function private.materialize_warranty_claim_notification_event()
   from public, anon, authenticated, service_role;
 
 comment on function private.materialize_warranty_claim_notification_event() is
-  'Cube P bounded Cube L projector. submitted Claim events create privacy-safe action-required Inbox rows for active Protection Giants Admin Profiles; body length is deterministically capped to Cube L schema limits and action_path remains null until Cube Q.';
+  'Cube P bounded Cube L projector. submitted Claim events create privacy-safe action-required Inbox rows for active Protection Giants Admin Profiles; body is trimmed/capped to Cube L schema limits and action_path remains null until Cube Q.';
