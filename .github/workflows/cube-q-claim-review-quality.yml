@@ -1,0 +1,97 @@
+name: Cube Q Claim Review Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/*cube_q*"
+      - "lib/supabase/database.types.ts"
+      - "scripts/verify-cube-q-claim-*.mjs"
+      - "scripts/verify-cube-p-claim-intake.mjs"
+      - ".github/workflows/cube-q-claim-review-quality.yml"
+      - "docs/cube-q-claim-review-inspection-decision-spec.md"
+      - "docs/cube-q-pd078-pending-inspection-reopen-clarification.md"
+      - "docs/claims-pqr-final-spec-review-amendment.md"
+
+permissions:
+  contents: read
+
+jobs:
+  claim-review-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Lint local database
+        run: supabase db lint --local --level warning --fail-on error
+
+      - name: Create bounded Product / Center / Warranty fixtures
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-roll-opening-foundation.mjs
+          node scripts/verify-warranty-schema-foundation.mjs
+          node scripts/verify-warranty-activation-engine.mjs
+
+      - name: Verify Cube P intake regression and create submitted Claim fixture
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-p-claim-intake.mjs
+
+      - name: Verify Cube Q review / inspection / decision contracts
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-q-claim-review.mjs
+
+      - name: Verify generated public database types
+        run: |
+          supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
+          node <<'NODE'
+          const fs = require("node:fs");
+          for (const path of ["/tmp/generated.database.types.ts", "lib/supabase/database.types.ts"]) {
+            const content = fs.readFileSync(path, "utf8").replace(/\n*$/, "\n");
+            fs.writeFileSync(path, content);
+          }
+          NODE
+          diff -u lib/supabase/database.types.ts /tmp/generated.database.types.ts
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
+
+      - name: Stop local stack
+        if: always()
+        run: |
+          if command -v supabase >/dev/null 2>&1; then
+            supabase stop --no-backup
+          fi
