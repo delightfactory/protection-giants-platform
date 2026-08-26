@@ -140,7 +140,7 @@ declare
   v_existing_allocation_id uuid;
   v_claim public.warranty_claims%rowtype;
   v_resolution public.warranty_claim_resolutions%rowtype;
-  v_warranty public.warranties%rowtype;
+  v_warranty_state text;
   v_claim_id uuid;
   v_candidate_production_order_id uuid;
   v_production_status text;
@@ -199,15 +199,15 @@ begin
   -- Resolution identity is immutable. Read the authoritative Warranty identity, then
   -- preserve the Claims lock order Warranty -> Claim -> Resolution before entering
   -- the physical Roll lock order Production Order -> current custody.
-  select warranty.*, claim.id
-    into v_warranty, v_claim_id
+  select warranty.record_state, claim.id
+    into v_warranty_state, v_claim_id
   from public.warranty_claim_resolutions resolution
   join public.warranty_claims claim on claim.id = resolution.claim_id
   join public.warranties warranty on warranty.id = claim.warranty_id
   where resolution.id = p_resolution_id
   for update of warranty;
 
-  if not found or v_warranty.record_state <> 'issued' then
+  if not found or v_warranty_state <> 'issued' then
     raise exception using errcode = '23514', message = 'PG_CLAIM_ROLL_RESERVE_STATE_INVALID';
   end if;
 
