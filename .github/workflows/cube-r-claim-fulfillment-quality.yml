@@ -1,5 +1,7 @@
 name: Cube R Claim Fulfillment Quality
 
+# R is intentionally developed before its workflow exists on main, so branch
+# pushes are the authoritative incremental gate while P/Q/R remain stacked.
 on:
   push:
     branches:
