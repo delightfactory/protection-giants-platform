@@ -58,6 +58,7 @@ const dealerDesktopItems: NavItem[] = [
 
 const centerMobileItems: NavItem[] = [
   { href: "/operations", label: "الرئيسية", icon: "home" },
+  { href: "/operations/claim-inspections", label: "الفحوصات", icon: "production" },
   { href: "/operations/products", label: "المنتجات", icon: "products" },
   { href: "/operations/rolls", label: "العهدة", icon: "production" },
 ];
@@ -80,7 +81,8 @@ function isActivePath(pathname: string, href: string) {
 export function OperationsNavLinks({ role, variant }: { role: OperationalRole; variant: NavVariant }) {
   const pathname = usePathname();
   const items = itemsForRole(role, variant);
-  const isTaskRoute = ["/new", "/edit", "/receive", "/open", "/recovery"].some((suffix) => pathname.endsWith(suffix));
+  const isTaskRoute = ["/new", "/edit", "/receive", "/open", "/recovery"].some((suffix) => pathname.endsWith(suffix))
+    || pathname.startsWith("/operations/claim-inspections/");
 
   if (variant === "mobile" && isTaskRoute) {
     return null;

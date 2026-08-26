@@ -10,7 +10,9 @@ name: Cube Q Claim Review Quality
       - "scripts/verify-cube-q-claim-*.mjs"
       - "scripts/verify-cube-p-claim-intake.mjs"
       - "app/operations/claims/**"
+      - "app/operations/claim-inspections/**"
       - "components/claims/**"
+      - "components/operations-nav-links.tsx"
       - "app/operations/page.tsx"
       - ".github/workflows/cube-q-claim-review-quality.yml"
       - "docs/cube-q-claim-review-inspection-decision-spec.md"
@@ -70,6 +72,9 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-q-claim-review.mjs
+
+      - name: Verify Cube Q Center inspection UI/security contract
+        run: node scripts/verify-cube-q-claim-center-inspection-ui.mjs
 
       - name: Verify generated public database types
         run: |

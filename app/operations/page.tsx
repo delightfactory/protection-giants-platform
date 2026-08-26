@@ -32,6 +32,13 @@ const claimModule = {
   icon: "production" as const,
 };
 
+const inspectionModule = {
+  href: "/operations/claim-inspections",
+  title: "فحوصات مطالبات الضمان",
+  description: "تنفيذ الفحوصات الرسمية المسندة حاليًا إلى مركزك وتوثيق النتيجة الفنية بالصور.",
+  icon: "production" as const,
+};
+
 const adminModules = [
   { href: "/operations/users", title: "الحسابات التشغيلية", description: "المستخدمون والأدوار والارتباطات التشغيلية.", icon: "users" as const },
   { href: "/operations/agents", title: "وكلاء الدول", description: "إدارة وكلاء الدول وهويتهم وحالتهم التشغيلية وTransfer ID.", icon: "users" as const },
@@ -63,6 +70,7 @@ const dealerModules = [
 
 const centerModules = [
   { href: "/operations/location", title: "موقع المركز", description: "تسجيل الموقع الفعلي للمركز من الجهاز ومراجعة آخر قراءة محفوظة.", icon: "centers" as const },
+  inspectionModule,
   { href: "/operations/products", title: "المنتجات", description: "مراجعة بيانات المنتجات التشغيلية المتاحة للمركز.", icon: "products" as const },
   { href: "/operations/rolls", title: "عهدة اللفات", description: "عرض اللفات المؤكدة حاليًا في عهدة المركز فقط.", icon: "production" as const },
   issueModule,
