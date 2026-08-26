@@ -127,6 +127,7 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
   );
   const anyUploading = uploads.some((item) => item.status === "uploading");
   const reservedUploadCount = uploads.filter((item) => item.status !== "error" || item.evidence).length;
+  const hasReservedUploadError = uploads.some((item) => item.status === "error" && item.evidence);
 
   function payloadChanged() {
     requestIdRef.current = null;
@@ -204,6 +205,10 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
     }
     if (anyUploading) {
       setSubmitError("انتظر حتى يكتمل رفع الصور أولًا.");
+      return;
+    }
+    if (hasReservedUploadError) {
+      setSubmitError("أزل أي صورة تعذر تأكيد رفعها قبل إرسال المطالبة، ثم أعد رفعها إذا لزم.");
       return;
     }
 
@@ -396,7 +401,7 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
               <p>بالإرسال أنت تطلب من Protection Giants مراجعة الحالة وفق سياسة الضمان المسجلة. الإرسال لا يعني قرار قبول تلقائي.</p>
             </div>
 
-            <button className={styles.primaryButton} type="submit" disabled={isPending || anyUploading || readyEvidence.length < 1}>
+            <button className={styles.primaryButton} type="submit" disabled={isPending || anyUploading || hasReservedUploadError || readyEvidence.length < 1}>
               {isPending ? "جارٍ إرسال المطالبة…" : "إرسال المطالبة"}
             </button>
           </form>
