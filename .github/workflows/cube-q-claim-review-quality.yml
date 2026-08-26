@@ -76,6 +76,9 @@ jobs:
       - name: Verify Cube Q Center inspection UI/security contract
         run: node scripts/verify-cube-q-claim-center-inspection-ui.mjs
 
+      - name: Verify Cube Q Admin final decision UI/security contract
+        run: node scripts/verify-cube-q-claim-admin-decision-ui.mjs
+
       - name: Verify generated public database types
         run: |
           supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts

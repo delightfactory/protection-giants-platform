@@ -1,0 +1,122 @@
+.stack {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.card {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+
+.heading h2,
+.formHeading h3,
+.formHeading p,
+.note,
+.deliveryNote {
+  margin: 0;
+}
+
+.heading h2 {
+  margin-top: .2rem;
+  font-size: 1.1rem;
+}
+
+.eyebrow,
+.note,
+.field,
+.formHeading p,
+.deliveryNote {
+  color: var(--text-secondary);
+}
+
+.eyebrow {
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.note,
+.formHeading p,
+.deliveryNote {
+  line-height: 1.75;
+}
+
+.decisionGrid,
+.cancelSection,
+.form,
+.field,
+.formHeading {
+  display: grid;
+  gap: .75rem;
+  min-width: 0;
+}
+
+.decisionGrid {
+  grid-template-columns: 1fr;
+}
+
+.form {
+  padding: 1rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.formHeading {
+  gap: .35rem;
+}
+
+.formHeading h3 {
+  font-size: 1rem;
+}
+
+.field {
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.deliveryNote {
+  font-size: .82rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+}
+
+.actions > * {
+  min-height: 44px;
+}
+
+@media (min-width: 860px) {
+  .card {
+    padding: 1.25rem;
+  }
+
+  .decisionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

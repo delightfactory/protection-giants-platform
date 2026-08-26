@@ -15,14 +15,17 @@ export default function ClaimWorkflowLayout({ children }: { children: ReactNode 
     <>
       {children}
       {match ? (
-        <aside className={styles.reviewShortcut} aria-label="إجراءات مراجعة المطالبة">
+        <aside className={styles.reviewShortcut} aria-label="إجراءات المطالبة">
           <div>
             <span className={styles.eyebrow}>إجراءات منفصلة عن سجل التدقيق</span>
-            <h2>متابعة مراجعة المطالبة</h2>
-            <p>بعد مراجعة بيانات المطالبة والمرفقات والـTimeline، انتقل لمساحة الإجراءات لبدء المراجعة أو إدارة تكليف الفحص.</p>
+            <h2>متابعة مراجعة وقرار المطالبة</h2>
+            <p>بعد مراجعة البيانات والمرفقات والـTimeline، استخدم مساحة المراجعة لإدارة الفحص أو مساحة القرار النهائي لتنفيذ قرار Admin المسموح.</p>
           </div>
-          <Link href={`${pathname}/review`} className="button button-primary">
-            فتح إجراءات المراجعة
+          <Link href={`${pathname}/review`} className="button button-ghost">
+            إجراءات المراجعة
+          </Link>
+          <Link href={`${pathname}/decision`} className="button button-primary">
+            القرار النهائي
           </Link>
         </aside>
       ) : null}
