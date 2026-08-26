@@ -1839,38 +1839,223 @@ export type Database = {
           },
         ]
       }
-      warranty_claim_resolutions: {
+      warranty_claim_resolution_events: {
         Row: {
-          authorized_at: string
-          authorized_by_profile_id: string
-          claim_id: string
+          action_request_id: string
+          actor_kind: string
+          actor_profile_id: string
+          created_at: string
+          event_data: Json | null
+          event_kind: string
+          id: string
+          reason: string | null
+          resolution_id: string
+        }
+        Insert: {
+          action_request_id: string
+          actor_kind: string
+          actor_profile_id: string
+          created_at?: string
+          event_data?: Json | null
+          event_kind: string
+          id?: string
+          reason?: string | null
+          resolution_id: string
+        }
+        Update: {
+          action_request_id?: string
+          actor_kind?: string
+          actor_profile_id?: string
+          created_at?: string
+          event_data?: Json | null
+          event_kind?: string
+          id?: string
+          reason?: string | null
+          resolution_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claim_resolution_events_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_resolution_events_resolution_id_fkey"
+            columns: ["resolution_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claim_resolutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_claim_resolution_roll_allocations: {
+        Row: {
+          consumed_at: string | null
+          consumed_by_profile_id: string | null
           created_at: string
           id: string
+          product_eligibility_basis: string
+          release_reason: string | null
+          released_at: string | null
+          released_by_profile_id: string | null
+          reserved_at: string
+          reserved_by_profile_id: string
+          resolution_id: string
+          roll_id: string
+          status: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          consumed_by_profile_id?: string | null
+          created_at?: string
+          id?: string
+          product_eligibility_basis: string
+          release_reason?: string | null
+          released_at?: string | null
+          released_by_profile_id?: string | null
+          reserved_at: string
+          reserved_by_profile_id: string
+          resolution_id: string
+          roll_id: string
+          status?: string
+        }
+        Update: {
+          consumed_at?: string | null
+          consumed_by_profile_id?: string | null
+          created_at?: string
+          id?: string
+          product_eligibility_basis?: string
+          release_reason?: string | null
+          released_at?: string | null
+          released_by_profile_id?: string | null
+          reserved_at?: string
+          reserved_by_profile_id?: string
+          resolution_id?: string
+          roll_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claim_resolution_roll_allo_consumed_by_profile_id_fkey"
+            columns: ["consumed_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_resolution_roll_allo_released_by_profile_id_fkey"
+            columns: ["released_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_resolution_roll_allo_reserved_by_profile_id_fkey"
+            columns: ["reserved_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_resolution_roll_allocations_resolution_id_fkey"
+            columns: ["resolution_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claim_resolutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_resolution_roll_allocations_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: false
+            referencedRelation: "rolls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_claim_resolutions: {
+        Row: {
+          assigned_at: string | null
+          assigned_by_profile_id: string | null
+          authorized_at: string
+          authorized_by_profile_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by_profile_id: string | null
+          claim_id: string
+          completed_at: string | null
+          completed_by_profile_id: string | null
+          completion_actor_kind: string | null
+          completion_note: string | null
+          created_at: string
+          customer_cancellation_message: string | null
+          id: string
+          performing_center_party_id: string | null
+          remedy_kind: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          assigned_at?: string | null
+          assigned_by_profile_id?: string | null
           authorized_at: string
           authorized_by_profile_id: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by_profile_id?: string | null
           claim_id: string
+          completed_at?: string | null
+          completed_by_profile_id?: string | null
+          completion_actor_kind?: string | null
+          completion_note?: string | null
           created_at?: string
+          customer_cancellation_message?: string | null
           id?: string
+          performing_center_party_id?: string | null
+          remedy_kind?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          assigned_at?: string | null
+          assigned_by_profile_id?: string | null
           authorized_at?: string
           authorized_by_profile_id?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by_profile_id?: string | null
           claim_id?: string
+          completed_at?: string | null
+          completed_by_profile_id?: string | null
+          completion_actor_kind?: string | null
+          completion_note?: string | null
           created_at?: string
+          customer_cancellation_message?: string | null
           id?: string
+          performing_center_party_id?: string | null
+          remedy_kind?: string | null
           status?: string
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "warranty_claim_resolutions_assigned_by_profile_id_fkey"
+            columns: ["assigned_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "warranty_claim_resolutions_authorized_by_profile_id_fkey"
             columns: ["authorized_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_resolutions_cancelled_by_profile_id_fkey"
+            columns: ["cancelled_by_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1880,6 +2065,20 @@ export type Database = {
             columns: ["claim_id"]
             isOneToOne: true
             referencedRelation: "warranty_claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_resolutions_completed_by_profile_id_fkey"
+            columns: ["completed_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_resolutions_performing_center_party_id_fkey"
+            columns: ["performing_center_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
             referencedColumns: ["id"]
           },
         ]
@@ -2110,6 +2309,15 @@ export type Database = {
           p_claim_id: string
           p_customer_message: string
           p_reason: string
+        }
+        Returns: string
+      }
+      assign_warranty_claim_resolution: {
+        Args: {
+          p_action_request_id: string
+          p_performing_center_party_id: string
+          p_remedy_kind: string
+          p_resolution_id: string
         }
         Returns: string
       }

@@ -222,11 +222,29 @@ const resolutionColumns = querySql(`
   select string_agg(column_name, ',' order by ordinal_position)
   from information_schema.columns
   where table_schema = 'public' and table_name = 'warranty_claim_resolutions';
-`);
-assert(
-  resolutionColumns === "id,claim_id,status,authorized_by_profile_id,authorized_at,created_at,updated_at",
-  `Cube Q Resolution handoff leaked Cube R fields: ${resolutionColumns}`,
-);
+`).split(",");
+const qResolutionColumns = [
+  "id",
+  "claim_id",
+  "status",
+  "authorized_by_profile_id",
+  "authorized_at",
+  "created_at",
+  "updated_at",
+];
+for (const column of qResolutionColumns) {
+  assert(resolutionColumns.includes(column),
+    `Cube Q Resolution handoff lost required column ${column}: ${resolutionColumns.join(",")}`);
+}
+const cubeRResolutionFoundationPresent = querySql(`
+  select (to_regclass('public.warranty_claim_resolution_events') is not null)::text;
+`) === "true";
+if (!cubeRResolutionFoundationPresent) {
+  assert(
+    resolutionColumns.length === qResolutionColumns.length,
+    `Cube Q Resolution handoff leaked pre-R fields: ${resolutionColumns.join(",")}`,
+  );
+}
 
 const adminToken = await signIn("cube-j-admin@example.test");
 const centerAToken = await signIn("cube-j-center-a@example.test");
