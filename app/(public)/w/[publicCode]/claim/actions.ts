@@ -289,14 +289,17 @@ export async function uploadWarrantyClaimEvidence(
     .list(access.payload.draftId, { limit: EVIDENCE_STORAGE_LIST_LIMIT });
 
   if (listError) {
-    return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS" };
+    // Registration already committed. Surface the reference even on failure so
+    // the customer can explicitly remove/retry the reserved object instead of
+    // leaving an invisible staged row that can only expire later.
+    return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS", evidence };
   }
 
   const existing = (existingObjects ?? []).find((object) => object.name === fileName);
   if (existing) {
     const metadata = storageMetadata(existing as StorageListObject);
     if (!metadata || metadata.mimeType !== detectedMime || metadata.sizeBytes !== bytes.length) {
-      return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
+      return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED", evidence };
     }
     return { ok: true, evidence };
   }
@@ -324,21 +327,22 @@ export async function uploadWarrantyClaimEvidence(
       if (metadata?.mimeType === detectedMime && metadata.sizeBytes === bytes.length) {
         return { ok: true, evidence };
       }
-      return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
+      return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED", evidence };
     }
 
     // The probe proved no physical object exists. Remove the pre-upload registry
-    // reservation so another file can use the slot. If cleanup itself becomes
-    // ambiguous, the retained registry still prevents an unsafe later submit and
-    // stale-draft cleanup remains the bounded fallback.
+    // reservation so another file can use the slot. Returning the reference is
+    // still harmless and keeps the failed UI item explicitly removable if that
+    // compensation response itself was ambiguous.
     await safelyDiscardUncommittedEvidence(access, [storagePath]);
-    return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
+    return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED", evidence };
   }
 
   // Unknown transport state keeps the registry row intentionally. Retrying the
-  // same file is idempotent, and any attempt to submit different evidence fails
-  // closed because the DB sees the extra staged registry row.
-  return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS" };
+  // same file is idempotent. The evidence reference is returned only to the
+  // verified UI so the reserved path stays visible/removable; it grants no direct
+  // Storage access and cannot bypass the final locked submit checks.
+  return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS", evidence };
 }
 
 export async function removeWarrantyClaimEvidence(
