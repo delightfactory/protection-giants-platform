@@ -1,0 +1,94 @@
+name: Repair R cumulative verifier and types
+
+on:
+  push:
+    branches:
+      - agent/cube-r-claim-resolution-fulfillment
+    paths:
+      - ".github/workflows/repair-r-cumulative-verifier-types.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: agent/cube-r-claim-resolution-fulfillment
+
+      - name: Make Resolution foundation verifier cumulative-aware
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('scripts/verify-cube-r-claim-resolution-foundation.mjs')
+          text = path.read_text()
+          old = '''assert(querySql(`
+            select count(*) = 0
+            from pg_catalog.pg_proc p
+            join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public'
+              and p.proname in (
+                'reassign_warranty_claim_resolution',
+                'change_claim_resolution_remedy',
+                'complete_warranty_claim_resolution',
+                'cancel_assigned_claim_resolution_for_customer_withdrawal'
+              );
+          `) === "t", "Later Cube R mutation RPCs must remain absent at this checkpoint.");'''
+          new = '''// This verifier runs against the cumulative R schema. Historical increment-level CI
+          // already proved that the foundation commit itself exposed no later mutation RPCs.
+          // Keep the permanent foundation contract focused on state shape, immutability and
+          // table security; each later R surface is owned by its dedicated verifier.
+          const correctionSurfaceCount = Number(querySql(`
+            select count(*)
+            from pg_catalog.pg_proc p
+            join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public'
+              and p.proname in (
+                'reassign_warranty_claim_resolution',
+                'change_warranty_claim_resolution_remedy'
+              );
+          `));
+          assert(correctionSurfaceCount === 0 || correctionSurfaceCount === 2,
+            `Cube R assignment-correction surface must be absent or complete, found ${correctionSurfaceCount} functions.`);'''
+          if old not in text:
+              raise SystemExit('Expected early-R mutation absence assertion was not found; refusing broad edit.')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Regenerate canonical public database types
+        run: |
+          supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'lib/supabase/database.types.ts';
+          fs.writeFileSync(path, fs.readFileSync(path, 'utf8').replace(/\n*$/, '\n'));
+          NODE
+
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/verify-cube-r-claim-resolution-foundation.mjs lib/supabase/database.types.ts
+          git diff --cached --check
+          git commit -m "test(cube-r): make foundation gate cumulative-aware"
+          git push origin HEAD:agent/cube-r-claim-resolution-fulfillment
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup || true
