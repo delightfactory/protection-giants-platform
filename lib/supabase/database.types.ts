@@ -1720,6 +1720,170 @@ export type Database = {
           },
         ]
       }
+      warranty_claim_inspection_evidence: {
+        Row: {
+          created_at: string
+          id: string
+          inspection_id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by_profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inspection_id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by_profile_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inspection_id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_by_profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claim_inspection_evidence_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claim_inspections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_inspection_evidence_uploaded_by_profile_id_fkey"
+            columns: ["uploaded_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_claim_inspections: {
+        Row: {
+          assigned_center_party_id: string
+          claim_id: string
+          created_at: string
+          id: string
+          requested_at: string
+          requested_by_profile_id: string
+          status: string
+          submitted_at: string | null
+          submitted_by_profile_id: string | null
+          suspected_cause: string | null
+          technical_observation: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_center_party_id: string
+          claim_id: string
+          created_at?: string
+          id?: string
+          requested_at: string
+          requested_by_profile_id: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by_profile_id?: string | null
+          suspected_cause?: string | null
+          technical_observation?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_center_party_id?: string
+          claim_id?: string
+          created_at?: string
+          id?: string
+          requested_at?: string
+          requested_by_profile_id?: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by_profile_id?: string | null
+          suspected_cause?: string | null
+          technical_observation?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claim_inspections_assigned_center_party_id_fkey"
+            columns: ["assigned_center_party_id"]
+            isOneToOne: false
+            referencedRelation: "operational_parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_inspections_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: true
+            referencedRelation: "warranty_claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_inspections_requested_by_profile_id_fkey"
+            columns: ["requested_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_inspections_submitted_by_profile_id_fkey"
+            columns: ["submitted_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_claim_resolutions: {
+        Row: {
+          authorized_at: string
+          authorized_by_profile_id: string
+          claim_id: string
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          authorized_at: string
+          authorized_by_profile_id: string
+          claim_id: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          authorized_at?: string
+          authorized_by_profile_id?: string
+          claim_id?: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claim_resolutions_authorized_by_profile_id_fkey"
+            columns: ["authorized_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_resolutions_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: true
+            referencedRelation: "warranty_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       warranty_claims: {
         Row: {
           affected_area: string
@@ -1727,6 +1891,10 @@ export type Database = {
           claim_number: string
           closed_at: string | null
           created_at: string
+          customer_decision_message: string | null
+          decided_at: string | null
+          decided_by_profile_id: string | null
+          decision_reason: string | null
           description: string
           id: string
           request_id: string
@@ -1741,6 +1909,10 @@ export type Database = {
           claim_number: string
           closed_at?: string | null
           created_at?: string
+          customer_decision_message?: string | null
+          decided_at?: string | null
+          decided_by_profile_id?: string | null
+          decision_reason?: string | null
           description: string
           id?: string
           request_id: string
@@ -1755,6 +1927,10 @@ export type Database = {
           claim_number?: string
           closed_at?: string | null
           created_at?: string
+          customer_decision_message?: string | null
+          decided_at?: string | null
+          decided_by_profile_id?: string | null
+          decision_reason?: string | null
           description?: string
           id?: string
           request_id?: string
@@ -1764,6 +1940,13 @@ export type Database = {
           warranty_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "warranty_claims_decided_by_profile_id_fkey"
+            columns: ["decided_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "warranty_claims_warranty_id_fkey"
             columns: ["warranty_id"]
@@ -1921,7 +2104,25 @@ export type Database = {
           installation_center_id: string
         }[]
       }
+      approve_warranty_claim: {
+        Args: {
+          p_action_request_id: string
+          p_claim_id: string
+          p_customer_message: string
+          p_reason: string
+        }
+        Returns: string
+      }
       cancel_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
+      cancel_warranty_claim: {
+        Args: {
+          p_action_request_id: string
+          p_claim_id: string
+          p_customer_message: string
+          p_reason: string
+        }
+        Returns: string
+      }
       claim_expired_warranty_claim_draft_cleanup_candidates: {
         Args: { p_limit?: number }
         Returns: {
@@ -2084,6 +2285,77 @@ export type Database = {
         Args: { p_party_type: string }
         Returns: string
       }
+      get_admin_warranty_claim_detail: {
+        Args: { p_claim_id: string }
+        Returns: {
+          activated_at: string
+          activating_center_name: string
+          activating_center_party_id: string
+          affected_area: string
+          care_instructions: string
+          category: string
+          claim_id: string
+          claim_number: string
+          claim_status: string
+          closed_at: string
+          coverage_expires_at: string
+          customer_decision_message: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          decided_at: string
+          decided_by_profile_id: string
+          decision_reason: string
+          description: string
+          inspection_center_name: string
+          inspection_center_party_id: string
+          inspection_id: string
+          inspection_requested_at: string
+          inspection_status: string
+          inspection_submitted_at: string
+          product_code: string
+          product_name: string
+          product_version: string
+          resolution_id: string
+          resolution_status: string
+          submitted_at: string
+          suspected_cause: string
+          technical_observation: string
+          vehicle_color: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_vin: string
+          vehicle_year: number
+          warranty_coverage: string
+          warranty_id: string
+          warranty_months: number
+          warranty_number: string
+          warranty_record_state: string
+        }[]
+      }
+      get_center_claim_inspection_detail: {
+        Args: { p_inspection_id: string }
+        Returns: {
+          affected_area: string
+          care_instructions: string
+          claim_id: string
+          claim_number: string
+          description: string
+          inspection_id: string
+          product_code: string
+          product_name: string
+          product_version: string
+          requested_at: string
+          vehicle_color: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_vin: string
+          vehicle_year: number
+          warranty_coverage: string
+        }[]
+      }
       get_customer_warranty_claim_by_request: {
         Args: { p_request_id: string; p_warranty_id: string }
         Returns: {
@@ -2209,6 +2481,83 @@ export type Database = {
           viewer_is_admin: boolean
           viewer_is_recipient: boolean
           viewer_is_sender: boolean
+        }[]
+      }
+      list_actionable_claim_inspection_centers: {
+        Args: never
+        Returns: {
+          active_operator_count: number
+          approval_status: string
+          center_name: string
+          center_party_id: string
+          city: string
+          country_code: string
+          installation_center_id: string
+        }[]
+      }
+      list_admin_warranty_claim_history: {
+        Args: {
+          p_exclude_claim_id?: string
+          p_limit?: number
+          p_warranty_id: string
+        }
+        Returns: {
+          claim_id: string
+          claim_number: string
+          closed_at: string
+          customer_decision_message: string
+          status: string
+          submitted_at: string
+        }[]
+      }
+      list_admin_warranty_claim_timeline: {
+        Args: { p_claim_id: string }
+        Returns: {
+          actor_kind: string
+          actor_profile_id: string
+          created_at: string
+          event_data: Json
+          event_id: string
+          event_kind: string
+          reason: string
+        }[]
+      }
+      list_admin_warranty_claims: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_scope?: string
+          p_status?: string
+        }
+        Returns: {
+          activating_center_name: string
+          claim_id: string
+          claim_number: string
+          closed_at: string
+          inspection_center_name: string
+          inspection_status: string
+          product_code: string
+          product_name: string
+          product_version: string
+          status: string
+          submitted_at: string
+          vehicle_make: string
+          vehicle_model: string
+        }[]
+      }
+      list_center_pending_claim_inspections: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          affected_area: string
+          claim_number: string
+          description: string
+          inspection_id: string
+          product_code: string
+          product_name: string
+          requested_at: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_year: number
         }[]
       }
       list_internal_warranties: {
@@ -2357,6 +2706,16 @@ export type Database = {
           serial_number: string
         }[]
       }
+      list_warranty_claim_evidence_for_role: {
+        Args: { p_claim_id: string; p_inspection_id?: string }
+        Returns: {
+          created_at: string
+          evidence_scope: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }[]
+      }
       mark_all_notifications_read: { Args: never; Returns: number }
       mark_notification_read: {
         Args: { p_notification_id: string }
@@ -2382,6 +2741,15 @@ export type Database = {
       }
       open_roll: {
         Args: { p_request_id: string; p_roll_serial: string }
+        Returns: string
+      }
+      reassign_warranty_claim_inspection: {
+        Args: {
+          p_action_request_id: string
+          p_center_party_id: string
+          p_claim_id: string
+          p_reason: string
+        }
         Returns: string
       }
       receive_roll_transfer_items: {
@@ -2431,12 +2799,37 @@ export type Database = {
         Returns: string
       }
       reject_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
+      reject_warranty_claim: {
+        Args: {
+          p_action_request_id: string
+          p_claim_id: string
+          p_customer_message: string
+          p_reason: string
+        }
+        Returns: string
+      }
       release_unreceived_roll_transfer_items: {
         Args: {
           p_reason: string
           p_request_id: string
           p_roll_ids: string[]
           p_transfer_id: string
+        }
+        Returns: string
+      }
+      reopen_warranty_claim_decision_for_correction: {
+        Args: {
+          p_action_request_id: string
+          p_claim_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      request_warranty_claim_inspection: {
+        Args: {
+          p_action_request_id: string
+          p_center_party_id: string
+          p_claim_id: string
         }
         Returns: string
       }
@@ -2552,6 +2945,20 @@ export type Database = {
         Args: { p_agent_id: string; p_enabled: boolean }
         Returns: boolean
       }
+      start_warranty_claim_review: {
+        Args: { p_action_request_id: string; p_claim_id: string }
+        Returns: string
+      }
+      submit_warranty_claim_inspection: {
+        Args: {
+          p_action_request_id: string
+          p_evidence_paths: string[]
+          p_inspection_id: string
+          p_suspected_cause: string
+          p_technical_observation: string
+        }
+        Returns: string
+      }
       unregister_customer_warranty_claim_draft_evidence: {
         Args: {
           p_draft_id: string
@@ -2596,6 +3003,551 @@ export type Database = {
     }
     Enums: {
       [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  storage: {
+    Tables: {
+      buckets: {
+        Row: {
+          allowed_mime_types: string[] | null
+          avif_autodetection: boolean | null
+          created_at: string | null
+          file_size_limit: number | null
+          id: string
+          name: string
+          owner: string | null
+          owner_id: string | null
+          public: boolean | null
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string | null
+        }
+        Insert: {
+          allowed_mime_types?: string[] | null
+          avif_autodetection?: boolean | null
+          created_at?: string | null
+          file_size_limit?: number | null
+          id: string
+          name: string
+          owner?: string | null
+          owner_id?: string | null
+          public?: boolean | null
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string | null
+        }
+        Update: {
+          allowed_mime_types?: string[] | null
+          avif_autodetection?: boolean | null
+          created_at?: string | null
+          file_size_limit?: number | null
+          id?: string
+          name?: string
+          owner?: string | null
+          owner_id?: string | null
+          public?: boolean | null
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      buckets_analytics: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          format: string
+          id: string
+          name: string
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          format?: string
+          id?: string
+          name: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          format?: string
+          id?: string
+          name?: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      buckets_vectors: {
+        Row: {
+          created_at: string
+          id: string
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      iceberg_namespaces: {
+        Row: {
+          bucket_name: string
+          catalog_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_name: string
+          catalog_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_name?: string
+          catalog_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iceberg_namespaces_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "buckets_analytics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iceberg_tables: {
+        Row: {
+          bucket_name: string
+          catalog_id: string
+          created_at: string
+          id: string
+          location: string
+          name: string
+          namespace_id: string
+          remote_table_id: string | null
+          shard_id: string | null
+          shard_key: string | null
+          updated_at: string
+        }
+        Insert: {
+          bucket_name: string
+          catalog_id: string
+          created_at?: string
+          id?: string
+          location: string
+          name: string
+          namespace_id: string
+          remote_table_id?: string | null
+          shard_id?: string | null
+          shard_key?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bucket_name?: string
+          catalog_id?: string
+          created_at?: string
+          id?: string
+          location?: string
+          name?: string
+          namespace_id?: string
+          remote_table_id?: string | null
+          shard_id?: string | null
+          shard_key?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iceberg_tables_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "buckets_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iceberg_tables_namespace_id_fkey"
+            columns: ["namespace_id"]
+            isOneToOne: false
+            referencedRelation: "iceberg_namespaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      migrations: {
+        Row: {
+          executed_at: string | null
+          hash: string
+          id: number
+          name: string
+        }
+        Insert: {
+          executed_at?: string | null
+          hash: string
+          id: number
+          name: string
+        }
+        Update: {
+          executed_at?: string | null
+          hash?: string
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      objects: {
+        Row: {
+          bucket_id: string | null
+          created_at: string | null
+          id: string
+          last_accessed_at: string | null
+          metadata: Json | null
+          name: string | null
+          owner: string | null
+          owner_id: string | null
+          path_tokens: string[] | null
+          updated_at: string | null
+          user_metadata: Json | null
+          version: string | null
+        }
+        Insert: {
+          bucket_id?: string | null
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          metadata?: Json | null
+          name?: string | null
+          owner?: string | null
+          owner_id?: string | null
+          path_tokens?: string[] | null
+          updated_at?: string | null
+          user_metadata?: Json | null
+          version?: string | null
+        }
+        Update: {
+          bucket_id?: string | null
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          metadata?: Json | null
+          name?: string | null
+          owner?: string | null
+          owner_id?: string | null
+          path_tokens?: string[] | null
+          updated_at?: string | null
+          user_metadata?: Json | null
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "objects_bucketId_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      s3_multipart_uploads: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          id: string
+          in_progress_size: number
+          key: string
+          metadata: Json | null
+          owner_id: string | null
+          upload_signature: string
+          user_metadata: Json | null
+          version: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          id: string
+          in_progress_size?: number
+          key: string
+          metadata?: Json | null
+          owner_id?: string | null
+          upload_signature: string
+          user_metadata?: Json | null
+          version: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          id?: string
+          in_progress_size?: number
+          key?: string
+          metadata?: Json | null
+          owner_id?: string | null
+          upload_signature?: string
+          user_metadata?: Json | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "s3_multipart_uploads_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      s3_multipart_uploads_parts: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          etag: string
+          id: string
+          key: string
+          owner_id: string | null
+          part_number: number
+          size: number
+          upload_id: string
+          version: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          etag: string
+          id?: string
+          key: string
+          owner_id?: string | null
+          part_number: number
+          size?: number
+          upload_id: string
+          version: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          etag?: string
+          id?: string
+          key?: string
+          owner_id?: string | null
+          part_number?: number
+          size?: number
+          upload_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "s3_multipart_uploads_parts_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "s3_multipart_uploads_parts_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "s3_multipart_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vector_indexes: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          data_type: string
+          dimension: number
+          distance_metric: string
+          id: string
+          metadata_configuration: Json | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          data_type: string
+          dimension: number
+          distance_metric: string
+          id?: string
+          metadata_configuration?: Json | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          data_type?: string
+          dimension?: number
+          distance_metric?: string
+          id?: string
+          metadata_configuration?: Json | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vector_indexes_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets_vectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      allow_any_operation: {
+        Args: { expected_operations: string[] }
+        Returns: boolean
+      }
+      allow_only_operation: {
+        Args: { expected_operation: string }
+        Returns: boolean
+      }
+      can_insert_object: {
+        Args: { bucketid: string; metadata: Json; name: string; owner: string }
+        Returns: undefined
+      }
+      extension: { Args: { name: string }; Returns: string }
+      filename: { Args: { name: string }; Returns: string }
+      foldername: { Args: { name: string }; Returns: string[] }
+      get_common_prefix: {
+        Args: { p_delimiter: string; p_key: string; p_prefix: string }
+        Returns: string
+      }
+      get_size_by_bucket: {
+        Args: never
+        Returns: {
+          bucket_id: string
+          size: number
+        }[]
+      }
+      list_multipart_uploads_with_delimiter: {
+        Args: {
+          bucket_id: string
+          delimiter_param: string
+          max_keys?: number
+          next_key_token?: string
+          next_upload_token?: string
+          prefix_param: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          key: string
+        }[]
+      }
+      list_objects_with_delimiter: {
+        Args: {
+          _bucket_id: string
+          delimiter_param: string
+          max_keys?: number
+          next_token?: string
+          prefix_param: string
+          sort_order?: string
+          start_after?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+      operation: { Args: never; Returns: string }
+      search: {
+        Args: {
+          bucketname: string
+          levels?: number
+          limits?: number
+          offsets?: number
+          prefix: string
+          search?: string
+          sortcolumn?: string
+          sortorder?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+      search_by_timestamp: {
+        Args: {
+          p_bucket_id: string
+          p_level: number
+          p_limit: number
+          p_prefix: string
+          p_sort_column: string
+          p_sort_column_after: string
+          p_sort_order: string
+          p_start_after: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          key: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+      search_v2: {
+        Args: {
+          bucket_name: string
+          levels?: number
+          limits?: number
+          prefix: string
+          sort_column?: string
+          sort_column_after?: string
+          sort_order?: string
+          start_after?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          key: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+    }
+    Enums: {
+      buckettype: "STANDARD" | "ANALYTICS" | "VECTOR"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2724,4 +3676,10 @@ export const Constants = {
   public: {
     Enums: {},
   },
+  storage: {
+    Enums: {
+      buckettype: ["STANDARD", "ANALYTICS", "VECTOR"],
+    },
+  },
 } as const
+
