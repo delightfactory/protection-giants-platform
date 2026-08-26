@@ -32,6 +32,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: cube-r-claim-fulfillment-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   claim-fulfillment-quality:
     runs-on: ubuntu-latest
