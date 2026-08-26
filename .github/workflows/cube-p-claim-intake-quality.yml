@@ -65,6 +65,12 @@ jobs:
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-p-claim-intake.mjs
 
+      - name: Verify Cube P pre-merge hardening contracts
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-p-claim-hardening.mjs
+
       - name: Verify Cube P concurrency and idempotency races
         run: |
           eval "$(supabase status -o env)"
