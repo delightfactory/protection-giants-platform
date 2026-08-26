@@ -326,7 +326,7 @@ assert(!JSON.stringify(contextAfter).includes(storagePath), "Customer context mu
 
 expectSqlFailure(
   `update public.warranty_claims set description = 'Direct mutation should fail hard.' where id = ${sqlUuid(created.claim_id)};`,
-  "PG_CLAIM_P_STATE_IMMUTABLE",
+  "PG_CLAIM_IDENTITY_IMMUTABLE",
   "Direct Claim update",
 );
 expectSqlFailure(
