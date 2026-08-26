@@ -3034,6 +3034,14 @@ export type Database = {
         }
         Returns: string
       }
+      release_claim_resolution_roll: {
+        Args: {
+          p_action_request_id: string
+          p_allocation_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
       release_unreceived_roll_transfer_items: {
         Args: {
           p_reason: string
@@ -3056,6 +3064,14 @@ export type Database = {
           p_action_request_id: string
           p_center_party_id: string
           p_claim_id: string
+        }
+        Returns: string
+      }
+      reserve_claim_resolution_roll: {
+        Args: {
+          p_action_request_id: string
+          p_resolution_id: string
+          p_roll_id: string
         }
         Returns: string
       }
