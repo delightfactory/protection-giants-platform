@@ -101,8 +101,14 @@ function ClaimSummaryCard({ claim, historical = false }: { claim: CustomerClaimS
         <div><dt>نوع المشكلة</dt><dd>{WARRANTY_CLAIM_CATEGORY_LABELS[claim.category] ?? "أخرى"}</dd></div>
         <div><dt>المنطقة المتأثرة</dt><dd>{claim.affectedArea}</dd></div>
         <div><dt>الصور المستلمة</dt><dd>{claim.evidenceCount}</dd></div>
+        {claim.decidedAt ? <div><dt>آخر قرار</dt><dd>{formatDate(claim.decidedAt)}</dd></div> : null}
       </dl>
       <p className={styles.customerDescription}>{claim.description}</p>
+      {claim.customerDecisionMessage ? (
+        <p className={styles.quietNotice}>
+          <strong>رسالة بخصوص القرار: </strong>{claim.customerDecisionMessage}
+        </p>
+      ) : null}
     </article>
   );
 }

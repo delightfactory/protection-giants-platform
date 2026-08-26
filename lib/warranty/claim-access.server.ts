@@ -173,6 +173,10 @@ function parseClaimSummary(value: unknown): CustomerClaimSummary | null {
     affectedArea: row.affected_area,
     description: row.description,
     evidenceCount: row.evidence_count,
+    decidedAt: typeof row.decided_at === "string" ? row.decided_at : null,
+    customerDecisionMessage: typeof row.customer_decision_message === "string"
+      ? row.customer_decision_message
+      : null,
     closedAt: typeof row.closed_at === "string" ? row.closed_at : null,
   };
 }

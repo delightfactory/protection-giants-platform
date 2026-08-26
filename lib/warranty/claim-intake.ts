@@ -48,6 +48,8 @@ export type CustomerClaimSummary = {
   affectedArea: string;
   description: string;
   evidenceCount: number;
+  decidedAt: string | null;
+  customerDecisionMessage: string | null;
   closedAt?: string | null;
 };
 
