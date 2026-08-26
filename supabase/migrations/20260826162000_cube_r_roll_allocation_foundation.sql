@@ -69,18 +69,20 @@ create table public.warranty_claim_resolution_roll_allocations (
 
 -- A released row is immutable history and permits a later new reservation. A
 -- reserved/consumed row remains exclusive for both its Resolution and physical Roll.
-create unique index warranty_claim_resolution_roll_allocations_resolution_active_uniq
+-- Keep explicit index identifiers below PostgreSQL's 63-byte identifier limit so
+-- qualification never depends on server-side name truncation.
+create unique index claim_resolution_roll_alloc_resolution_active_uniq
   on public.warranty_claim_resolution_roll_allocations (resolution_id)
   where status in ('reserved', 'consumed');
 
-create unique index warranty_claim_resolution_roll_allocations_roll_active_uniq
+create unique index claim_resolution_roll_alloc_roll_active_uniq
   on public.warranty_claim_resolution_roll_allocations (roll_id)
   where status in ('reserved', 'consumed');
 
-create index warranty_claim_resolution_roll_allocations_resolution_timeline_idx
+create index claim_resolution_roll_alloc_resolution_timeline_idx
   on public.warranty_claim_resolution_roll_allocations (resolution_id, reserved_at, id);
 
-create index warranty_claim_resolution_roll_allocations_roll_timeline_idx
+create index claim_resolution_roll_alloc_roll_timeline_idx
   on public.warranty_claim_resolution_roll_allocations (roll_id, reserved_at, id);
 
 create function private.guard_warranty_claim_resolution_roll_allocation_mutation()
