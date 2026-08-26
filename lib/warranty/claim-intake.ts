@@ -72,7 +72,7 @@ export type WarrantyClaimVerificationResult =
 
 export type WarrantyClaimUploadResult =
   | { ok: true; evidence: WarrantyClaimEvidenceReference }
-  | { ok: false; code: string };
+  | { ok: false; code: string; evidence?: WarrantyClaimEvidenceReference };
 
 export type WarrantyClaimSubmitResult =
   | { ok: true; claimNumber: string }
