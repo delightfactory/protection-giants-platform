@@ -65,6 +65,8 @@ function errorText(code: string): string {
       return "يمكن إرفاق حتى 5 صور فقط.";
     case "PG_CLAIM_EVIDENCE_INVALID":
       return "تعذر التحقق من الصور المرفقة. أعد رفع الصور المطلوبة.";
+    case "PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS":
+      return "تعذر تأكيد حالة رفع الصورة. أزل هذا العنصر ثم حاول رفع الصورة مرة أخرى.";
     case "PG_CLAIM_EVIDENCE_UPLOAD_FAILED":
       return "تعذر رفع الصورة. تحقق من الاتصال وحاول مرة أخرى.";
     case "PG_CLAIM_EVIDENCE_REMOVE_FAILED":
@@ -124,6 +126,7 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
     [uploads],
   );
   const anyUploading = uploads.some((item) => item.status === "uploading");
+  const reservedUploadCount = uploads.filter((item) => item.status !== "error" || item.evidence).length;
 
   function payloadChanged() {
     requestIdRef.current = null;
@@ -146,7 +149,7 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
 
   async function uploadFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const remaining = WARRANTY_CLAIM_MAX_IMAGES - uploads.filter((item) => item.status !== "error").length;
+    const remaining = WARRANTY_CLAIM_MAX_IMAGES - reservedUploadCount;
     const selected = Array.from(files).slice(0, Math.max(0, remaining));
     if (selected.length === 0) {
       setSubmitError(errorText("PG_CLAIM_EVIDENCE_COUNT_INVALID"));
@@ -160,7 +163,7 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
       const result = await uploadWarrantyClaimEvidence(publicCode, file);
       if (!result.ok) {
         setUploads((current) => current.map((item) => item.localId === localId
-          ? { ...item, status: "error", error: errorText(result.code) }
+          ? { ...item, status: "error", evidence: result.evidence, error: errorText(result.code) }
           : item));
         continue;
       }
@@ -363,7 +366,7 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
                   accept="image/jpeg,image/png,image/webp"
                   multiple
                   onChange={(event) => void uploadFiles(event.target.files)}
-                  disabled={anyUploading || readyEvidence.length >= WARRANTY_CLAIM_MAX_IMAGES}
+                  disabled={anyUploading || reservedUploadCount >= WARRANTY_CLAIM_MAX_IMAGES}
                 />
                 إضافة صور
               </label>
