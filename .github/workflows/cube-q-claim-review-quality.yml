@@ -10,6 +10,7 @@ name: Cube Q Claim Review Quality
       - "scripts/verify-cube-q-claim-*.mjs"
       - "scripts/verify-cube-p-claim-intake.mjs"
       - "app/operations/claims/**"
+      - "components/claims/**"
       - "app/operations/page.tsx"
       - ".github/workflows/cube-q-claim-review-quality.yml"
       - "docs/cube-q-claim-review-inspection-decision-spec.md"

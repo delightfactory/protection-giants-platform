@@ -1,0 +1,115 @@
+.stack {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.card {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+
+.heading h2 {
+  margin: .2rem 0 0;
+  font-size: 1.1rem;
+}
+
+.eyebrow,
+.note,
+.field,
+.currentAssignment span {
+  color: var(--text-secondary);
+}
+
+.eyebrow {
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.note,
+.notice {
+  margin: 0;
+  line-height: 1.75;
+}
+
+.notice,
+.currentAssignment {
+  padding: .8rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.notice {
+  font-size: .86rem;
+}
+
+.form,
+.field,
+.currentAssignment {
+  display: grid;
+  gap: .7rem;
+  min-width: 0;
+}
+
+.field {
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.field select,
+.field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.field textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.currentAssignment {
+  grid-template-columns: 1fr;
+  gap: .25rem;
+}
+
+.currentAssignment strong {
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+}
+
+.actions > * {
+  min-height: 44px;
+}
+
+@media (min-width: 720px) {
+  .card {
+    padding: 1.25rem;
+  }
+
+  .currentAssignment {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 1rem;
+  }
+}

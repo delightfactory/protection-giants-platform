@@ -1,0 +1,42 @@
+.reviewShortcut {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
+}
+
+.reviewShortcut > div {
+  display: grid;
+  gap: .3rem;
+  max-width: 52rem;
+}
+
+.reviewShortcut h2,
+.reviewShortcut p {
+  margin: 0;
+}
+
+.reviewShortcut h2 {
+  font-size: 1.05rem;
+}
+
+.reviewShortcut p,
+.eyebrow {
+  color: var(--text-secondary);
+}
+
+.reviewShortcut p {
+  line-height: 1.7;
+}
+
+.eyebrow {
+  font-size: .78rem;
+  font-weight: 800;
+}
