@@ -108,11 +108,13 @@ const indexDefinitions = querySql(`
   where schemaname = 'public' and tablename = '${table}';
 `);
 for (const fragment of [
-  "warranty_claim_resolution_roll_allocations_resolution_active_uniq",
-  "warranty_claim_resolution_roll_allocations_roll_active_uniq",
+  "claim_resolution_roll_alloc_resolution_active_uniq",
+  "claim_resolution_roll_alloc_roll_active_uniq",
+  "claim_resolution_roll_alloc_resolution_timeline_idx",
+  "claim_resolution_roll_alloc_roll_timeline_idx",
   "WHERE (status = ANY (ARRAY['reserved'::text, 'consumed'::text]))",
 ]) {
-  assert(indexDefinitions.includes(fragment), `Allocation exclusivity index drift; missing ${fragment}.`);
+  assert(indexDefinitions.includes(fragment), `Allocation index drift; missing ${fragment}.`);
 }
 
 assert(querySql(`
@@ -237,7 +239,7 @@ insert into public.${table} (
   ${sqlUuid(resolutionA)}, ${sqlUuid(rollB)}, 'same_product_default', ${sqlUuid(actorId)}, now(), now()
 );
 commit;
-`, "warranty_claim_resolution_roll_allocations_resolution_active_uniq");
+`, "claim_resolution_roll_alloc_resolution_active_uniq");
 
 expectSqlFailure(`
 begin;
@@ -252,7 +254,7 @@ insert into public.${table} (
   ${sqlUuid(resolutionB)}, ${sqlUuid(rollA)}, 'same_product_default', ${sqlUuid(actorId)}, now(), now()
 );
 commit;
-`, "warranty_claim_resolution_roll_allocations_roll_active_uniq");
+`, "claim_resolution_roll_alloc_roll_active_uniq");
 
 expectSqlFailure(`
 begin;
