@@ -92,6 +92,8 @@ assert(actions.includes("PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS"),
 const hardeningMigration = fs.readFileSync("supabase/migrations/20260826031000_cube_p_premerge_hardening.sql", "utf8");
 assert(hardeningMigration.includes("v_body := btrim(left("),
   "Claim notification projector must trim after bounding so Cube L body-shape constraints cannot reject a valid max-length Claim.");
+assert(hardeningMigration.includes("clock_timestamp() - interval '1 hour'"),
+  "Stale Claim cleanup must preserve a conservative grace for staged external Storage uploads.");
 
 assert(querySql(`
   select count(*)
@@ -183,6 +185,43 @@ assert(unknown.response.ok && Array.isArray(unknown.body) && unknown.body.length
   "Unknown Public Code must retain the generic verification failure shape.");
 assert(querySql("select count(*) from private.warranty_claim_phone_verification_limits;") === limiterCountBeforeUnknown,
   "Unknown random Public Codes must not create limiter rows.");
+
+// An external upload may have reserved staged metadata just before the verified
+// context expires. A one-minute-old staged draft must not be reclaimed, while the
+// same draft becomes eligible once the conservative one-hour grace has elapsed.
+const graceDraftId = randomUUID();
+const gracePath = `${graceDraftId}/${"f".repeat(64)}.jpg`;
+runSql(`
+  insert into private.warranty_claim_drafts (
+    id, warranty_id, state, expires_at, created_at
+  ) values (
+    ${sqlUuid(graceDraftId)}, ${sqlUuid(fixtureWarrantyId)}, 'open',
+    now() - interval '1 minute', now() - interval '2 minutes'
+  );
+  insert into private.warranty_claim_draft_evidence (
+    draft_id, storage_path, mime_type, size_bytes, state
+  ) values (
+    ${sqlUuid(graceDraftId)}, ${sqlText(gracePath)}, 'image/jpeg', 128, 'staged'
+  );
+`);
+const earlyGrace = await rpc("claim_expired_warranty_claim_draft_cleanup_candidates", { p_limit: 50 });
+assert(earlyGrace.response.ok && Array.isArray(earlyGrace.body)
+  && !earlyGrace.body.some((candidate) => candidate.draft_id === graceDraftId),
+"Recently expired staged draft must stay outside cleanup during the external-Storage grace window.");
+assert(querySql(`select state from private.warranty_claim_drafts where id = ${sqlUuid(graceDraftId)}`) === "open",
+  "Grace-protected staged draft must remain open.");
+runSql(`
+  update private.warranty_claim_drafts
+  set expires_at = now() - interval '2 hours',
+      created_at = now() - interval '3 hours'
+  where id = ${sqlUuid(graceDraftId)};
+`);
+const agedGrace = await rpc("claim_expired_warranty_claim_draft_cleanup_candidates", { p_limit: 50 });
+assert(agedGrace.response.ok && Array.isArray(agedGrace.body)
+  && agedGrace.body.some((candidate) => candidate.draft_id === graceDraftId),
+"Staged draft must become cleanup-eligible after the conservative grace window.");
+assert(querySql(`select state from private.warranty_claim_drafts where id = ${sqlUuid(graceDraftId)}`) === "cleanup_pending",
+  "Aged staged draft must enter cleanup_pending when claimed for stale cleanup.");
 
 // Build a dedicated active Warranty whose valid metadata pushes the natural
 // notification body over 300 characters. The model value is constructed so the
