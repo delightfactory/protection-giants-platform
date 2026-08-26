@@ -89,6 +89,10 @@ assert(actions.includes("if (objects.length !== paths.length) return null;"),
 assert(actions.includes("PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS"),
   "Ambiguous upload state must remain explicit and retryable.");
 
+const hardeningMigration = fs.readFileSync("supabase/migrations/20260826031000_cube_p_premerge_hardening.sql", "utf8");
+assert(hardeningMigration.includes("v_body := btrim(left("),
+  "Claim notification projector must trim after bounding so Cube L body-shape constraints cannot reject a valid max-length Claim.");
+
 assert(querySql(`
   select count(*)
   from information_schema.columns
@@ -181,8 +185,9 @@ assert(querySql("select count(*) from private.warranty_claim_phone_verification_
   "Unknown random Public Codes must not create limiter rows.");
 
 // Build a dedicated active Warranty whose valid metadata pushes the natural
-// notification body over 300 characters. Claim submission must still commit and
-// the materialized Cube L body must satisfy its schema limit.
+// notification body over 300 characters. The model value is constructed so the
+// 300th natural character is whitespace; correct projector hardening must trim
+// that boundary and still let the Claim commit.
 const sourceWarrantyId = fixtureWarrantyId;
 const candidateRoll = querySql(`
   select roll.id::text
@@ -204,7 +209,8 @@ const longWarrantyNumber = `PG-W-${String(Math.floor(Math.random() * 90000000) +
 const longPhone = `+2010${String(Math.floor(Math.random() * 90000000) + 10000000)}`;
 const longProduct = "P".repeat(120);
 const longMake = "M".repeat(120);
-const longModel = "D".repeat(120);
+const longModel = `${"D".repeat(18)} ${"D".repeat(101)}`;
+assert(longModel.length === 120, "Boundary vehicle model fixture must remain schema-valid at exactly 120 characters.");
 runSql(`
   insert into public.warranties (
     id, request_id, roll_id, warranty_number, record_state,
@@ -275,7 +281,12 @@ const created = one(await rpc("create_customer_warranty_claim", {
 }), "Create max-metadata Claim");
 
 const notificationShape = querySql(`
-  select concat_ws('|', char_length(notification.body), notification.action_path is null, notification.push_eligible)
+  select concat_ws('|',
+    char_length(notification.body),
+    notification.body = btrim(notification.body),
+    notification.action_path is null,
+    notification.push_eligible
+  )
   from public.notifications notification
   where notification.source_domain = 'warranty_claim'
     and notification.event_type = 'warranty.claim_submitted'
@@ -285,7 +296,9 @@ const notificationShape = querySql(`
 `).split("|");
 assert(Number(notificationShape[0]) > 0 && Number(notificationShape[0]) <= 300,
   `Claim notification body exceeded Cube L bound: ${notificationShape}`);
-assert(notificationShape[1] === "t" && notificationShape[2] === "t",
+assert(notificationShape[1] === "t",
+  `Claim notification body must remain btrim-normalized after boundary truncation: ${notificationShape}`);
+assert(notificationShape[2] === "t" && notificationShape[3] === "t",
   `Claim notification routing/push contract changed unexpectedly: ${notificationShape}`);
 
 console.log("Cube P pre-merge hardening contracts verified.");
