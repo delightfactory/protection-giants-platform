@@ -89,6 +89,18 @@ assert(
     && actions.includes("registerDraftEvidence(access, evidence)"),
   "Both fresh and pre-existing content-addressed Storage objects must be registered in the locked private draft before they are accepted by the client.",
 );
+const uploadFunctionIndex = actions.indexOf("export async function uploadWarrantyClaimEvidence");
+const uploadRegisterIndex = actions.indexOf("registerDraftEvidence(access, evidence)", uploadFunctionIndex);
+const physicalUploadIndex = actions.indexOf(".upload(storagePath, bytes", uploadFunctionIndex);
+assert(uploadRegisterIndex > uploadFunctionIndex && physicalUploadIndex > uploadRegisterIndex,
+  "Evidence registry reservation must commit before physical Storage upload so a late upload cannot outrun final Claim submission.");
+assert(
+  domain.includes("evidence?: WarrantyClaimEvidenceReference")
+    && claimClient.includes("evidence: result.evidence")
+    && claimClient.includes("reservedUploadCount")
+    && claimClient.includes("PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS"),
+  "Any upload failure after registry reservation must stay visible/removable in the verified UI and continue to count against the five-slot draft cap until explicitly cleared.",
+);
 assert(
   actions.includes("p_verified_phone_normalized: access.currentPhoneNormalized")
     && actions.slice(actions.indexOf("async function registerDraftEvidence"), actions.indexOf("async function reserveDraftEvidenceRemoval")).includes("p_verified_phone_normalized: access.currentPhoneNormalized")
@@ -114,6 +126,11 @@ assert(
 );
 assert(actions.includes("delete_pending metadata") && actions.includes("stale-draft cleanup"),
   "Failed physical deletion must remain cleanup-visible instead of becoming an untracked orphan.");
+assert(
+  actions.includes("safelyDiscardUncommittedEvidence(access, extraPaths)")
+    && actions.includes("if (objects.length !== paths.length) return null;"),
+  "Final submit must reconcile physical draft-folder extras and fail closed unless Storage exactly matches the requested committed evidence set.",
+);
 
 const domainErrorIndex = actions.indexOf("const domainError = authoritativeSubmitError");
 const lockedCompensationIndex = actions.indexOf("safelyDiscardUncommittedEvidence", domainErrorIndex);
