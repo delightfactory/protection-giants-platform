@@ -1,4 +1,4 @@
-// Cube R exact-head qualification verifier: persistence/state foundation remains intentionally allocation-free.
+// Cube R persistence/state verifier remains allocation-free while later mutation RPCs are still absent.
 import { execFileSync } from "node:child_process";
 
 function assert(condition, message) {
@@ -135,13 +135,12 @@ assert(querySql(`
   join pg_catalog.pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public'
     and p.proname in (
-      'assign_warranty_claim_resolution',
       'reassign_warranty_claim_resolution',
       'change_claim_resolution_remedy',
       'complete_warranty_claim_resolution',
       'cancel_assigned_claim_resolution_for_customer_withdrawal'
     );
-`) === "t", "Persistence-only increment must not expose R mutation RPCs yet.");
+`) === "t", "Later Cube R mutation RPCs must remain absent at the initial-assignment checkpoint.");
 
 const authorizedFixture = querySql(`
   select concat_ws('|', resolution.id, claim.id, claim.status,
@@ -305,7 +304,7 @@ begin;
 insert into public.warranty_claim_resolution_events (
   resolution_id, action_request_id, event_kind, actor_profile_id, actor_kind, reason, event_data
 ) values (
-  ${sqlUuid(resolutionId)}, gen_random_uuid(), 'resolution_assigned',
+  ${sqlUuid(resolutionId)}, gen_random_uuid(), 'replacement_roll_reserved',
   ${sqlUuid(adminProfileId)}, 'admin', null, jsonb_build_object('fixture', true)
 );
 update public.warranty_claim_resolution_events
