@@ -1,6 +1,6 @@
 name: Cube Q Claim Review Quality
 
-"on":
+on:
   pull_request:
     branches:
       - main
@@ -72,6 +72,12 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-q-claim-review.mjs
+
+      - name: Verify Cube Q Claim notification materialization
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-q-claim-notification-materialization.mjs
 
       - name: Verify Cube Q Center inspection UI/security contract
         run: node scripts/verify-cube-q-claim-center-inspection-ui.mjs
