@@ -1,0 +1,102 @@
+name: Repair Claims cumulative gates
+
+on:
+  push:
+    branches:
+      - agent/cube-r-claim-resolution-fulfillment
+    paths:
+      - ".github/workflows/repair-claims-cumulative-gates.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: agent/cube-r-claim-resolution-fulfillment
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Make Cube Q Resolution contract cumulative-aware
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('scripts/verify-cube-q-claim-review.mjs')
+          text = path.read_text()
+          old = '''const resolutionColumns = querySql(`
+            select string_agg(column_name, ',' order by ordinal_position)
+            from information_schema.columns
+            where table_schema = 'public' and table_name = 'warranty_claim_resolutions';
+          `);
+          assert(
+            resolutionColumns === "id,claim_id,status,authorized_by_profile_id,authorized_at,created_at,updated_at",
+            `Cube Q Resolution handoff leaked Cube R fields: ${resolutionColumns}`,
+          );'''
+          new = '''const resolutionColumns = querySql(`
+            select string_agg(column_name, ',' order by ordinal_position)
+            from information_schema.columns
+            where table_schema = 'public' and table_name = 'warranty_claim_resolutions';
+          `).split(",");
+          const qResolutionColumns = [
+            "id",
+            "claim_id",
+            "status",
+            "authorized_by_profile_id",
+            "authorized_at",
+            "created_at",
+            "updated_at",
+          ];
+          for (const column of qResolutionColumns) {
+            assert(resolutionColumns.includes(column),
+              `Cube Q Resolution handoff lost required column ${column}: ${resolutionColumns.join(",")}`);
+          }
+          const cubeRResolutionFoundationPresent = querySql(`
+            select (to_regclass('public.warranty_claim_resolution_events') is not null)::text;
+          `) === "true";
+          if (!cubeRResolutionFoundationPresent) {
+            assert(
+              resolutionColumns.length === qResolutionColumns.length,
+              `Cube Q Resolution handoff leaked pre-R fields: ${resolutionColumns.join(",")}`,
+            );
+          }'''
+          if old not in text:
+              raise SystemExit('Expected Cube Q Resolution assertion block was not found; refusing broad edit.')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Regenerate canonical public database types
+        run: |
+          supabase gen types typescript --local --schema public > lib/supabase/database.types.ts
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'lib/supabase/database.types.ts';
+          fs.writeFileSync(path, fs.readFileSync(path, 'utf8').replace(/\n*$/, '\n'));
+          NODE
+
+      - name: Commit qualification repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/verify-cube-q-claim-review.mjs lib/supabase/database.types.ts
+          git diff --cached --check
+          git commit -m "test(claims): make cumulative gates R-aware"
+          git push origin HEAD:agent/cube-r-claim-resolution-fulfillment
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup || true
