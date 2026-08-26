@@ -27,6 +27,7 @@ import {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EVIDENCE_PATH_PATTERN = /^[0-9a-f-]{36}\/[0-9a-f]{64}\.(jpg|png|webp)$/;
+const EVIDENCE_STORAGE_LIST_LIMIT = 20;
 
 const EXPOSED_SUBMIT_ERRORS = new Set([
   "PG_CLAIM_REQUEST_INVALID",
@@ -191,20 +192,31 @@ async function finalizeDraftEvidenceRemoval(
 async function safelyDiscardUncommittedEvidence(
   access: FreshClaimAccess,
   paths: string[],
-): Promise<void> {
+): Promise<boolean> {
   const admin = createSupabaseAdminClient();
+  let complete = true;
 
   for (const storagePath of paths) {
     const reserved = await reserveDraftEvidenceRemoval(access, storagePath);
-    if (!reserved.ok) continue;
+    if (!reserved.ok) {
+      complete = false;
+      continue;
+    }
 
     const { error: removeError } = await admin.storage
       .from(WARRANTY_CLAIM_EVIDENCE_BUCKET)
       .remove([storagePath]);
-    if (removeError) continue;
+    if (removeError) {
+      complete = false;
+      continue;
+    }
 
-    await finalizeDraftEvidenceRemoval(access, storagePath);
+    if (!(await finalizeDraftEvidenceRemoval(access, storagePath))) {
+      complete = false;
+    }
   }
+
+  return complete;
 }
 
 export async function verifyWarrantyClaimPhone(
@@ -264,11 +276,21 @@ export async function uploadWarrantyClaimEvidence(
   };
   const admin = createSupabaseAdminClient();
 
+  // Registry first is deliberate. Every physical upload that can race Claim
+  // submission is therefore represented under the draft lock before bytes are
+  // written. A concurrent submit either sees this exact evidence in its payload
+  // or the DB staged-count invariant rejects the submit; no late upload can become
+  // an untracked object after the draft is converted to a submitted tombstone.
+  const registered = await registerDraftEvidence(access, evidence);
+  if (!registered.ok) return { ok: false, code: registered.code };
+
   const { data: existingObjects, error: listError } = await admin.storage
     .from(WARRANTY_CLAIM_EVIDENCE_BUCKET)
-    .list(access.payload.draftId, { limit: WARRANTY_CLAIM_MAX_IMAGES + 1 });
+    .list(access.payload.draftId, { limit: EVIDENCE_STORAGE_LIST_LIMIT });
 
-  if (listError) return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
+  if (listError) {
+    return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS" };
+  }
 
   const existing = (existingObjects ?? []).find((object) => object.name === fileName);
   if (existing) {
@@ -276,15 +298,7 @@ export async function uploadWarrantyClaimEvidence(
     if (!metadata || metadata.mimeType !== detectedMime || metadata.sizeBytes !== bytes.length) {
       return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
     }
-
-    const registered = await registerDraftEvidence(access, evidence);
-    return registered.ok
-      ? { ok: true, evidence }
-      : { ok: false, code: registered.code };
-  }
-
-  if ((existingObjects ?? []).length >= WARRANTY_CLAIM_MAX_IMAGES) {
-    return { ok: false, code: "PG_CLAIM_EVIDENCE_COUNT_INVALID" };
+    return { ok: true, evidence };
   }
 
   const { error: uploadError } = await admin.storage
@@ -295,20 +309,36 @@ export async function uploadWarrantyClaimEvidence(
       upsert: false,
     });
 
-  if (uploadError) return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
+  if (!uploadError) return { ok: true, evidence };
 
-  const registered = await registerDraftEvidence(access, evidence);
-  if (registered.ok) return { ok: true, evidence };
+  // Storage response can be ambiguous after the physical write. Probe the exact
+  // content-addressed object before deciding whether to retry or compensate.
+  const { data: probeObjects, error: probeError } = await admin.storage
+    .from(WARRANTY_CLAIM_EVIDENCE_BUCKET)
+    .list(access.payload.draftId, { limit: EVIDENCE_STORAGE_LIST_LIMIT });
 
-  // A named DB rejection proves registration rolled back, so this newly uploaded
-  // uncommitted object may be compensated. Unknown/transport ambiguity preserves
-  // it; retrying the same file reuses the content-addressed path and idempotent
-  // registration. Expired-draft cleanup lists the actual Storage folder, so even
-  // an unregistered object cannot grow into a permanent orphan.
-  if (registered.authoritative) {
-    await admin.storage.from(WARRANTY_CLAIM_EVIDENCE_BUCKET).remove([storagePath]);
+  if (!probeError) {
+    const probed = (probeObjects ?? []).find((object) => object.name === fileName);
+    if (probed) {
+      const metadata = storageMetadata(probed as StorageListObject);
+      if (metadata?.mimeType === detectedMime && metadata.sizeBytes === bytes.length) {
+        return { ok: true, evidence };
+      }
+      return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
+    }
+
+    // The probe proved no physical object exists. Remove the pre-upload registry
+    // reservation so another file can use the slot. If cleanup itself becomes
+    // ambiguous, the retained registry still prevents an unsafe later submit and
+    // stale-draft cleanup remains the bounded fallback.
+    await safelyDiscardUncommittedEvidence(access, [storagePath]);
+    return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_FAILED" };
   }
-  return { ok: false, code: registered.code };
+
+  // Unknown transport state keeps the registry row intentionally. Retrying the
+  // same file is idempotent, and any attempt to submit different evidence fails
+  // closed because the DB sees the extra staged registry row.
+  return { ok: false, code: "PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS" };
 }
 
 export async function removeWarrantyClaimEvidence(
@@ -348,9 +378,10 @@ export async function removeWarrantyClaimEvidence(
 }
 
 async function authoritativeEvidence(
-  draftId: string,
+  access: FreshClaimAccess,
   paths: string[],
 ): Promise<WarrantyClaimEvidenceReference[] | null> {
+  const draftId = access.payload.draftId;
   if (
     paths.length < 1
     || paths.length > WARRANTY_CLAIM_MAX_IMAGES
@@ -364,14 +395,38 @@ async function authoritativeEvidence(
   }
 
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin.storage
-    .from(WARRANTY_CLAIM_EVIDENCE_BUCKET)
-    .list(draftId, { limit: WARRANTY_CLAIM_MAX_IMAGES + 1 });
-  if (error) return null;
+  const requestedNames = new Set(paths.map(evidenceFileName));
 
-  const objects = (data ?? []) as StorageListObject[];
+  const listDraftObjects = async (): Promise<StorageListObject[] | null> => {
+    const { data, error } = await admin.storage
+      .from(WARRANTY_CLAIM_EVIDENCE_BUCKET)
+      .list(draftId, { limit: EVIDENCE_STORAGE_LIST_LIMIT });
+    if (error || !Array.isArray(data) || data.length >= EVIDENCE_STORAGE_LIST_LIMIT) return null;
+    return data as StorageListObject[];
+  };
+
+  let objects = await listDraftObjects();
+  if (!objects) return null;
+
+  // Reconcile any physical object that is not part of the submitted payload.
+  // This covers old ambiguous uploads and delete_pending files whose Storage
+  // deletion previously failed. Removal goes through the same draft-serialized
+  // reservation path; no broad folder wipe is ever performed.
+  const extraPaths = objects
+    .filter((object) => typeof object.name === "string" && !requestedNames.has(object.name))
+    .map((object) => `${draftId}/${object.name}`)
+    .filter((path) => EVIDENCE_PATH_PATTERN.test(path));
+
+  if (extraPaths.length > 0) {
+    if (!(await safelyDiscardUncommittedEvidence(access, extraPaths))) return null;
+    objects = await listDraftObjects();
+    if (!objects) return null;
+  }
+
+  if (objects.length !== paths.length) return null;
+  if (objects.some((object) => !requestedNames.has(object.name))) return null;
+
   const resolved: WarrantyClaimEvidenceReference[] = [];
-
   for (const path of paths) {
     const object = objects.find((candidate) => candidate.name === evidenceFileName(path));
     if (!object) return null;
@@ -406,7 +461,7 @@ export async function submitWarrantyClaim(input: {
   const access = await getFreshClaimAccess(input.publicCode);
   if (!access) return { ok: false, code: "PG_CLAIM_VERIFICATION_REQUIRED" };
 
-  const evidence = await authoritativeEvidence(access.payload.draftId, input.evidencePaths);
+  const evidence = await authoritativeEvidence(access, input.evidencePaths);
   if (!evidence) return { ok: false, code: "PG_CLAIM_EVIDENCE_INVALID" };
 
   const admin = createSupabaseAdminClient();
