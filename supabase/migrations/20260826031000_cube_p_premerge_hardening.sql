@@ -1,7 +1,8 @@
 -- Cube P — pre-merge hardening after independent double audit
 -- Surgical fixes only:
 -- 1) bound Claim notification body to Cube L schema contract;
--- 2) add narrow failed-phone verification throttling for one valid Roll Public Code.
+-- 2) add narrow failed-phone verification throttling for one valid Roll Public Code;
+-- 3) keep stale cleanup behind in-flight Storage uploads without a new draft state machine.
 
 create table private.warranty_claim_phone_verification_limits (
   public_code_hash text primary key,
@@ -152,6 +153,85 @@ grant execute on function public.verify_customer_warranty_claim_phone(text, text
 
 comment on function public.verify_customer_warranty_claim_phone(text, text) is
   'Cube P service-only registered-phone verification for one exact Roll Public Code. Eight failed matches inside a 15-minute window temporarily fail closed for that QR identity; no attempted phone is persisted and browser roles still have no execute grant.';
+
+-- A Storage upload is an external operation and therefore cannot remain inside
+-- the draft-row transaction. New Cube P uploads reserve a staged registry row
+-- before writing bytes. Keep any expired draft that still has staged evidence
+-- out of stale cleanup for one conservative hour, so cleanup cannot list/delete
+-- the folder while an already-started Server Action is still capable of writing
+-- its reserved object. delete_pending-only drafts remain immediately reclaimable.
+create or replace function public.claim_expired_warranty_claim_draft_cleanup_candidates(
+  p_limit integer default 10
+)
+returns table (
+  draft_id uuid,
+  storage_paths text[]
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 50 then
+    raise exception using errcode = '22023', message = 'PG_CLAIM_DRAFT_CLEANUP_LIMIT_INVALID';
+  end if;
+
+  return query
+  with selected as (
+    select draft.id
+    from private.warranty_claim_drafts draft
+    where draft.state in ('open', 'cleanup_pending')
+      and draft.expires_at <= clock_timestamp()
+      and (
+        draft.expires_at <= clock_timestamp() - interval '1 hour'
+        or (
+          exists (
+            select 1
+            from private.warranty_claim_draft_evidence pending
+            where pending.draft_id = draft.id
+              and pending.state = 'delete_pending'
+          )
+          and not exists (
+            select 1
+            from private.warranty_claim_draft_evidence staged
+            where staged.draft_id = draft.id
+              and staged.state = 'staged'
+          )
+        )
+      )
+    order by draft.expires_at, draft.id
+    limit p_limit
+    for update skip locked
+  ),
+  marked as (
+    update private.warranty_claim_drafts draft
+    set state = 'cleanup_pending'
+    from selected
+    where draft.id = selected.id
+    returning draft.id
+  )
+  select
+    marked.id,
+    coalesce(
+      array_agg(evidence.storage_path order by evidence.storage_path)
+        filter (where evidence.storage_path is not null),
+      array[]::text[]
+    )
+  from marked
+  left join private.warranty_claim_draft_evidence evidence
+    on evidence.draft_id = marked.id
+  group by marked.id
+  order by marked.id;
+end;
+$$;
+
+revoke all on function public.claim_expired_warranty_claim_draft_cleanup_candidates(integer)
+  from public, anon, authenticated, service_role;
+grant execute on function public.claim_expired_warranty_claim_draft_cleanup_candidates(integer)
+  to service_role;
+
+comment on function public.claim_expired_warranty_claim_draft_cleanup_candidates(integer) is
+  'Cube P bounded stale-draft cleanup claim. Expired staged/no-evidence drafts receive a one-hour external-Storage grace; delete_pending-only drafts may be reclaimed immediately. Selected drafts become cleanup_pending and remain retryable until Storage cleanup finalizes.';
 
 create or replace function private.materialize_warranty_claim_notification_event()
 returns trigger
