@@ -49,7 +49,6 @@ declare
   v_now timestamptz := clock_timestamp();
   v_public_code_hash text;
   v_limit private.warranty_claim_phone_verification_limits%rowtype;
-  v_failed_attempts integer;
 begin
   if p_public_code is null or p_public_code !~ '^[0-9a-f]{64}$' then
     return;
@@ -89,7 +88,6 @@ begin
     if v_limit.window_started_at <= v_now - interval '15 minutes' then
       delete from private.warranty_claim_phone_verification_limits limits
       where limits.public_code_hash = v_public_code_hash;
-      v_limit := null;
     elsif v_limit.blocked_until is not null and v_limit.blocked_until > v_now then
       return;
     end if;
@@ -107,7 +105,7 @@ begin
 
   v_current_phone := private.normalize_warranty_claim_phone(v_warranty.customer_phone);
   if v_current_phone is null or v_current_phone <> v_input_phone then
-    insert into private.warranty_claim_phone_verification_limits (
+    insert into private.warranty_claim_phone_verification_limits as limits (
       public_code_hash,
       window_started_at,
       failed_attempts,
@@ -122,14 +120,13 @@ begin
     )
     on conflict (public_code_hash)
     do update set
-      failed_attempts = private.warranty_claim_phone_verification_limits.failed_attempts + 1,
+      failed_attempts = limits.failed_attempts + 1,
       blocked_until = case
-        when private.warranty_claim_phone_verification_limits.failed_attempts + 1 >= 8
+        when limits.failed_attempts + 1 >= 8
           then v_now + interval '15 minutes'
-        else private.warranty_claim_phone_verification_limits.blocked_until
+        else limits.blocked_until
       end,
-      updated_at = v_now
-    returning failed_attempts into v_failed_attempts;
+      updated_at = v_now;
 
     return;
   end if;
