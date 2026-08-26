@@ -88,17 +88,35 @@ jobs:
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-r-claim-product-policy.mjs
 
-      - name: Verify generated public database types remain exact
+      - name: Verify Cube R Resolution persistence/state foundation
+        run: node scripts/verify-cube-r-claim-resolution-foundation.mjs
+
+      - name: Generate public database types
         run: |
           supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
           node <<'NODE'
           const fs = require("node:fs");
-          for (const path of ["/tmp/generated.database.types.ts", "lib/supabase/database.types.ts"]) {
-            const content = fs.readFileSync(path, "utf8").replace(/\n*$/, "\n");
-            fs.writeFileSync(path, content);
-          }
+          const path = "/tmp/generated.database.types.ts";
+          fs.writeFileSync(path, fs.readFileSync(path, "utf8").replace(/\n*$/, "\n"));
           NODE
-          diff -u lib/supabase/database.types.ts /tmp/generated.database.types.ts
+
+      - name: Upload generated database types
+        uses: actions/upload-artifact@v4
+        with:
+          name: cube-r-generated-database-types-${{ github.sha }}
+          path: /tmp/generated.database.types.ts
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Verify generated public database types are committed exactly
+        run: |
+          cp lib/supabase/database.types.ts /tmp/committed.database.types.ts
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = "/tmp/committed.database.types.ts";
+          fs.writeFileSync(path, fs.readFileSync(path, "utf8").replace(/\n*$/, "\n"));
+          NODE
+          diff -u /tmp/committed.database.types.ts /tmp/generated.database.types.ts
 
       - name: TypeScript typecheck
         run: npx tsc --noEmit
