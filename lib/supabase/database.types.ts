@@ -2428,6 +2428,17 @@ export type Database = {
         }
         Returns: string
       }
+      complete_warranty_claim_resolution_by_admin_recovery: {
+        Args: {
+          p_action_request_id: string
+          p_completion_note: string
+          p_evidence_paths: string[]
+          p_recovery_reason: string
+          p_replacement_roll_serial?: string
+          p_resolution_id: string
+        }
+        Returns: string
+      }
       correct_warranty_details: {
         Args: {
           p_action_request_id: string
