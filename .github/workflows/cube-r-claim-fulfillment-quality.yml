@@ -3,7 +3,8 @@ name: Cube R Claim Fulfillment Quality
 # R is intentionally developed before its workflow exists on main, so branch
 # pushes are the authoritative incremental gate while P/Q/R remain stacked.
 # Current gate covers Product policy, Resolution state, assignment/corrections,
-# replacement Roll allocation persistence and reserve/release lifecycle.
+# replacement Roll allocation persistence, reserve/release lifecycle, and bounded
+# Production / Recovery / Cube K material-domain compatibility.
 # Canonical generated DB types are part of the same-HEAD qualification contract.
 on:
   push:
@@ -118,6 +119,18 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-r-claim-roll-reservation-lifecycle.mjs
+
+      - name: Verify Cube N public Warranty resolver regression
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-n-public-warranty-resolver.mjs
+
+      - name: Verify Cube R material-domain compatibility
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-r-claim-material-domain-compatibility.mjs
 
       - name: Generate public database types
         run: |
