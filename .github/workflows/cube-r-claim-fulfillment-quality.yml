@@ -6,9 +6,10 @@ name: Cube R Claim Fulfillment Quality
 # replacement Roll allocation persistence, reserve/release lifecycle, bounded
 # Production / Recovery / Cube K compatibility, consumption readiness/public
 # terminal behavior, atomic normal assigned-Center completion for both remedies,
-# and bounded PD-079 post-assignment customer-withdrawal cancellation.
-# Canonical generated DB types, including completion/cancellation RPC surfaces, are
-# part of the same-HEAD qualification contract.
+# bounded PD-079 post-assignment customer-withdrawal cancellation, and the narrow
+# Admin completion-recovery exception after assigned-Center capability loss.
+# Canonical generated DB types, including completion/cancellation/recovery RPC
+# surfaces, are part of the same-HEAD qualification contract.
 on:
   push:
     branches:
@@ -152,6 +153,12 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-r-claim-customer-withdrawal.mjs
+
+      - name: Verify Cube R narrow Admin recovery completion
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-r-claim-admin-recovery-completion.mjs
 
       - name: Generate public database types
         run: |
