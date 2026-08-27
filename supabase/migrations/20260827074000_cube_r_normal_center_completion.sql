@@ -177,7 +177,7 @@ begin
     from public.warranty_claim_resolution_evidence evidence
     where evidence.resolution_id = p_resolution_id;
 
-    if not found
+    if v_resolution.id is null
       or v_existing_event.resolution_id <> p_resolution_id
       or v_existing_event.event_kind <> 'resolution_completed'
       or v_existing_event.actor_profile_id <> v_actor_profile_id
