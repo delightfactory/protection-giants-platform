@@ -8,6 +8,7 @@ if (!apiUrl || !serviceRoleKey || !anonKey) {
   throw new Error("Local Supabase API_URL, SERVICE_ROLE_KEY and ANON_KEY are required.");
 }
 const password = "Cube-J-Roll-Opening-2026!";
+let claimCounter = Number(String(Date.now()).slice(-8));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -76,6 +77,10 @@ function sqlUuid(value) {
 function sqlText(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
 }
+function nextClaimNumber() {
+  claimCounter = (claimCounter + 1) % 100000000;
+  return `PG-C-${String(claimCounter).padStart(8, "0")}`;
+}
 
 const signature = "public.cancel_assigned_claim_resolution_for_customer_withdrawal(uuid,uuid,text,text)";
 assert(querySql(`select has_function_privilege('authenticated', '${signature}', 'EXECUTE');`) === "t",
@@ -123,7 +128,7 @@ const warrantyBefore = querySql(`
 function createAssignedFixture(remedyKind) {
   const claimId = randomUUID();
   const resolutionId = randomUUID();
-  const claimNumber = `PG-C-79${Date.now()}${Math.floor(Math.random() * 10000)}`;
+  const claimNumber = nextClaimNumber();
   runSql(`
 insert into public.warranty_claims (
   id, request_id, warranty_id, claim_number, category, affected_area, description,
