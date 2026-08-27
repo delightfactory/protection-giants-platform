@@ -235,7 +235,8 @@ assert(assignment.response.ok && assignment.body === resolutionId,
   `Could not assign replacement Resolution: ${assignment.response.status} ${JSON.stringify(assignment.body)}`);
 
 // 1) A reserved child Roll blocks Production Order void. Once released, Cube R
-// no longer blocks the normal Production lifecycle and an otherwise-unused order may void.
+// yields to the mature Production/Transfer lifecycle. This fixture is distributed,
+// so the pre-existing distributed-material guard must become authoritative.
 const productionGuard = await createProductionRoll("CR-MAT-PRODUCTION-GUARD");
 const productionReserve = await userRpc("reserve_claim_resolution_roll", {
   p_action_request_id: randomUUID(),
@@ -253,17 +254,15 @@ await expectRpcError("void_production_order", {
 const releaseProductionGuard = await userRpc("release_claim_resolution_roll", {
   p_action_request_id: randomUUID(),
   p_allocation_id: productionReserve.body,
-  p_reason: "Release the unused verifier allocation before normal Production void.",
+  p_reason: "Release the unused verifier allocation back to normal Production rules.",
 }, adminToken);
 assert(releaseProductionGuard.response.ok && releaseProductionGuard.body === productionReserve.body,
   `Could not release Production guard allocation: ${releaseProductionGuard.response.status} ${JSON.stringify(releaseProductionGuard.body)}`);
 
-const voidAfterRelease = await userRpc("void_production_order", {
+await expectRpcError("void_production_order", {
   p_order_id: productionGuard.orderId,
-  p_reason: "Released Claim history must not block an otherwise valid Production void.",
-}, adminToken);
-assert(voidAfterRelease.response.ok && voidAfterRelease.body === productionGuard.orderId,
-  `Released allocation unexpectedly blocked Production void: ${voidAfterRelease.response.status} ${JSON.stringify(voidAfterRelease.body)}`);
+  p_reason: "Released Claim history must defer to mature Production lifecycle rules.",
+}, adminToken, "PG_TRANSFER_PRODUCTION_VOID_DISTRIBUTED");
 
 // 2) Reserved material intentionally keeps using Cube J Opening and Cube K Issue.
 // Opened Roll Recovery still routes through the mature Transfer reservation gate.
