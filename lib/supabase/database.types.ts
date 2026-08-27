@@ -2366,6 +2366,15 @@ export type Database = {
         }
         Returns: string
       }
+      cancel_assigned_claim_resolution_for_customer_withdrawal: {
+        Args: {
+          p_action_request_id: string
+          p_customer_message: string
+          p_reason: string
+          p_resolution_id: string
+        }
+        Returns: string
+      }
       cancel_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
       cancel_warranty_claim: {
         Args: {
