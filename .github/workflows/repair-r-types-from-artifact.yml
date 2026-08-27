@@ -1,0 +1,49 @@
+name: Cube R one-shot generated types sync
+
+on:
+  push:
+    branches:
+      - agent/cube-r-claim-resolution-fulfillment
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  sync-generated-types:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download qualified generated types artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cube-r-generated-database-types-f3551b3b1bbc1476d9021b7477ad45b736562e76
+          path: .cube-r-types-artifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 33061575471
+
+      - name: Verify artifact and sync exact generated types
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .cube-r-types-artifact/generated.database.types.ts
+          echo 'b83975d992a9df435a09b6bc38b17651d492b2851d3cc4cd48eecfce97e34a29  .cube-r-types-artifact/generated.database.types.ts' | sha256sum -c -
+          cp .cube-r-types-artifact/generated.database.types.ts lib/supabase/database.types.ts
+          rm -rf .cube-r-types-artifact
+          git diff --check
+
+      - name: Commit exact types and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/repair-r-types-from-artifact.yml
+          git add lib/supabase/database.types.ts
+          git diff --cached --check
+          git commit -m 'chore(cube-r): sync generated database types'
+          git push origin HEAD:${GITHUB_REF_NAME}
