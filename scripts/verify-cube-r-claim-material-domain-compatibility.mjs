@@ -194,9 +194,11 @@ const activation = await userRpc("activate_roll_warranty", {
   p_vehicle_color: "Black",
   p_vehicle_vin: "MATCOMPAT12345678",
 }, centerToken);
-assert(activation.response.ok && /^[0-9a-f-]{36}$/i.test(String(activation.body)),
+const warrantyId = Array.isArray(activation.body)
+  ? activation.body[0]?.warranty_id
+  : activation.body?.warranty_id ?? activation.body;
+assert(activation.response.ok && /^[0-9a-f-]{36}$/i.test(String(warrantyId)),
   `Could not activate Warranty source Roll: ${activation.response.status} ${JSON.stringify(activation.body)}`);
-const warrantyId = activation.body;
 
 const claimId = randomUUID();
 const resolutionId = randomUUID();
