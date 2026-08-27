@@ -2626,6 +2626,63 @@ export type Database = {
           warranty_record_state: string
         }[]
       }
+      get_admin_warranty_claim_resolution_detail: {
+        Args: { p_resolution_id: string }
+        Returns: {
+          active_operator_count: number
+          affected_area: string
+          allocation_consumed_at: string
+          allocation_id: string
+          allocation_released_at: string
+          allocation_reserved_at: string
+          allocation_status: string
+          assigned_at: string
+          authorized_at: string
+          cancellation_reason: string
+          cancelled_at: string
+          care_instructions: string
+          category: string
+          claim_closed_at: string
+          claim_id: string
+          claim_number: string
+          claim_status: string
+          completed_at: string
+          completion_actor_kind: string
+          completion_evidence_count: number
+          completion_note: string
+          customer_cancellation_message: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          description: string
+          performing_center_name: string
+          performing_center_party_id: string
+          performing_center_status: string
+          product_code: string
+          product_eligibility_basis: string
+          product_name: string
+          product_version: string
+          remedy_kind: string
+          replacement_opened_at: string
+          replacement_quality_state: string
+          replacement_roll_id: string
+          replacement_roll_product_code: string
+          replacement_roll_product_name: string
+          replacement_roll_product_version: string
+          replacement_roll_serial: string
+          resolution_id: string
+          resolution_status: string
+          vehicle_color: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_vin: string
+          vehicle_year: number
+          warranty_coverage: string
+          warranty_id: string
+          warranty_number: string
+        }[]
+      }
       get_center_claim_inspection_detail: {
         Args: { p_inspection_id: string }
         Returns: {
@@ -2787,6 +2844,18 @@ export type Database = {
           installation_center_id: string
         }[]
       }
+      list_admin_claim_resolution_replacement_roll_candidates: {
+        Args: { p_limit?: number; p_offset?: number; p_resolution_id: string }
+        Returns: {
+          erp_serial: string
+          product_code: string
+          product_eligibility_basis: string
+          product_name: string
+          product_version: string
+          roll_id: string
+          serial_number: string
+        }[]
+      }
       list_admin_warranty_claim_history: {
         Args: {
           p_exclude_claim_id?: string
@@ -2800,6 +2869,34 @@ export type Database = {
           customer_decision_message: string
           status: string
           submitted_at: string
+        }[]
+      }
+      list_admin_warranty_claim_resolutions: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_scope?: string
+          p_status?: string
+        }
+        Returns: {
+          assigned_at: string
+          authorized_at: string
+          cancelled_at: string
+          claim_id: string
+          claim_number: string
+          claim_status: string
+          completed_at: string
+          performing_center_name: string
+          performing_center_party_id: string
+          product_code: string
+          product_name: string
+          product_version: string
+          remedy_kind: string
+          resolution_id: string
+          resolution_status: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_year: number
         }[]
       }
       list_admin_warranty_claim_timeline: {
