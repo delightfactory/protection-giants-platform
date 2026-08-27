@@ -16,8 +16,18 @@ declare
   v_remedy_kind text;
   v_customer_message text;
   v_source_event_key text := 'warranty_claim_resolution_events:' || new.id::text;
+  v_event_type text;
+  v_title text;
+  v_body text;
 begin
-  if new.event_kind not in ('resolution_assigned', 'resolution_cancelled_customer_withdrawal') then
+  -- Preserve the cumulative Increment-5 assignment/reassignment projector and add
+  -- only the PD-079 terminal assigned-task cancellation event. Remedy correction
+  -- intentionally remains audit/event-only, exactly as before this migration.
+  if new.event_kind not in (
+    'resolution_assigned',
+    'resolution_reassigned',
+    'resolution_cancelled_customer_withdrawal'
+  ) then
     return new;
   end if;
 
@@ -56,10 +66,28 @@ begin
     raise exception using errcode = '23514', message = 'PG_NOTIFICATION_CLAIM_MISSING';
   end if;
 
-  if new.event_kind = 'resolution_assigned' then
+  if new.event_kind in ('resolution_assigned', 'resolution_reassigned') then
     if v_resolution.status <> 'assigned' then
       raise exception using errcode = '23514', message = 'PG_NOTIFICATION_CLAIM_RESOLUTION_STATE_INVALID';
     end if;
+
+    if new.event_kind = 'resolution_reassigned' then
+      v_event_type := 'claim_resolution.reassigned';
+      v_title := 'تم إعادة إسناد تنفيذ مطالبة ضمان إلى مركزك';
+    else
+      v_event_type := 'claim_resolution.assigned';
+      v_title := 'تم إسناد تنفيذ مطالبة ضمان إلى مركزك';
+    end if;
+
+    v_body := btrim(left(
+      case
+        when v_remedy_kind = 'replacement_roll_reinstall' then
+          'تم إسناد تنفيذ استبدال وإعادة تركيب للمطالبة ' || v_claim.claim_number || ' إلى مركزك.'
+        else
+          'تم إسناد تنفيذ إعادة تركيب للمطالبة ' || v_claim.claim_number || ' إلى مركزك.'
+      end,
+      300
+    ));
 
     insert into public.notifications (
       recipient_profile_id,
@@ -75,20 +103,12 @@ begin
     )
     select
       recipients.profile_id,
-      'claim_resolution.assigned',
+      v_event_type,
       'warranty_claim_resolution',
       v_source_event_key,
       'action_required',
-      'تم إسناد تنفيذ مطالبة ضمان إلى مركزك',
-      btrim(left(
-        case
-          when v_remedy_kind = 'replacement_roll_reinstall' then
-            'تم إسناد تنفيذ استبدال وإعادة تركيب للمطالبة ' || v_claim.claim_number || ' إلى مركزك.'
-          else
-            'تم إسناد تنفيذ إعادة تركيب للمطالبة ' || v_claim.claim_number || ' إلى مركزك.'
-        end,
-        300
-      )),
+      v_title,
+      v_body,
       null,
       true,
       new.created_at
@@ -149,7 +169,7 @@ revoke all on function private.materialize_warranty_claim_resolution_notificatio
   from public, anon, authenticated, service_role;
 
 comment on function private.materialize_warranty_claim_resolution_notification_event() is
-  'Cube R Resolution event -> Cube L durable Inbox projector. Handles assignment plus PD-079 assigned-task cancellation without direct notification writes from mutation RPCs.';
+  'Cube R Resolution event -> Cube L durable Inbox projector. Preserves assignment/reassignment materialization and adds PD-079 assigned-task cancellation. Remedy correction remains event-only; mutation RPCs never write notifications directly.';
 
 create function public.cancel_assigned_claim_resolution_for_customer_withdrawal(
   p_action_request_id uuid,
