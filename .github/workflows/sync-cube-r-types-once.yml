@@ -1,0 +1,43 @@
+name: Sync Cube R Generated Types Once
+
+on:
+  push:
+    branches:
+      - agent/cube-r-claim-resolution-fulfillment
+    paths:
+      - ".github/workflows/sync-cube-r-types-once.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  sync-types:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/cube-r-claim-resolution-fulfillment
+          fetch-depth: 0
+
+      - name: Download exact qualified generated-types artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/delightfactory/protection-giants-platform/actions/artifacts/9640316737/zip > /tmp/cube-r-types.zip
+          rm -rf /tmp/cube-r-types
+          mkdir -p /tmp/cube-r-types
+          unzip -q /tmp/cube-r-types.zip -d /tmp/cube-r-types
+          echo "866216f7da8bc970df12035eb3a0dee20e3d8ceee91880c138125a5c9186fdcf  /tmp/cube-r-types/generated.database.types.ts" | sha256sum -c -
+
+      - name: Commit exact generated types and self-delete
+        run: |
+          cp /tmp/cube-r-types/generated.database.types.ts lib/supabase/database.types.ts
+          git rm .github/workflows/sync-cube-r-types-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/supabase/database.types.ts
+          git diff --cached --exit-code && exit 1 || true
+          git commit -m "chore(cube-r): sync generated database types"
+          git push origin HEAD:agent/cube-r-claim-resolution-fulfillment
