@@ -1890,6 +1890,51 @@ export type Database = {
           },
         ]
       }
+      warranty_claim_resolution_evidence: {
+        Row: {
+          created_at: string
+          id: string
+          mime_type: string
+          resolution_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by_profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mime_type: string
+          resolution_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by_profile_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime_type?: string
+          resolution_id?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_by_profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claim_resolution_evidence_resolution_id_fkey"
+            columns: ["resolution_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claim_resolutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claim_resolution_evidence_uploaded_by_profile_id_fkey"
+            columns: ["uploaded_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       warranty_claim_resolution_roll_allocations: {
         Row: {
           consumed_at: string | null
@@ -2363,6 +2408,16 @@ export type Database = {
           p256dh: string
           title: string
         }[]
+      }
+      complete_warranty_claim_resolution: {
+        Args: {
+          p_action_request_id: string
+          p_completion_note: string
+          p_evidence_paths: string[]
+          p_replacement_roll_serial?: string
+          p_resolution_id: string
+        }
+        Returns: string
       }
       correct_warranty_details: {
         Args: {
