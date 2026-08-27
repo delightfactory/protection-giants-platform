@@ -1,7 +1,7 @@
 -- Cube R — normal Center completion hardening.
 -- Keep the already-published increment-9 migration immutable while correcting its
--- Cube J row-lock column reference and extending the Q Claim structural guard only
--- for the exact R terminal projection: approved/open -> approved/closed.
+-- Cube J row-lock column reference and extending the latest Cube Q Claim structural
+-- guard only for the exact R terminal projection: approved/open -> approved/closed.
 
 -- The increment-9 function intentionally locks the one Cube J opening row before
 -- consulting K quality facts. Cube J is keyed by roll_id (there is no synthetic id).
@@ -75,13 +75,17 @@ begin
     and new.customer_decision_message is not distinct from old.customer_decision_message
     and new.decided_at is not distinct from old.decided_at;
 
+  -- Preserve the final Cube Q / PD-078 transition matrix exactly, then add only
+  -- the R completion shape above. In particular cancelled -> awaiting_inspection
+  -- must remain available when the same requested formal inspection is resumed.
   if not (
     v_r_completion_shape
     or (old.status = 'submitted' and new.status = 'under_review')
     or (old.status = 'under_review' and new.status in ('awaiting_inspection', 'approved', 'rejected', 'cancelled'))
     or (old.status = 'awaiting_inspection' and new.status in ('under_review', 'cancelled'))
-    or (old.status = 'approved' and old.closed_at is null and new.status = 'cancelled')
-    or (old.status in ('rejected', 'cancelled') and new.status = 'under_review')
+    or (old.status = 'approved' and new.status = 'cancelled')
+    or (old.status = 'rejected' and new.status = 'under_review')
+    or (old.status = 'cancelled' and new.status in ('under_review', 'awaiting_inspection'))
   ) then
     raise exception using errcode = '42501', message = 'PG_CLAIM_INVALID_TRANSITION';
   end if;
@@ -98,4 +102,4 @@ revoke all on function private.guard_warranty_claim_mutation()
   from public, anon, authenticated, service_role;
 
 comment on function private.guard_warranty_claim_mutation() is
-  'Q Claim lifecycle guard extended by Cube R only for approved/open -> approved/closed fulfillment completion. Adjudication fields stay immutable and a closed approved Claim is terminal.';
+  'Final Cube Q/PD-078 Claim lifecycle guard extended by Cube R only for approved/open -> approved/closed fulfillment completion. Q correction transitions remain unchanged; adjudication fields stay immutable and a closed approved Claim is terminal.';
