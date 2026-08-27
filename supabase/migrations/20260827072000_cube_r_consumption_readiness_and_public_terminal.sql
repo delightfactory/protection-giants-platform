@@ -114,16 +114,17 @@ begin
     raise exception using errcode = '23514', message = 'PG_CLAIM_CONSUMPTION_WARRANTY_CONFLICT';
   end if;
 
-  select
-    count(*)::integer,
-    max(opening.opened_by_center_party_id),
-    max(opening.opened_at)
-  into
-    v_opening_count,
-    v_opened_by_center_party_id,
-    v_opened_at
+  select count(*)::integer, max(opening.opened_at)
+    into v_opening_count, v_opened_at
   from public.roll_openings opening
   where opening.roll_id = p_roll_id;
+
+  if v_opening_count = 1 then
+    select opening.opened_by_center_party_id
+      into v_opened_by_center_party_id
+    from public.roll_openings opening
+    where opening.roll_id = p_roll_id;
+  end if;
 
   if v_opening_count <> 1
     or v_opened_by_center_party_id is distinct from v_performing_center_party_id
