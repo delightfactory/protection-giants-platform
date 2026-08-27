@@ -120,7 +120,7 @@ const warrantyId = querySql(`
 `);
 assert(warrantyId, "PD-079 requires an issued Warranty with no current open Claim.");
 const warrantyBefore = querySql(`
-  select concat_ws('|', record_state, coverage_starts_at, coverage_expires_at,
+  select concat_ws('|', record_state, activated_at, coverage_expires_at,
     customer_phone, vehicle_make, vehicle_model, updated_at)
   from public.warranties where id = ${sqlUuid(warrantyId)};
 `);
@@ -193,7 +193,7 @@ const projection = querySql(`
 assert(projection === `cancelled|${adminProfileId}|${reason}|${customerMessage}|t|t|approved|t|t|t`,
   `PD-079 terminal projection drift: ${projection}`);
 assert(querySql(`
-  select concat_ws('|', record_state, coverage_starts_at, coverage_expires_at,
+  select concat_ws('|', record_state, activated_at, coverage_expires_at,
     customer_phone, vehicle_make, vehicle_model, updated_at)
   from public.warranties where id = ${sqlUuid(warrantyId)};
 `) === warrantyBefore, "PD-079 must not mutate the original Warranty projection.");
