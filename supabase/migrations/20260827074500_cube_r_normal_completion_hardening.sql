@@ -17,7 +17,7 @@ begin
   into v_definition;
 
   if v_definition is null
-    or pg_catalog.position('perform opening.id' in v_definition) = 0
+    or pg_catalog.strpos(v_definition, 'perform opening.id') = 0
   then
     raise exception using errcode = '23514', message = 'PG_CLAIM_COMPLETION_REPAIR_SOURCE_MISMATCH';
   end if;
@@ -57,6 +57,12 @@ begin
     raise exception using errcode = '42501', message = 'PG_CLAIM_IDENTITY_IMMUTABLE';
   end if;
 
+  -- A fulfilled approved Claim is R-terminal. Check this before the transition
+  -- allowlist so future accidental writes fail with the precise terminal code.
+  if old.status = 'approved' and old.closed_at is not null then
+    raise exception using errcode = '42501', message = 'PG_CLAIM_R_TERMINAL';
+  end if;
+
   -- R completion keeps adjudication immutable. Only closed_at/updated_at may move,
   -- and only once from an approved open Claim to the same approved terminal Claim.
   v_r_completion_shape :=
@@ -78,11 +84,6 @@ begin
     or (old.status in ('rejected', 'cancelled') and new.status = 'under_review')
   ) then
     raise exception using errcode = '42501', message = 'PG_CLAIM_INVALID_TRANSITION';
-  end if;
-
-  -- R-terminal approved Claims cannot be reopened or rewritten by Q transitions.
-  if old.status = 'approved' and old.closed_at is not null then
-    raise exception using errcode = '42501', message = 'PG_CLAIM_R_TERMINAL';
   end if;
 
   if new.updated_at < old.updated_at then
