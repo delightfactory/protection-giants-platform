@@ -2705,6 +2705,38 @@ export type Database = {
           warranty_coverage: string
         }[]
       }
+      get_center_warranty_claim_resolution_task: {
+        Args: { p_resolution_id: string }
+        Returns: {
+          affected_area: string
+          assigned_at: string
+          care_instructions: string
+          claim_category: string
+          claim_number: string
+          description: string
+          inspection_status: string
+          inspection_suspected_cause: string
+          inspection_technical_observation: string
+          product_code: string
+          product_name: string
+          product_version: string
+          remedy_kind: string
+          replacement_quality_state: string
+          replacement_roll_opened_at: string
+          replacement_roll_product_code: string
+          replacement_roll_product_name: string
+          replacement_roll_product_version: string
+          replacement_roll_serial: string
+          resolution_id: string
+          vehicle_color: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_vin: string
+          vehicle_year: number
+          warranty_coverage: string
+        }[]
+      }
       get_customer_warranty_claim_by_request: {
         Args: { p_request_id: string; p_warranty_id: string }
         Returns: {
@@ -2934,6 +2966,21 @@ export type Database = {
           vehicle_model: string
         }[]
       }
+      list_center_assigned_warranty_claim_resolution_tasks: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          affected_area: string
+          assigned_at: string
+          claim_number: string
+          product_name: string
+          product_version: string
+          remedy_kind: string
+          resolution_id: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_year: number
+        }[]
+      }
       list_center_pending_claim_inspections: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
@@ -2947,6 +2994,16 @@ export type Database = {
           vehicle_make: string
           vehicle_model: string
           vehicle_year: number
+        }[]
+      }
+      list_center_warranty_claim_resolution_evidence: {
+        Args: { p_resolution_id: string }
+        Returns: {
+          created_at: string
+          evidence_scope: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
         }[]
       }
       list_internal_warranties: {
