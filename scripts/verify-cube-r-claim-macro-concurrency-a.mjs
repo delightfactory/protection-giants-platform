@@ -35,11 +35,45 @@ import { admin, assert, centerA, evidence, oneWinner, partyA, partyB, resolution
 
 // Same Roll reservation by two Resolutions.
 {
-  const a = await resolution("DUAL-RESERVE-A", "replacement_roll_reinstall"); const b = await resolution("DUAL-RESERVE-B", "replacement_roll_reinstall"); const r = await roll("DUAL-RESERVE-MAT");
+  const a = await resolution("DUAL-RESERVE-A", "replacement_roll_reinstall");
+  const b = await resolution("DUAL-RESERVE-B", "replacement_roll_reinstall");
+  const r = await roll("DUAL-RESERVE-MAT");
+  const leftRequestId = randomUUID();
+  const rightRequestId = randomUUID();
+  assert(leftRequestId !== rightRequestId, "Dual-reserve diagnostic request ids unexpectedly match.");
+
   const rs = await Promise.all([
-    userRpc("reserve_claim_resolution_roll", { p_action_request_id: randomUUID(), p_resolution_id: a.resolutionId, p_roll_id: r.id }, admin),
-    userRpc("reserve_claim_resolution_roll", { p_action_request_id: randomUUID(), p_resolution_id: b.resolutionId, p_roll_id: r.id }, admin),
+    userRpc("reserve_claim_resolution_roll", { p_action_request_id: leftRequestId, p_resolution_id: a.resolutionId, p_roll_id: r.id }, admin),
+    userRpc("reserve_claim_resolution_roll", { p_action_request_id: rightRequestId, p_resolution_id: b.resolutionId, p_roll_id: r.id }, admin),
   ]);
+
+  if (rs.filter((result) => result.response.ok).length !== 1) {
+    const allocations = sql(`
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id', allocation.id,
+        'resolution_id', allocation.resolution_id,
+        'roll_id', allocation.roll_id,
+        'status', allocation.status,
+        'reserved_by_profile_id', allocation.reserved_by_profile_id,
+        'reserved_at', allocation.reserved_at
+      ) order by allocation.created_at, allocation.id), '[]'::jsonb)::text
+      from public.warranty_claim_resolution_roll_allocations allocation
+      where allocation.roll_id=${uq(r.id)};
+    `);
+    const events = sql(`
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'action_request_id', event.action_request_id,
+        'resolution_id', event.resolution_id,
+        'event_kind', event.event_kind,
+        'allocation_id', event.event_data ->> 'allocation_id',
+        'roll_id', event.event_data ->> 'roll_id'
+      ) order by event.created_at, event.id), '[]'::jsonb)::text
+      from public.warranty_claim_resolution_events event
+      where event.action_request_id in (${uq(leftRequestId)}, ${uq(rightRequestId)});
+    `);
+    throw new Error(`Same Roll dual reservation diagnostic: leftRequest=${leftRequestId} leftResolution=${a.resolutionId} leftResponse=${rs[0].response.status}:${JSON.stringify(rs[0].body)} rightRequest=${rightRequestId} rightResolution=${b.resolutionId} rightResponse=${rs[1].response.status}:${JSON.stringify(rs[1].body)} allocations=${allocations} events=${events}`);
+  }
+
   oneWinner(rs, "Same Roll reservation by two Resolutions");
   assert(sql(`select count(*) from public.warranty_claim_resolution_roll_allocations where roll_id=${uq(r.id)} and status in ('reserved','consumed');`) === "1", "Dual reserve left multiple owners.");
 }
