@@ -1,8 +1,9 @@
 -- Cube R — Claim Resolution completion -> Cube L Inbox integration
--- Extend the one existing Resolution-event projector in place. Assignment and
--- reassignment semantics remain unchanged; completed Resolution events add one
--- informational Company/Admin Inbox projection only. No second trigger, Push
--- transport, customer notification, or workflow mutation is introduced here.
+-- Extend the one existing Resolution-event projector in place. All previously
+-- qualified assignment/reassignment/PD-079 notification semantics remain intact;
+-- completed Resolution events add one informational Company/Admin Inbox projection
+-- only. No second trigger, Push transport, customer notification, or workflow
+-- mutation is introduced here.
 
 create or replace function private.materialize_warranty_claim_resolution_notification_event()
 returns trigger
@@ -16,6 +17,7 @@ declare
   v_company_party_id uuid;
   v_target_party_id uuid;
   v_remedy_kind text;
+  v_customer_message text;
   v_source_event_key text := 'warranty_claim_resolution_events:' || new.id::text;
   v_event_type text;
   v_title text;
@@ -110,14 +112,20 @@ begin
     return new;
   end if;
 
-  -- Preserve the previously qualified assigned/reassigned projection exactly.
-  if new.event_kind not in ('resolution_assigned', 'resolution_reassigned') then
+  -- Preserve the cumulative projector qualified before this increment, including
+  -- PD-079 assigned-task cancellation. Remedy/material events remain audit-only.
+  if new.event_kind not in (
+    'resolution_assigned',
+    'resolution_reassigned',
+    'resolution_cancelled_customer_withdrawal'
+  ) then
     return new;
   end if;
 
   begin
     v_target_party_id := nullif(new.event_data ->> 'performing_center_party_id', '')::uuid;
     v_remedy_kind := nullif(new.event_data ->> 'remedy_kind', '');
+    v_customer_message := nullif(new.event_data ->> 'customer_message', '');
   exception when invalid_text_representation then
     raise exception using errcode = '23514', message = 'PG_NOTIFICATION_CLAIM_RESOLUTION_EVENT_INVALID';
   end;
@@ -134,7 +142,6 @@ begin
   where resolution.id = new.resolution_id;
 
   if not found
-    or v_resolution.status <> 'assigned'
     or v_resolution.performing_center_party_id <> v_target_party_id
     or v_resolution.remedy_kind <> v_remedy_kind
   then
@@ -150,24 +157,71 @@ begin
     raise exception using errcode = '23514', message = 'PG_NOTIFICATION_CLAIM_MISSING';
   end if;
 
-  if new.event_kind = 'resolution_reassigned' then
-    v_event_type := 'claim_resolution.reassigned';
-    v_title := 'تم إعادة إسناد تنفيذ مطالبة ضمان إلى مركزك';
-  else
-    v_event_type := 'claim_resolution.assigned';
-    v_title := 'تم إسناد تنفيذ مطالبة ضمان إلى مركزك';
+  if new.event_kind in ('resolution_assigned', 'resolution_reassigned') then
+    if v_resolution.status <> 'assigned' then
+      raise exception using errcode = '23514', message = 'PG_NOTIFICATION_CLAIM_RESOLUTION_STATE_INVALID';
+    end if;
+
+    if new.event_kind = 'resolution_reassigned' then
+      v_event_type := 'claim_resolution.reassigned';
+      v_title := 'تم إعادة إسناد تنفيذ مطالبة ضمان إلى مركزك';
+    else
+      v_event_type := 'claim_resolution.assigned';
+      v_title := 'تم إسناد تنفيذ مطالبة ضمان إلى مركزك';
+    end if;
+
+    v_body := btrim(left(
+      case
+        when v_remedy_kind = 'replacement_roll_reinstall' then
+          'تم إسناد تنفيذ استبدال وإعادة تركيب للمطالبة ' || v_claim.claim_number || ' إلى مركزك.'
+        else
+          'تم إسناد تنفيذ إعادة تركيب للمطالبة ' || v_claim.claim_number || ' إلى مركزك.'
+      end,
+      300
+    ));
+
+    insert into public.notifications (
+      recipient_profile_id,
+      event_type,
+      source_domain,
+      source_event_key,
+      attention_level,
+      title,
+      body,
+      action_path,
+      push_eligible,
+      created_at
+    )
+    select
+      recipients.profile_id,
+      v_event_type,
+      'warranty_claim_resolution',
+      v_source_event_key,
+      'action_required',
+      v_title,
+      v_body,
+      null,
+      true,
+      new.created_at
+    from private.notification_party_profile_ids(v_target_party_id) recipients
+    on conflict (recipient_profile_id, source_domain, source_event_key, event_type)
+    do nothing;
+
+    return new;
   end if;
 
-  v_body := btrim(left(
-    case
-      when v_remedy_kind = 'replacement_roll_reinstall' then
-        'تم إسناد تنفيذ استبدال وإعادة تركيب للمطالبة ' || v_claim.claim_number || ' إلى مركزك.'
-      else
-        'تم إسناد تنفيذ إعادة تركيب للمطالبة ' || v_claim.claim_number || ' إلى مركزك.'
-    end,
-    300
-  ));
+  if v_resolution.status <> 'cancelled'
+    or v_resolution.customer_cancellation_message is null
+    or v_customer_message is null
+    or v_resolution.customer_cancellation_message <> v_customer_message
+    or v_claim.status <> 'approved'
+    or v_claim.closed_at is null
+  then
+    raise exception using errcode = '23514', message = 'PG_NOTIFICATION_CLAIM_RESOLUTION_STATE_INVALID';
+  end if;
 
+  -- PD-079 removes an already-assigned physical task. Keep the previously
+  -- qualified Center notification exact and do not expose the Admin's reason.
   insert into public.notifications (
     recipient_profile_id,
     event_type,
@@ -182,12 +236,15 @@ begin
   )
   select
     recipients.profile_id,
-    v_event_type,
+    'claim_resolution.cancelled_customer_withdrawal',
     'warranty_claim_resolution',
     v_source_event_key,
-    'action_required',
-    v_title,
-    v_body,
+    'info',
+    'تم إغلاق تنفيذ مطالبة الضمان',
+    btrim(left(
+      'لم يعد تنفيذ المطالبة ' || v_claim.claim_number || ' مطلوبًا من مركزك بعد إغلاق المعالجة بناءً على رغبة العميل.',
+      300
+    )),
     null,
     true,
     new.created_at
@@ -203,4 +260,4 @@ revoke all on function private.materialize_warranty_claim_resolution_notificatio
   from public, anon, authenticated, service_role;
 
 comment on function private.materialize_warranty_claim_resolution_notification_event() is
-  'Cube R Resolution event -> Cube L durable Inbox projector. Assignment/reassignment semantics remain exact-Center actionable notifications; normal and Admin-recovery completion add Inbox-only Company visibility for other active Admins, with no Push/customer projection or workflow authority.';
+  'Cube R Resolution event -> Cube L durable Inbox projector. Preserves assignment/reassignment and PD-079 Center notification semantics; normal/Admin-recovery completion adds Inbox-only Company visibility for other active Admins, with no completion Push/customer projection or workflow authority.';
