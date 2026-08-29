@@ -49,8 +49,18 @@ assert(source.includes("'info'") && source.includes("false,"),
   "Completion Inbox materialization must remain informational and Push-ineligible.");
 assert(source.includes("'/operations/claims/' || v_claim.id::text"),
   "Completion notification must route to the existing exact Claim detail page, not a dead Resolution UI path.");
-assert(source.includes("if new.event_kind not in ('resolution_assigned', 'resolution_reassigned')"),
-  "Unrelated Resolution events must remain notification-silent.");
+
+assert(source.includes("'resolution_cancelled_customer_withdrawal'"),
+  "Completion increment must preserve the previously qualified PD-079 projector branch.");
+assert(source.includes("v_customer_message := nullif(new.event_data ->> 'customer_message', '')"),
+  "PD-079 projector must preserve exact customer-message event validation.");
+assert(source.includes("v_resolution.status <> 'cancelled'")
+  && source.includes("v_resolution.customer_cancellation_message <> v_customer_message"),
+  "PD-079 projector must preserve terminal Resolution/customer-message validation.");
+assert(source.includes("'claim_resolution.cancelled_customer_withdrawal'"),
+  "PD-079 Center notification event type must remain present.");
+assert(source.includes("'تم إغلاق تنفيذ مطالبة الضمان'"),
+  "PD-079 Center notification title must remain present.");
 assert(source.includes("'claim_resolution.assigned'")
   && source.includes("'claim_resolution.reassigned'")
   && source.includes("'action_required'")
@@ -209,11 +219,12 @@ assert(intValue(`
   where event.event_kind not in (
       'resolution_assigned',
       'resolution_reassigned',
+      'resolution_cancelled_customer_withdrawal',
       'resolution_completed',
       'resolution_completed_admin_recovery'
     )
     and notification.source_domain = 'warranty_claim_resolution';
 `, "unrelated Resolution-event notification count") === 0,
-"Roll allocation/consumption/remedy/cancellation events must remain notification-silent in this projector.");
+"Material allocation/consumption/remedy and other unrelated Resolution events must remain notification-silent in this projector.");
 
-console.log("Cube R completion notification materialization PASS: one projector/trigger, normal+recovery Company Inbox coverage, actor exclusion, Claim-detail routing, no Push or unrelated-recipient/event leakage.");
+console.log("Cube R completion notification materialization PASS: one cumulative projector/trigger, preserved assignment/reassignment/PD-079 semantics, normal+recovery Company Inbox coverage, actor exclusion, Claim-detail routing, no completion Push or unrelated-recipient/event leakage.");
