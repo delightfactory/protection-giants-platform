@@ -260,7 +260,7 @@ export async function completeAssignedWarrantyClaimResolution(
     slots.add(slot);
   }
 
-  const replacementRollSerial = input.replacementRollSerial?.trim() || null;
+  const replacementRollSerial = input.replacementRollSerial?.trim() || undefined;
   const args = {
     p_action_request_id: input.requestId,
     p_resolution_id: input.resolutionId,
