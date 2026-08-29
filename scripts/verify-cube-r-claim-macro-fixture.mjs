@@ -37,7 +37,13 @@ export function oneWinner(results, label) {
   for (const r of results) assert(r.body?.code !== "40P01" && r.body?.message !== "deadlock detected", `${label}: 40P01 deadlock`);
   const ok = results.filter((r) => r.response.ok); assert(ok.length === 1, `${label}: expected one winner ${JSON.stringify(results.map((r) => [r.response.status, r.body]))}`); return ok[0];
 }
-export function dbLogs() { return execFileSync("sh", ["-lc", `docker logs ${db()} 2>&1`], { encoding: "utf8" }); }
+export function dbLogs() {
+  return execFileSync(
+    "sh",
+    ["-lc", `docker logs ${db()} 2>&1 | grep -E 'deadlock detected|SQLSTATE 40P01' || true`],
+    { encoding: "utf8", maxBuffer: 1024 * 1024 },
+  ).trim();
+}
 
 export const admin = await signIn("cube-j-admin@example.test");
 export const centerA = await signIn("cube-j-center-a@example.test");
