@@ -1,0 +1,146 @@
+.card {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.heading h2 {
+  margin: 0.2rem 0 0;
+  font-size: clamp(1.05rem, 4vw, 1.28rem);
+}
+
+.eyebrow,
+.counter {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.note,
+.uploadBlock p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.form,
+.form label {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.form > label > span,
+.uploadBlock strong {
+  color: inherit;
+  font-weight: 800;
+}
+
+.form textarea {
+  min-width: 0;
+  resize: vertical;
+  line-height: 1.65;
+}
+
+.form small {
+  color: var(--text-secondary);
+}
+
+.uploadBlock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  padding: 0.9rem;
+  border: 1px dashed var(--line-subtle);
+  border-radius: var(--radius-md);
+}
+
+.fileButton {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.fileButton input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.uploadList {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.uploadItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+}
+
+.uploadItem > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.uploadItem strong,
+.uploadItem span {
+  overflow-wrap: anywhere;
+}
+
+.uploadItem span {
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.acknowledgement {
+  grid-template-columns: auto 1fr !important;
+  align-items: start;
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.acknowledgement input {
+  margin-top: 0.2rem;
+}
+
+.acknowledgement span {
+  line-height: 1.65;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+@media (min-width: 720px) {
+  .card {
+    padding: 1.2rem;
+  }
+}
