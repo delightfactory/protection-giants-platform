@@ -9,8 +9,9 @@ name: Cube R Claim Fulfillment Quality
 # bounded PD-079 post-assignment customer-withdrawal cancellation, the narrow
 # Admin completion-recovery exception after assigned-Center capability loss,
 # bounded Admin Resolution queue/detail plus replacement-Roll candidate reads,
-# and bounded assigned-Center fulfillment task queue/detail/evidence reads with
-# immediate reassignment revocation and no customer PII/Admin-allocation internals.
+# bounded assigned-Center fulfillment task queue/detail/evidence reads with
+# immediate reassignment revocation and no customer PII/Admin-allocation internals,
+# plus the server-only assigned-Center completion evidence/upload/mutation boundary.
 # Canonical generated DB types, including completion/cancellation/recovery/read RPC
 # surfaces, are part of the same-HEAD qualification contract.
 on:
@@ -174,6 +175,9 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-r-claim-center-resolution-reads.mjs
+
+      - name: Verify Cube R Center completion server actions
+        run: node scripts/verify-cube-r-claim-center-completion-actions.mjs
 
       - name: Generate public database types
         run: |
