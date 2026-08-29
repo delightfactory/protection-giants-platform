@@ -61,7 +61,9 @@ for (const actionName of [
 
 assert(!actions.includes("createSupabaseServerClient") && !actions.includes("createSupabaseAdminClient"),
   "Client action component must not instantiate Supabase clients.");
-assert(!/\.from\(|\.rpc\(|\.insert\(|\.update\(|\.delete\(/.test(actions),
+assert(!actions.includes("@supabase/supabase-js") && !actions.includes("@/lib/supabase/"),
+  "Client action component must not import a Supabase client surface.");
+assert(!/\.(?:from|rpc)\(\s*["']|\.insert\(|\.update\(|\.delete\(/.test(actions),
   "Client action component must not bypass server actions with direct data operations.");
 assert(!actions.includes("SUPABASE_SERVICE_ROLE_KEY") && !actions.includes("storage.from("),
   "Client UI must not gain service-role or direct Storage authority.");
