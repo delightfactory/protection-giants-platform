@@ -11,7 +11,8 @@ name: Cube R Claim Fulfillment Quality
 # bounded Admin Resolution queue/detail plus replacement-Roll candidate reads,
 # bounded assigned-Center fulfillment task queue/detail/evidence reads with
 # immediate reassignment revocation and no customer PII/Admin-allocation internals,
-# plus the server-only assigned-Center completion evidence/upload/mutation boundary.
+# the server-only assigned-Center completion evidence/upload/mutation boundary,
+# and the server-only Admin assignment/correction/reserve/release mutation boundary.
 # Canonical generated DB types, including completion/cancellation/recovery/read RPC
 # surfaces, are part of the same-HEAD qualification contract.
 on:
@@ -169,6 +170,9 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-r-claim-admin-resolution-reads.mjs
+
+      - name: Verify Cube R Admin mutation server actions
+        run: node scripts/verify-cube-r-claim-admin-mutation-actions.mjs
 
       - name: Verify Cube R Center assigned-task operational reads
         run: |
