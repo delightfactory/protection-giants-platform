@@ -510,7 +510,7 @@ assert(detailAfterOpening.response.ok
   && typeof detailAfterOpening.body[0].replacement_roll_opened_at === "string",
   "Center task detail must reflect the exact replacement Roll Opening after Cube J succeeds.");
 
-runSql(`update public.installation_centers set status = 'inactive' where id = ${sqlUuid(centerBId)};`);
+runSql(`update public.installation_centers set status = 'suspended' where id = ${sqlUuid(centerBId)};`);
 await expectRpcError("list_center_assigned_warranty_claim_resolution_tasks", {
   p_limit: 10, p_offset: 0,
 }, centerBToken, "PG_WARRANTY_CENTER_INACTIVE");
@@ -522,4 +522,4 @@ const anonAttempt = await rpc("get_center_warranty_claim_resolution_task", {
 assert(!anonAttempt.response.ok,
   "Anonymous role must not execute the Center assigned-task detail RPC.");
 
-console.log("Cube R Center assigned-task reads PASS: exact queue/detail isolation, reassignment revocation, Claim/inspection evidence metadata, reserved Roll projection, and inactive/anonymous denial.");
+console.log("Cube R Center assigned-task reads PASS: exact queue/detail isolation, reassignment revocation, Claim/inspection evidence metadata, reserved Roll projection, and suspended/anonymous denial.");
