@@ -13,7 +13,8 @@ name: Cube R Claim Fulfillment Quality
 # immediate reassignment revocation and no customer PII/Admin-allocation internals,
 # the server-only assigned-Center completion evidence/upload/mutation boundary,
 # the server-only Admin assignment/correction/reserve/release mutation boundary,
-# and the server-only PD-079 customer-withdrawal cancellation boundary.
+# the server-only PD-079 customer-withdrawal cancellation boundary,
+# and recovery-only Admin evidence staging plus idempotent recovery completion boundary.
 # Canonical generated DB types, including completion/cancellation/recovery/read RPC
 # surfaces, are part of the same-HEAD qualification contract.
 on:
@@ -168,6 +169,9 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           node scripts/verify-cube-r-claim-admin-recovery-completion.mjs
+
+      - name: Verify Cube R Admin recovery server actions
+        run: node scripts/verify-cube-r-claim-admin-recovery-actions.mjs
 
       - name: Verify Cube R Admin Resolution operational reads
         run: |
