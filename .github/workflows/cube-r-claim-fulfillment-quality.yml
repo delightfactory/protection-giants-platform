@@ -15,7 +15,8 @@ name: Cube R Claim Fulfillment Quality
 # the server-only Admin assignment/correction/reserve/release mutation boundary,
 # the server-only PD-079 customer-withdrawal cancellation boundary,
 # recovery-only Admin evidence staging plus idempotent recovery completion boundary,
-# and Inbox-only Company/Admin materialization for normal/recovery completion events.
+# Inbox-only Company/Admin materialization for normal/recovery completion events,
+# and the Admin Resolution queue/detail/action UI wired only to qualified boundaries.
 # Canonical generated DB types, including completion/cancellation/recovery/read RPC
 # surfaces, are part of the same-HEAD qualification contract.
 on:
@@ -27,6 +28,7 @@ on:
       - "scripts/verify-cube-r-claim-*.mjs"
       - "lib/supabase/database.types.ts"
       - "app/operations/claim-resolutions/**"
+      - "app/operations/page.tsx"
       - "components/claims/**"
       - ".github/workflows/cube-r-claim-fulfillment-quality.yml"
       - "docs/cube-r-claim-resolution-replacement-reinstall-spec.md"
@@ -39,6 +41,7 @@ on:
       - "scripts/verify-cube-r-claim-*.mjs"
       - "lib/supabase/database.types.ts"
       - "app/operations/claim-resolutions/**"
+      - "app/operations/page.tsx"
       - "components/claims/**"
       - ".github/workflows/cube-r-claim-fulfillment-quality.yml"
       - "docs/cube-r-claim-resolution-replacement-reinstall-spec.md"
@@ -185,6 +188,9 @@ jobs:
 
       - name: Verify Cube R Admin mutation server actions
         run: node scripts/verify-cube-r-claim-admin-mutation-actions.mjs
+
+      - name: Verify Cube R Admin Resolution UI contract
+        run: node scripts/verify-cube-r-claim-admin-resolution-ui.mjs
 
       - name: Verify Cube R Center assigned-task operational reads
         run: |

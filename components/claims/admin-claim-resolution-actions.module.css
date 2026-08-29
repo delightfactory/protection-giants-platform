@@ -1,0 +1,142 @@
+.stack {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.card {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
+}
+
+.heading,
+.actions,
+.evidenceTop,
+.evidenceItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .7rem;
+  flex-wrap: wrap;
+}
+
+.heading h2,
+.heading h3,
+.heading p,
+.note,
+.form p {
+  margin: 0;
+}
+
+.heading h2 {
+  margin-top: .2rem;
+  font-size: 1.1rem;
+}
+
+.heading h3 {
+  font-size: 1rem;
+}
+
+.eyebrow,
+.note,
+.field,
+.form p,
+.evidenceMeta {
+  color: var(--text-secondary);
+}
+
+.eyebrow {
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.note,
+.form p {
+  line-height: 1.75;
+}
+
+.grid,
+.form,
+.field,
+.evidenceList {
+  display: grid;
+  gap: .75rem;
+  min-width: 0;
+}
+
+.grid {
+  grid-template-columns: 1fr;
+}
+
+.form {
+  padding: 1rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.field {
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.field select,
+.field input,
+.field textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.field textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.actions {
+  justify-content: flex-start;
+}
+
+.actions > * {
+  min-height: 44px;
+}
+
+.evidenceList {
+  gap: .55rem;
+}
+
+.evidenceItem {
+  align-items: center;
+  padding: .7rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.evidenceMeta {
+  display: grid;
+  gap: .15rem;
+  min-width: 0;
+  font-size: .78rem;
+}
+
+.evidenceMeta strong {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 860px) {
+  .card {
+    padding: 1.25rem;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

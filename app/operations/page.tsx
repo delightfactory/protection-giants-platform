@@ -32,6 +32,13 @@ const claimModule = {
   icon: "production" as const,
 };
 
+const resolutionModule = {
+  href: "/operations/claim-resolutions",
+  title: "تنفيذ مطالبات الضمان",
+  description: "إسناد ومعالجة المطالبات المقبولة وإدارة مادة الاستبدال والإغلاق التشغيلي المؤهل.",
+  icon: "production" as const,
+};
+
 const inspectionModule = {
   href: "/operations/claim-inspections",
   title: "فحوصات مطالبات الضمان",
@@ -50,6 +57,7 @@ const adminModules = [
   issueModule,
   warrantyModule,
   claimModule,
+  resolutionModule,
   transferModule,
 ];
 

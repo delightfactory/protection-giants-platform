@@ -1,0 +1,116 @@
+.stack {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.card {
+  display: grid;
+  gap: .9rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-panel);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .7rem;
+  flex-wrap: wrap;
+}
+
+.header h2,
+.header p,
+.note,
+.warning {
+  margin: 0;
+}
+
+.header h2 {
+  font-size: 1.08rem;
+}
+
+.eyebrow,
+.note,
+.warning {
+  color: var(--text-secondary);
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: .2rem;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.note,
+.warning {
+  line-height: 1.75;
+}
+
+.warning {
+  padding: .75rem;
+  border: 1px solid var(--warning-border, var(--line));
+  border-radius: var(--radius-md);
+  background: var(--warning-soft, var(--surface-2));
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .7rem;
+  margin: 0;
+}
+
+.grid > div {
+  min-width: 0;
+  padding: .75rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.grid dt {
+  margin-bottom: .25rem;
+  color: var(--text-secondary);
+  font-size: .76rem;
+  font-weight: 700;
+}
+
+.grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.prose {
+  margin: 0;
+  padding: .8rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  line-height: 1.85;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.actionsLink {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .18em;
+}
+
+@media (min-width: 680px) {
+  .card {
+    padding: 1.25rem;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
