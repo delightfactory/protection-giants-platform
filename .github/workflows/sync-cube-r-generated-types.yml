@@ -1,0 +1,47 @@
+name: Sync Cube R Generated Types
+
+on:
+  push:
+    branches:
+      - agent/cube-r-claim-resolution-fulfillment
+    paths:
+      - ".github/workflows/sync-cube-r-generated-types.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  sync-types:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/cube-r-claim-resolution-fulfillment
+
+      - name: Download canonical generated types from qualified behavior run
+        uses: actions/download-artifact@v4
+        with:
+          name: cube-r-generated-database-types-eb7c696b21b7edb569ce07b14f2fdc7381f7b013
+          path: /tmp/cube-r-types
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 33245564524
+
+      - name: Validate, sync exact types, and remove temporary workflow
+        run: |
+          set -euo pipefail
+          generated=/tmp/cube-r-types/generated.database.types.ts
+          test -f "$generated"
+          grep -q "get_center_warranty_claim_resolution_task" "$generated"
+          grep -q "list_center_assigned_warranty_claim_resolution_tasks" "$generated"
+          grep -q "list_center_warranty_claim_resolution_evidence" "$generated"
+          cp "$generated" lib/supabase/database.types.ts
+          rm .github/workflows/sync-cube-r-generated-types.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/supabase/database.types.ts .github/workflows/sync-cube-r-generated-types.yml
+          git diff --cached --exit-code && { echo "Expected generated type changes were absent."; exit 1; } || true
+          git commit -m "chore(db): sync cube r center read types"
+          git push origin HEAD:agent/cube-r-claim-resolution-fulfillment
