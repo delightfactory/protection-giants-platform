@@ -18,7 +18,9 @@ name: Cube R Claim Fulfillment Quality
 # recovery-only Admin evidence staging plus idempotent recovery completion boundary,
 # Inbox-only Company/Admin materialization for normal/recovery completion events,
 # the Admin Resolution queue/detail/action UI wired only to qualified boundaries,
-# and the Center fulfillment queue/detail/completion UI reusing Cube J/K.
+# the Center fulfillment queue/detail/completion UI reusing Cube J/K,
+# and the permanent Claims Macro P/Q/R concurrency + dead-end contract, including
+# real R terminal/material races and PostgreSQL 40P01 detection.
 # Canonical generated DB types, including completion/cancellation/recovery/read RPC
 # surfaces, are part of the same-HEAD qualification contract.
 on:
@@ -221,6 +223,22 @@ jobs:
 
       - name: Verify Cube R Center Fulfillment UI contract
         run: node scripts/verify-cube-r-claim-center-fulfillment-ui.mjs
+
+      - name: Verify Cube P Claim concurrency under Claims Macro
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-p-claim-races.mjs
+
+      - name: Verify Claims Macro R concurrency and dead-end races
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-r-claim-macro-concurrency-a.mjs
+          node scripts/verify-cube-r-claim-macro-concurrency-b.mjs
+
+      - name: Verify Claims Macro permanent coverage contract
+        run: node scripts/verify-cube-r-claim-macro-coverage.mjs
 
       - name: Generate public database types
         run: |
