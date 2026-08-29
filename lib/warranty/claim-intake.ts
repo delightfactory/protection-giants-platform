@@ -40,6 +40,13 @@ export type WarrantyClaimEvidenceReference = {
   sizeBytes: number;
 };
 
+export const WARRANTY_CLAIM_REMEDIES = [
+  "service_reinstall",
+  "replacement_roll_reinstall",
+] as const;
+
+export type WarrantyClaimRemedyKind = (typeof WARRANTY_CLAIM_REMEDIES)[number];
+
 export type CustomerClaimSummary = {
   claimNumber: string;
   status: string;
@@ -51,6 +58,18 @@ export type CustomerClaimSummary = {
   decidedAt: string | null;
   customerDecisionMessage: string | null;
   closedAt?: string | null;
+  resolutionStatus: string | null;
+  remedyKind: WarrantyClaimRemedyKind | null;
+  performingCenterName: string | null;
+  resolutionCompletedAt: string | null;
+};
+
+export type CustomerWarrantyServiceEntry = {
+  claimNumber: string;
+  remedyKind: WarrantyClaimRemedyKind;
+  performingCenterName: string | null;
+  completedAt: string;
+  customerDecisionMessage: string | null;
 };
 
 export type CustomerWarrantyClaimContext = {
@@ -66,6 +85,7 @@ export type CustomerWarrantyClaimContext = {
   vehicleYear: number | null;
   currentOpenClaim: CustomerClaimSummary | null;
   recentClosedClaims: CustomerClaimSummary[];
+  serviceHistory: CustomerWarrantyServiceEntry[];
 };
 
 export type WarrantyClaimVerificationResult =
@@ -82,6 +102,10 @@ export type WarrantyClaimSubmitResult =
 
 export function isWarrantyClaimCategory(value: string): value is WarrantyClaimCategory {
   return (WARRANTY_CLAIM_CATEGORIES as readonly string[]).includes(value);
+}
+
+export function isWarrantyClaimRemedyKind(value: unknown): value is WarrantyClaimRemedyKind {
+  return typeof value === "string" && (WARRANTY_CLAIM_REMEDIES as readonly string[]).includes(value);
 }
 
 export function isWarrantyClaimEvidenceMime(value: string): value is WarrantyClaimEvidenceMime {

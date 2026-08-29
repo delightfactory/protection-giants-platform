@@ -16,7 +16,9 @@ import {
   WARRANTY_CLAIM_MAX_IMAGES,
   type CustomerClaimSummary,
   type CustomerWarrantyClaimContext,
+  type CustomerWarrantyServiceEntry,
   type WarrantyClaimEvidenceReference,
+  type WarrantyClaimRemedyKind,
 } from "@/lib/warranty/claim-intake";
 import styles from "./page.module.css";
 
@@ -41,6 +43,17 @@ function formatDate(value: string): string {
     timeStyle: "short",
     timeZone: "Africa/Cairo",
   }).format(new Date(value));
+}
+
+function remedyLabel(remedy: WarrantyClaimRemedyKind): string {
+  return remedy === "replacement_roll_reinstall" ? "استبدال وإعادة تركيب" : "إعادة تنفيذ الخدمة";
+}
+
+function customerClaimStatusLabel(claim: CustomerClaimSummary): string {
+  if (claim.status !== "approved") return claimStatusLabel(claim.status);
+  if (claim.resolutionStatus === "completed") return "تم تنفيذ الخدمة";
+  if (claim.resolutionStatus === "assigned") return "جارٍ تنفيذ الخدمة";
+  return "تم قبول المطالبة";
 }
 
 function errorText(code: string): string {
@@ -87,6 +100,11 @@ function errorText(code: string): string {
 }
 
 function ClaimSummaryCard({ claim, historical = false }: { claim: CustomerClaimSummary; historical?: boolean }) {
+  const showPerformingCenter = Boolean(
+    claim.performingCenterName
+    && (claim.resolutionStatus === "assigned" || claim.resolutionStatus === "completed"),
+  );
+
   return (
     <article className={styles.claimCard}>
       <div className={styles.claimCardHeader}>
@@ -94,7 +112,7 @@ function ClaimSummaryCard({ claim, historical = false }: { claim: CustomerClaimS
           <span className={styles.eyebrow}>{historical ? "مطالبة سابقة" : "المطالبة الحالية"}</span>
           <strong dir="ltr">{claim.claimNumber}</strong>
         </div>
-        <span className={styles.statusChip}>{claimStatusLabel(claim.status)}</span>
+        <span className={styles.statusChip}>{customerClaimStatusLabel(claim)}</span>
       </div>
       <dl className={styles.claimFacts}>
         <div><dt>تاريخ الإرسال</dt><dd>{formatDate(claim.submittedAt)}</dd></div>
@@ -102,11 +120,38 @@ function ClaimSummaryCard({ claim, historical = false }: { claim: CustomerClaimS
         <div><dt>المنطقة المتأثرة</dt><dd>{claim.affectedArea}</dd></div>
         <div><dt>الصور المستلمة</dt><dd>{claim.evidenceCount}</dd></div>
         {claim.decidedAt ? <div><dt>آخر قرار</dt><dd>{formatDate(claim.decidedAt)}</dd></div> : null}
+        {claim.remedyKind ? <div><dt>إجراء الخدمة</dt><dd>{remedyLabel(claim.remedyKind)}</dd></div> : null}
+        {showPerformingCenter ? <div><dt>مركز التنفيذ</dt><dd>{claim.performingCenterName}</dd></div> : null}
+        {claim.resolutionCompletedAt ? <div><dt>تاريخ الإكمال</dt><dd>{formatDate(claim.resolutionCompletedAt)}</dd></div> : null}
       </dl>
       <p className={styles.customerDescription}>{claim.description}</p>
       {claim.customerDecisionMessage ? (
         <p className={styles.quietNotice}>
           <strong>رسالة بخصوص القرار: </strong>{claim.customerDecisionMessage}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+function ServiceHistoryCard({ service }: { service: CustomerWarrantyServiceEntry }) {
+  return (
+    <article className={styles.claimCard}>
+      <div className={styles.claimCardHeader}>
+        <div>
+          <span className={styles.eyebrow}>خدمة ضمان مكتملة</span>
+          <strong dir="ltr">{service.claimNumber}</strong>
+        </div>
+        <span className={styles.statusChip}>تم التنفيذ</span>
+      </div>
+      <dl className={styles.claimFacts}>
+        <div><dt>الخدمة المنفذة</dt><dd>{remedyLabel(service.remedyKind)}</dd></div>
+        <div><dt>تاريخ الإكمال</dt><dd>{formatDate(service.completedAt)}</dd></div>
+        {service.performingCenterName ? <div><dt>مركز التنفيذ</dt><dd>{service.performingCenterName}</dd></div> : null}
+      </dl>
+      {service.customerDecisionMessage ? (
+        <p className={styles.quietNotice}>
+          <strong>قرار المطالبة: </strong>{service.customerDecisionMessage}
         </p>
       ) : null}
     </article>
@@ -286,6 +331,7 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
 
   const context = initialContext;
   const vehicle = [context.vehicleMake, context.vehicleModel, context.vehicleYear].filter(Boolean).join(" · ");
+  const otherClosedClaims = context.recentClosedClaims.filter((claim) => claim.resolutionStatus !== "completed");
 
   return (
     <section className={styles.panel}>
@@ -420,11 +466,22 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
         </div>
       )}
 
-      {context.recentClosedClaims.length > 0 ? (
+      {context.serviceHistory.length > 0 ? (
+        <div className={styles.historySection}>
+          <h2>سجل خدمات الضمان</h2>
+          <div className={styles.stack}>
+            {context.serviceHistory.map((service) => (
+              <ServiceHistoryCard key={`${service.claimNumber}-${service.completedAt}`} service={service} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {otherClosedClaims.length > 0 ? (
         <div className={styles.historySection}>
           <h2>المطالبات السابقة</h2>
           <div className={styles.stack}>
-            {context.recentClosedClaims.map((claim) => (
+            {otherClosedClaims.map((claim) => (
               <ClaimSummaryCard key={claim.claimNumber} claim={claim} historical />
             ))}
           </div>

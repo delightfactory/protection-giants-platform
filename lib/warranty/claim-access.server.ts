@@ -10,6 +10,7 @@ import { cookies } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseAdminEnv } from "@/lib/supabase/env";
 import {
+  isWarrantyClaimRemedyKind,
   WARRANTY_CLAIM_EVIDENCE_BUCKET,
   type CustomerClaimSummary,
   type CustomerWarrantyClaimContext,
@@ -178,6 +179,10 @@ function parseClaimSummary(value: unknown): CustomerClaimSummary | null {
       ? row.customer_decision_message
       : null,
     closedAt: typeof row.closed_at === "string" ? row.closed_at : null,
+    resolutionStatus: typeof row.resolution_status === "string" ? row.resolution_status : null,
+    remedyKind: isWarrantyClaimRemedyKind(row.remedy_kind) ? row.remedy_kind : null,
+    performingCenterName: typeof row.performing_center_name === "string" ? row.performing_center_name : null,
+    resolutionCompletedAt: typeof row.resolution_completed_at === "string" ? row.resolution_completed_at : null,
   };
 }
 
@@ -185,6 +190,24 @@ function toCustomerContext(row: ClaimContextRow): CustomerWarrantyClaimContext {
   const closed = Array.isArray(row.recent_closed_claims)
     ? row.recent_closed_claims.map(parseClaimSummary).filter((item): item is CustomerClaimSummary => item !== null)
     : [];
+  const serviceHistory = closed.flatMap((claim) => {
+    if (
+      claim.status !== "approved"
+      || claim.resolutionStatus !== "completed"
+      || !claim.remedyKind
+      || !claim.resolutionCompletedAt
+    ) {
+      return [];
+    }
+
+    return [{
+      claimNumber: claim.claimNumber,
+      remedyKind: claim.remedyKind,
+      performingCenterName: claim.performingCenterName,
+      completedAt: claim.resolutionCompletedAt,
+      customerDecisionMessage: claim.customerDecisionMessage,
+    }];
+  }).sort((left, right) => Date.parse(right.completedAt) - Date.parse(left.completedAt));
 
   return {
     publicState: row.public_state,
@@ -199,6 +222,7 @@ function toCustomerContext(row: ClaimContextRow): CustomerWarrantyClaimContext {
     vehicleYear: row.vehicle_year,
     currentOpenClaim: parseClaimSummary(row.current_open_claim),
     recentClosedClaims: closed,
+    serviceHistory,
   };
 }
 
