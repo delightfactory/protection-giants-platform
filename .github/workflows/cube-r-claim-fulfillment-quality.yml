@@ -14,7 +14,8 @@ name: Cube R Claim Fulfillment Quality
 # the server-only assigned-Center completion evidence/upload/mutation boundary,
 # the server-only Admin assignment/correction/reserve/release mutation boundary,
 # the server-only PD-079 customer-withdrawal cancellation boundary,
-# and recovery-only Admin evidence staging plus idempotent recovery completion boundary.
+# recovery-only Admin evidence staging plus idempotent recovery completion boundary,
+# and Inbox-only Company/Admin materialization for normal/recovery completion events.
 # Canonical generated DB types, including completion/cancellation/recovery/read RPC
 # surfaces, are part of the same-HEAD qualification contract.
 on:
@@ -172,6 +173,9 @@ jobs:
 
       - name: Verify Cube R Admin recovery server actions
         run: node scripts/verify-cube-r-claim-admin-recovery-actions.mjs
+
+      - name: Verify Cube R completion notification materialization
+        run: node scripts/verify-cube-r-claim-completion-notifications.mjs
 
       - name: Verify Cube R Admin Resolution operational reads
         run: |
