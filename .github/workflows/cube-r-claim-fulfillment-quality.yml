@@ -9,7 +9,8 @@ name: Cube R Claim Fulfillment Quality
 # bounded PD-079 post-assignment customer-withdrawal cancellation, the narrow
 # Admin completion-recovery exception after assigned-Center capability loss,
 # bounded Admin Resolution queue/detail plus replacement-Roll candidate reads,
-# and bounded assigned-Center fulfillment task queue/detail/evidence reads.
+# and bounded assigned-Center fulfillment task queue/detail/evidence reads with
+# immediate reassignment revocation and no customer PII/Admin-allocation internals.
 # Canonical generated DB types, including completion/cancellation/recovery/read RPC
 # surfaces, are part of the same-HEAD qualification contract.
 on:
