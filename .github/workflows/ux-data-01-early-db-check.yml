@@ -1,43 +1,46 @@
-name: UX-DATA-01 Early DB Check
+name: UX-DATA-01 Focused Qualification
 
 on:
   push:
     branches:
       - agent/ux-data-01-operational-evidence-lifecycle
     paths:
-      - "supabase/migrations/20260831103000_ux_data_01_operational_evidence_lifecycle.sql"
+      - "supabase/migrations/*ux_data_01*"
+      - "app/operations/claim-inspections/actions.ts"
+      - "app/operations/claim-resolutions/actions.ts"
+      - "app/operations/claim-resolutions/recovery-actions.ts"
+      - "lib/supabase/database.types.ts"
+      - "scripts/verify-ux-data-01-*.mjs"
+      - "scripts/cleanup-operational-evidence.mjs"
       - ".github/workflows/ux-data-01-early-db-check.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  db-check:
+  focused-qualification:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: agent/ux-data-01-operational-evidence-lifecycle
-          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify application evidence lifecycle ordering
+        run: node scripts/verify-ux-data-01-operational-evidence-app-contract.mjs
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
           version: 2.105.0
           github-token: ${{ github.token }}
-
-      - name: Show CLI contract
-        run: |
-          supabase --version
-          supabase migration --help >/tmp/supabase-migration-help.txt
-          supabase db --help >/tmp/supabase-db-help.txt
 
       - name: Start fresh local Supabase stack
         run: supabase start
@@ -48,32 +51,49 @@ jobs:
       - name: Lint database
         run: supabase db lint --local --level warning --fail-on error
 
-      - name: Generate public database types
+      - name: Create bounded Product / Center / Warranty fixtures
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-roll-opening-foundation.mjs
+          node scripts/verify-warranty-schema-foundation.mjs
+          node scripts/verify-warranty-activation-engine.mjs
+
+      - name: Create submitted Customer Claim fixture through Cube P
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-cube-p-claim-intake.mjs
+
+      - name: Verify operational evidence lifecycle runtime contract
+        run: |
+          eval "$(supabase status -o env)"
+          export API_URL ANON_KEY SERVICE_ROLE_KEY
+          node scripts/verify-ux-data-01-operational-evidence-lifecycle.mjs
+
+      - name: Verify generated public database types
         run: |
           supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
           node <<'NODE'
           const fs = require("node:fs");
-          const path = "/tmp/generated.database.types.ts";
-          const content = fs.readFileSync(path, "utf8").replace(/\n*$/, "\n");
-          fs.writeFileSync(path, content);
+          for (const path of ["/tmp/generated.database.types.ts", "lib/supabase/database.types.ts"]) {
+            fs.writeFileSync(path, fs.readFileSync(path, "utf8").replace(/\n*$/, "\n"));
+          }
           NODE
-          cp /tmp/generated.database.types.ts lib/supabase/database.types.ts
+          diff -u lib/supabase/database.types.ts /tmp/generated.database.types.ts
 
-      - name: Commit generated database types when changed
-        shell: bash
-        run: |
-          if git diff --quiet -- lib/supabase/database.types.ts; then
-            echo "Generated database types already match."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/supabase/database.types.ts
-          git commit -m "chore(ux-data-01): refresh generated database types"
-          git fetch origin agent/ux-data-01-operational-evidence-lifecycle
-          git rebase origin/agent/ux-data-01-operational-evidence-lifecycle
-          git push origin HEAD:agent/ux-data-01-operational-evidence-lifecycle
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
 
       - name: Stop local stack
         if: always()
-        run: supabase stop --no-backup
+        run: |
+          if command -v supabase >/dev/null 2>&1; then
+            supabase stop --no-backup
+          fi
