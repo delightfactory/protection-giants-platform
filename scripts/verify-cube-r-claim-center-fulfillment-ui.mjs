@@ -72,8 +72,33 @@ assert(!form.includes("SUPABASE_SERVICE_ROLE_KEY") && !form.includes("storage.fr
   "Client completion UI must not gain service-role or direct Storage authority.");
 assert(form.includes("crypto.randomUUID()") && form.includes("requestIdRef"),
   "Completion UI must preserve one explicit idempotency request ID across ambiguous retries.");
-assert(form.includes("readyEvidence.map((item) => item.storagePath)"),
-  "Completion must submit only evidence paths returned by qualified server upload.");
+
+assert(form.includes('from "@/components/ui/local-evidence-review"') && form.includes("<LocalEvidenceReview"),
+  "Center completion UI must review selected evidence through the shared local evidence surface.");
+assert(form.includes("onAdd={addFiles}"),
+  "Center completion evidence selection must delegate only to the local selection handler.");
+const addFilesStart = form.indexOf("function addFiles(");
+const removeUploadStart = form.indexOf("async function removeUpload", addFilesStart);
+assert(addFilesStart >= 0 && removeUploadStart > addFilesStart,
+  "Center completion UI must keep an explicit bounded local add-files handler.");
+const addFilesSource = form.slice(addFilesStart, removeUploadStart);
+assert(!addFilesSource.includes("uploadClaimResolutionCompletionEvidence"),
+  "Selecting Center completion evidence must remain local-only and must not start Storage upload.");
+
+const prepareEvidenceStart = form.indexOf("async function prepareEvidence");
+const submitStart = form.indexOf("function submit(", prepareEvidenceStart);
+assert(prepareEvidenceStart >= 0 && submitStart > prepareEvidenceStart,
+  "Center completion UI must keep a deferred evidence preparation phase before final submit.");
+const prepareEvidenceSource = form.slice(prepareEvidenceStart, submitStart);
+assert(prepareEvidenceSource.includes("await uploadClaimResolutionCompletionEvidence"),
+  "Qualified evidence upload must occur only inside the deferred preparation phase.");
+assert(form.includes("const evidence = await prepareEvidence();"),
+  "Final confirmed submission must prepare qualified evidence before calling the business completion action.");
+assert(form.includes("evidence.map((item) => item.storagePath)"),
+  "Completion must submit only evidence paths returned or retained by the qualified server upload boundary.");
+assert(form.includes("uploads.length.toLocaleString") && form.includes("صورة إكمال"),
+  "Final completion confirmation must summarize the selected evidence count before upload begins.");
+
 assert(form.includes("scan !== expectedRollSerial"),
   "Replacement UI must reject an obvious wrong Roll before authoritative server revalidation.");
 assert(form.includes('router.push("/operations/claim-resolution-tasks?notice=completed")'),
@@ -88,4 +113,4 @@ assert(nav.includes('{ href: "/operations/claim-resolution-tasks", label: "ال�
 assert(nav.includes('pathname.startsWith("/operations/claim-resolution-tasks/")'),
   "Mobile navigation must stay out of the focused fulfillment detail task.");
 
-console.log("Cube R Center Fulfillment UI contract PASS: Center-only bounded queue/detail, private signed evidence reads, exact allocated-Roll guidance through J/K, server-only evidence/completion mutations, idempotent retry, and no PII/Admin/global-inventory authority.");
+console.log("Cube R Center Fulfillment UI contract PASS: Center-only bounded queue/detail, private signed evidence reads, local review before qualified deferred upload, exact allocated-Roll guidance through J/K, server-only evidence/completion mutations, idempotent retry, and no PII/Admin/global-inventory authority.");
