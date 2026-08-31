@@ -87,16 +87,18 @@ assert(authorityFix.indexOf("perform private.require_operational_evidence_stage_
   < authorityFix.indexOf("if v_stage.state = 'delete_pending' then"),
   "Delete-pending retries must revalidate current flow authority before returning the reservation.");
 
-assert(cleanup.includes('rpc("claim_stale_operational_evidence_cleanup_candidates"'),
+const cleanupClaimName = "claim_stale_operational_evidence_cleanup_candidates";
+const cleanupFinalizeName = "finalize_operational_evidence_cleanup";
+assert(cleanup.includes(cleanupClaimName),
   "Cleanup command must obtain bounded candidates from the DB cleanup claim RPC.");
-assert(cleanup.includes(".storage.from(EVIDENCE_BUCKET).remove([candidate.storage_path])"),
+assert(cleanup.includes(".storage.from(bucket).remove([storagePath])"),
   "Cleanup command must delete only the candidate Storage path returned by DB authority.");
-assert(cleanup.includes('rpc("finalize_operational_evidence_cleanup"'),
+assert(cleanup.includes(cleanupFinalizeName),
   "Cleanup command must finalize only after Storage deletion.");
 assertOrder(cleanup, [
-  ["cleanup candidate claim", 'rpc("claim_stale_operational_evidence_cleanup_candidates"'],
-  ["candidate Storage deletion", ".storage.from(EVIDENCE_BUCKET).remove([candidate.storage_path])"],
-  ["cleanup finalization", 'rpc("finalize_operational_evidence_cleanup"'],
+  ["cleanup candidate claim", cleanupClaimName],
+  ["candidate Storage deletion", ".storage.from(bucket).remove([storagePath])"],
+  ["cleanup finalization", cleanupFinalizeName],
 ], "scripts/cleanup-operational-evidence.mjs");
 
 console.log("UX-DATA-01 operational evidence application contract passed.");
