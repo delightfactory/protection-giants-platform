@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   endWarrantyClaimAccess,
@@ -11,6 +11,8 @@ import {
 } from "./actions";
 import {
   claimStatusLabel,
+  validateWarrantyClaimImage,
+  WARRANTY_CLAIM_ALLOWED_IMAGES,
   WARRANTY_CLAIM_CATEGORIES,
   WARRANTY_CLAIM_CATEGORY_LABELS,
   WARRANTY_CLAIM_MAX_IMAGES,
@@ -20,14 +22,17 @@ import {
   type WarrantyClaimEvidenceReference,
   type WarrantyClaimRemedyKind,
 } from "@/lib/warranty/claim-intake";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import {
+  LocalEvidenceReview,
+  type LocalEvidenceReviewItem,
+} from "@/components/ui/local-evidence-review";
 import styles from "./page.module.css";
 
-type UploadItem = {
-  localId: string;
-  fileName: string;
-  status: "uploading" | "ready" | "error";
+const EVIDENCE_ACCEPT = Object.keys(WARRANTY_CLAIM_ALLOWED_IMAGES).join(",");
+
+type UploadItem = LocalEvidenceReviewItem & {
   evidence?: WarrantyClaimEvidenceReference;
-  error?: string;
 };
 
 type Props = {
@@ -170,15 +175,10 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successNumber, setSuccessNumber] = useState<string | null>(null);
   const requestIdRef = useRef<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const readyEvidence = useMemo(
-    () => uploads.filter((item) => item.status === "ready" && item.evidence).map((item) => item.evidence!),
-    [uploads],
-  );
   const anyUploading = uploads.some((item) => item.status === "uploading");
-  const reservedUploadCount = uploads.filter((item) => item.status !== "error" || item.evidence).length;
   const hasReservedUploadError = uploads.some((item) => item.status === "error" && item.evidence);
+  const busy = isPending || anyUploading;
 
   function payloadChanged() {
     requestIdRef.current = null;
@@ -199,88 +199,184 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
     });
   }
 
-  async function uploadFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    const remaining = WARRANTY_CLAIM_MAX_IMAGES - reservedUploadCount;
-    const selected = Array.from(files).slice(0, Math.max(0, remaining));
-    if (selected.length === 0) {
+  function addFiles(files: File[]) {
+    if (!files.length || busy) return;
+    const remaining = WARRANTY_CLAIM_MAX_IMAGES - uploads.length;
+    if (remaining < 1) {
       setSubmitError(errorText("PG_CLAIM_EVIDENCE_COUNT_INVALID"));
       return;
     }
 
-    payloadChanged();
-    for (const file of selected) {
-      const localId = crypto.randomUUID();
-      setUploads((current) => [...current, { localId, fileName: file.name, status: "uploading" }]);
-      const result = await uploadWarrantyClaimEvidence(publicCode, file);
-      if (!result.ok) {
-        setUploads((current) => current.map((item) => item.localId === localId
-          ? { ...item, status: "error", evidence: result.evidence, error: errorText(result.code) }
-          : item));
+    const accepted: UploadItem[] = [];
+    let firstError: string | null = null;
+    for (const file of files) {
+      if (accepted.length >= remaining) break;
+      const validationError = validateWarrantyClaimImage(file);
+      if (validationError) {
+        firstError ??= errorText(validationError);
         continue;
       }
-      setUploads((current) => current.map((item) => item.localId === localId
-        ? { ...item, status: "ready", evidence: result.evidence }
-        : item));
+      accepted.push({
+        id: crypto.randomUUID(),
+        file,
+        status: "local",
+      });
     }
 
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (accepted.length) {
+      payloadChanged();
+      setUploads((current) => [...current, ...accepted]);
+    }
+    if (firstError) setSubmitError(firstError);
   }
 
   async function removeUpload(item: UploadItem) {
+    if (busy) return;
     payloadChanged();
     if (!item.evidence) {
-      setUploads((current) => current.filter((candidate) => candidate.localId !== item.localId));
+      setUploads((current) => current.filter((candidate) => candidate.id !== item.id));
       return;
     }
 
-    setUploads((current) => current.map((candidate) => candidate.localId === item.localId
-      ? { ...candidate, status: "uploading" }
+    setUploads((current) => current.map((candidate) => candidate.id === item.id
+      ? { ...candidate, status: "uploading", error: undefined }
       : candidate));
-    const result = await removeWarrantyClaimEvidence(publicCode, item.evidence.storagePath);
-    if (!result.ok) {
-      setUploads((current) => current.map((candidate) => candidate.localId === item.localId
-        ? { ...candidate, status: "error", error: errorText(result.code ?? "PG_CLAIM_EVIDENCE_REMOVE_FAILED") }
+    try {
+      const result = await removeWarrantyClaimEvidence(publicCode, item.evidence.storagePath);
+      if (!result.ok) {
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "error", error: errorText(result.code ?? "PG_CLAIM_EVIDENCE_REMOVE_FAILED") }
+          : candidate));
+        return;
+      }
+      setUploads((current) => current.filter((candidate) => candidate.id !== item.id));
+    } catch {
+      setUploads((current) => current.map((candidate) => candidate.id === item.id
+        ? { ...candidate, status: "error", error: "انقطع تأكيد حذف الصورة. حاول الإزالة مرة أخرى قبل إرسال المطالبة." }
         : candidate));
+    }
+  }
+
+  async function replaceUpload(item: UploadItem, file: File) {
+    if (busy) return;
+    const validationError = validateWarrantyClaimImage(file);
+    if (validationError) {
+      setSubmitError(errorText(validationError));
       return;
     }
-    setUploads((current) => current.filter((candidate) => candidate.localId !== item.localId));
+
+    payloadChanged();
+    if (item.evidence) {
+      setUploads((current) => current.map((candidate) => candidate.id === item.id
+        ? { ...candidate, status: "uploading", error: undefined }
+        : candidate));
+      try {
+        const result = await removeWarrantyClaimEvidence(publicCode, item.evidence.storagePath);
+        if (!result.ok) {
+          setUploads((current) => current.map((candidate) => candidate.id === item.id
+            ? { ...candidate, status: "error", error: errorText(result.code ?? "PG_CLAIM_EVIDENCE_REMOVE_FAILED") }
+            : candidate));
+          return;
+        }
+      } catch {
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "error", error: "انقطع تأكيد حذف الصورة القديمة. حاول الاستبدال مرة أخرى قبل الإرسال." }
+          : candidate));
+        return;
+      }
+    }
+
+    setUploads((current) => current.map((candidate) => candidate.id === item.id
+      ? { ...candidate, file, status: "local", evidence: undefined, error: undefined }
+      : candidate));
+  }
+
+  async function prepareEvidence(): Promise<WarrantyClaimEvidenceReference[] | null> {
+    const prepared: WarrantyClaimEvidenceReference[] = [];
+
+    for (const item of uploads) {
+      if (item.status === "retained" && item.evidence) {
+        prepared.push(item.evidence);
+        continue;
+      }
+      if (item.status === "error" && item.evidence) {
+        setSubmitError("أزل أو استبدل أي صورة تعذر تأكيد حالتها قبل إعادة إرسال المطالبة.");
+        return null;
+      }
+
+      setUploads((current) => current.map((candidate) => candidate.id === item.id
+        ? { ...candidate, status: "uploading", error: undefined }
+        : candidate));
+      try {
+        const result = await uploadWarrantyClaimEvidence(publicCode, item.file);
+        if (!result.ok) {
+          const message = errorText(result.code);
+          setUploads((current) => current.map((candidate) => candidate.id === item.id
+            ? { ...candidate, status: "error", evidence: result.evidence, error: message }
+            : candidate));
+          setSubmitError(message);
+          return null;
+        }
+        prepared.push(result.evidence);
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "retained", evidence: result.evidence, error: undefined }
+          : candidate));
+      } catch {
+        const message = "انقطع تأكيد رفع الصورة. راجع الصور ثم أعد تأكيد الإرسال؛ سيستخدم النظام نفس الملف بأمان.";
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "error", error: message }
+          : candidate));
+        setSubmitError(message);
+        return null;
+      }
+    }
+
+    return prepared;
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitError(null);
-    if (readyEvidence.length < 1) {
+    if (uploads.length < 1) {
       setSubmitError("أرفق صورة واحدة على الأقل قبل الإرسال.");
       return;
     }
     if (anyUploading) {
-      setSubmitError("انتظر حتى يكتمل رفع الصور أولًا.");
+      setSubmitError("انتظر حتى تنتهي محاولة رفع الصور الحالية.");
       return;
     }
     if (hasReservedUploadError) {
-      setSubmitError("أزل أي صورة تعذر تأكيد رفعها قبل إرسال المطالبة، ثم أعد رفعها إذا لزم.");
+      setSubmitError("أزل أو استبدل أي صورة تعذر تأكيد رفعها قبل إرسال المطالبة.");
       return;
     }
 
     if (!requestIdRef.current) requestIdRef.current = crypto.randomUUID();
     const requestId = requestIdRef.current;
 
-    startTransition(async () => {
-      const result = await submitWarrantyClaim({
-        publicCode,
-        requestId,
-        category,
-        affectedArea,
-        description,
-        evidencePaths: readyEvidence.map((item) => item.storagePath),
-      });
-      if (!result.ok) {
-        setSubmitError(errorText(result.code));
-        return;
-      }
-      setSuccessNumber(result.claimNumber);
-      router.refresh();
+    startTransition(() => {
+      void (async () => {
+        const evidence = await prepareEvidence();
+        if (!evidence) return;
+        try {
+          const result = await submitWarrantyClaim({
+            publicCode,
+            requestId,
+            category,
+            affectedArea,
+            description,
+            evidencePaths: evidence.map((item) => item.storagePath),
+          });
+          if (!result.ok) {
+            setSubmitError(errorText(result.code));
+            return;
+          }
+          requestIdRef.current = null;
+          setSuccessNumber(result.claimNumber);
+          router.refresh();
+        } catch {
+          setSubmitError("انقطع تأكيد إرسال المطالبة. لا تغيّر البيانات أو الصور؛ أعد التأكيد ليستخدم النظام نفس رقم المحاولة بأمان.");
+        }
+      })();
     });
   }
 
@@ -374,7 +470,7 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
 
             <label>
               <span>نوع المشكلة</span>
-              <select value={category} onChange={(event) => { setCategory(event.target.value); payloadChanged(); }} required>
+              <select value={category} onChange={(event) => { setCategory(event.target.value); payloadChanged(); }} required disabled={busy}>
                 <option value="">اختر نوع المشكلة</option>
                 {WARRANTY_CLAIM_CATEGORIES.map((item) => (
                   <option key={item} value={item}>{WARRANTY_CLAIM_CATEGORY_LABELS[item]}</option>
@@ -391,6 +487,7 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
                 maxLength={160}
                 placeholder="مثال: غطاء المحرك — الجهة اليمنى"
                 required
+                disabled={busy}
               />
             </label>
 
@@ -404,47 +501,30 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
                 rows={5}
                 placeholder="متى لاحظت المشكلة؟ وما شكلها الحالي؟"
                 required
+                disabled={busy}
               />
             </label>
 
             <div className={styles.evidenceBlock}>
-              <div className={styles.evidenceHeading}>
-                <div>
-                  <span>صور المشكلة</span>
-                  <p>مطلوب صورة واحدة على الأقل. يفضل صورة عامة وصورة قريبة واضحة.</p>
-                </div>
-                <strong>{readyEvidence.length}/{WARRANTY_CLAIM_MAX_IMAGES}</strong>
-              </div>
-
-              <label className={styles.fileButton}>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  onChange={(event) => void uploadFiles(event.target.files)}
-                  disabled={anyUploading || reservedUploadCount >= WARRANTY_CLAIM_MAX_IMAGES}
-                />
-                إضافة صور
-              </label>
-
-              {uploads.length > 0 ? (
-                <ul className={styles.uploadList}>
-                  {uploads.map((item) => (
-                    <li key={item.localId}>
-                      <div>
-                        <strong>{item.fileName}</strong>
-                        <span className={item.status === "error" ? styles.uploadError : styles.uploadState}>
-                          {item.status === "uploading" ? "جارٍ الرفع…" : item.status === "ready" ? "تم الرفع" : item.error}
-                        </span>
-                      </div>
-                      <button type="button" onClick={() => void removeUpload(item)} disabled={item.status === "uploading"}>
-                        إزالة
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+              <LocalEvidenceReview
+                idPrefix="customer-claim-evidence"
+                title="صور المشكلة"
+                help="مطلوب صورة واحدة على الأقل · JPEG / PNG / WebP · حتى 8MB للصورة. راجع الصور قبل أن يبدأ الرفع."
+                items={uploads}
+                maxFiles={WARRANTY_CLAIM_MAX_IMAGES}
+                accept={EVIDENCE_ACCEPT}
+                disabled={busy}
+                addLabel="إضافة صور"
+                onAdd={addFiles}
+                onRemove={(reviewItem) => {
+                  const item = uploads.find((candidate) => candidate.id === reviewItem.id);
+                  if (item) void removeUpload(item);
+                }}
+                onReplace={(reviewItem, file) => {
+                  const item = uploads.find((candidate) => candidate.id === reviewItem.id);
+                  if (item) void replaceUpload(item, file);
+                }}
+              />
             </div>
 
             {submitError ? <p className={styles.errorText} role="alert">{submitError}</p> : null}
@@ -453,9 +533,16 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
               <p>بالإرسال أنت تطلب من Protection Giants مراجعة الحالة وفق سياسة الضمان المسجلة. الإرسال لا يعني قرار قبول تلقائي.</p>
             </div>
 
-            <button className={styles.primaryButton} type="submit" disabled={isPending || anyUploading || hasReservedUploadError || readyEvidence.length < 1}>
+            <ConfirmSubmitButton
+              title={`إرسال المطالبة مع ${uploads.length.toLocaleString("en-US")} صورة؟`}
+              description="بعد هذا التأكيد فقط سيبدأ رفع الصور المختارة، ثم تُرسل المطالبة للمراجعة إذا نجحت العملية النهائية."
+              confirmLabel="تأكيد وإرسال المطالبة"
+              tone="primary"
+              className={styles.primaryButton}
+              disabled={busy || hasReservedUploadError || uploads.length < 1}
+            >
               {isPending ? "جارٍ إرسال المطالبة…" : "إرسال المطالبة"}
-            </button>
+            </ConfirmSubmitButton>
           </form>
         )
       ) : (
