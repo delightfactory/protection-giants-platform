@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - "supabase/migrations/*cube_q*"
+      - "supabase/migrations/*ux_data_01*"
       - "lib/supabase/database.types.ts"
       - "lib/warranty/claim-intake.ts"
       - "lib/warranty/claim-access.server.ts"
       - "scripts/verify-cube-q-claim-*.mjs"
       - "scripts/verify-cube-p-claim-intake.mjs"
+      - "scripts/ux-data-01-stage-test-adapter.mjs"
       - "app/(public)/w/**/claim/**"
       - "app/operations/claims/**"
       - "app/operations/claim-inspections/**"
@@ -74,6 +76,7 @@ jobs:
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
+          export NODE_OPTIONS="--import=$(pwd)/scripts/ux-data-01-stage-test-adapter.mjs"
           node scripts/verify-cube-q-claim-review.mjs
 
       - name: Verify Cube Q customer-safe Claim status projection
