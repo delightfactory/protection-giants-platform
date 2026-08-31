@@ -116,7 +116,12 @@ async function upload(path, bytes) {
 
 async function removeStorage(path) {
   const result = await request(`/storage/v1/object/${bucket}/${path}`, { method: "DELETE" });
-  assert(result.response.ok || result.response.status === 404,
+  const alreadyAbsent = result.response.status === 404 || (
+    result.response.status === 400
+    && String(result.body?.statusCode) === "404"
+    && result.body?.error === "not_found"
+  );
+  assert(result.response.ok || alreadyAbsent,
     `Storage delete failed for ${path}: ${result.response.status} ${JSON.stringify(result.body)}`);
 }
 
