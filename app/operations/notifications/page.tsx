@@ -35,6 +35,9 @@ function sourceLabel(sourceDomain: string) {
     center_network_approval: "اعتماد المراكز",
     center_onboarding: "انضمام المراكز",
     roll_preinstall_issue: "بلاغات ما قبل التركيب",
+    warranty: "الضمان",
+    warranty_claim: "مطالبات الضمان",
+    warranty_claim_resolution: "تنفيذ مطالبات الضمان",
   };
   return labels[sourceDomain] ?? "تنبيه تشغيلي";
 }

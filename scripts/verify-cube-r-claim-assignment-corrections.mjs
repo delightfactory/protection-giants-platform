@@ -200,7 +200,8 @@ const reassignEventId = reassignEvent[0];
 const centerBRecipients = querySql(`select count(*) from private.notification_party_profile_ids(${sqlUuid(centerBPartyId)});`);
 const reassignNotificationShape = querySql(`
   select concat_ws('|', count(*), bool_and(event_type = 'claim_resolution.reassigned'),
-    bool_and(attention_level = 'action_required'), bool_and(push_eligible), bool_and(action_path is null))
+    bool_and(attention_level = 'action_required'), bool_and(push_eligible),
+    bool_and(action_path = '/operations/claim-resolution-tasks/${resolutionId}'))
   from public.notifications
   where source_domain = 'warranty_claim_resolution'
     and source_event_key = ${sqlText(`warranty_claim_resolution_events:${reassignEventId}`)};

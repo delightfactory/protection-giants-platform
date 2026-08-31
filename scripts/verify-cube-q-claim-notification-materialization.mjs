@@ -133,7 +133,7 @@ assertNotificationShape({
   expectedCount: activeAdminProfiles,
   attention: "action_required",
   pushEligible: true,
-  actionPath: null,
+  actionPath: `/operations/claims/${claimAId}/review`,
   recipientRole: "admin",
   claimNumber: claimANumber,
 });

@@ -297,7 +297,7 @@ const adminNotificationCount = Number(querySql(`
     and notification.source_domain = 'warranty_claim'
     and notification.event_type = 'warranty.claim_submitted'
     and notification.source_event_key like 'warranty_claim_events:%'
-    and notification.action_path is null
+    and notification.action_path = '/operations/claims/${created.claim_id}/review'
     and notification.push_eligible;
 `));
 assert(adminNotificationCount > 0, "Claim submitted event must materialize durable Admin Inbox notification(s).");
