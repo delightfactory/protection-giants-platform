@@ -18,6 +18,10 @@ import {
 import { cancelAssignedResolutionForCustomerWithdrawal } from "@/app/operations/claim-resolutions/withdrawal-actions";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import {
+  LocalEvidenceReview,
+  type LocalEvidenceReviewItem,
+} from "@/components/ui/local-evidence-review";
 import styles from "./admin-claim-resolution-actions.module.css";
 
 type Feedback = { tone: "error" | "warning" | "success" | "info"; text: string } | null;
@@ -52,6 +56,16 @@ type AdminClaimResolutionActionsProps = {
   centers: CenterOption[];
   rollCandidates: RollCandidate[];
 };
+
+type RecoveryUploadItem = LocalEvidenceReviewItem & {
+  slot: number;
+  evidence?: RecoveryEvidenceReference;
+};
+
+const RECOVERY_MAX_IMAGES = 5;
+const RECOVERY_MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const RECOVERY_EVIDENCE_ACCEPT = "image/jpeg,image/png,image/webp";
+const RECOVERY_ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const stateRaceCodes = new Set([
   "PG_CLAIM_RESOLUTION_ASSIGN_STATE_INVALID",
@@ -489,19 +503,25 @@ function AdminRecoveryCompletionPanel({
 }) {
   const router = useRouter();
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const [evidence, setEvidence] = useState<RecoveryEvidenceReference[]>([]);
+  const [uploads, setUploads] = useState<RecoveryUploadItem[]>([]);
   const [completionNote, setCompletionNote] = useState("");
   const [recoveryReason, setRecoveryReason] = useState("");
   const [replacementRollSerial, setReplacementRollSerial] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
   const requestIdRef = useRef<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isReplacement = remedyKind === "replacement_roll_reinstall";
+  const anyUploading = uploads.some((item) => item.status === "uploading");
+  const hasAmbiguousEvidence = uploads.some((item) => item.status === "error" && item.evidence);
+  const busy = isPending || anyUploading;
 
   function resetRequest() {
     requestIdRef.current = null;
+  }
+
+  function payloadChanged() {
+    resetRequest();
+    setFeedback(null);
   }
 
   function recoveryError(code: string) {
@@ -510,7 +530,7 @@ function AdminRecoveryCompletionPanel({
       PG_CLAIM_RESOLUTION_EVIDENCE_SIZE_INVALID: "كل صورة يجب أن تكون أكبر من صفر وألا تتجاوز 8 MiB.",
       PG_CLAIM_RESOLUTION_EVIDENCE_TYPE_INVALID: "المسموح صور JPEG أو PNG أو WebP حقيقية فقط.",
       PG_CLAIM_RESOLUTION_EVIDENCE_UPLOAD_FAILED: "تعذر رفع صورة الإكمال.",
-      PG_CLAIM_RESOLUTION_EVIDENCE_UPLOAD_AMBIGUOUS: "تعذر تأكيد نتيجة رفع الصورة. أعد اختيار الملف نفسه؛ المسار المحتوى-المعنون يجعل إعادة المحاولة آمنة.",
+      PG_CLAIM_RESOLUTION_EVIDENCE_UPLOAD_AMBIGUOUS: "تعذر تأكيد نتيجة رفع الصورة. أزل أو استبدل هذا العنصر قبل محاولة الإكمال.",
       PG_CLAIM_RESOLUTION_EVIDENCE_REMOVE_FAILED: "تعذر حذف صورة الإكمال المرفوعة.",
       PG_CLAIM_RESOLUTION_COMPLETION_NOTE_INVALID: "ملاحظة الإكمال مطلوبة من 10 إلى 2000 حرف.",
       PG_CLAIM_RESOLUTION_ADMIN_RECOVERY_REASON_INVALID: "سبب استخدام Admin recovery مطلوب من 5 إلى 500 حرف.",
@@ -525,60 +545,160 @@ function AdminRecoveryCompletionPanel({
     return messages[code] ?? "تعذر إكمال Admin recovery الآن. حدّث الصفحة ثم أعد المحاولة.";
   }
 
-  async function uploadFiles(files: FileList | null) {
-    if (!files?.length || isUploading || isPending) return;
-    const current = [...evidence];
-    const freeSlots = [1, 2, 3, 4, 5].filter((slot) => !current.some((item) => item.slot === slot));
-    const selected = Array.from(files).slice(0, freeSlots.length);
-    if (selected.length === 0) {
+  function validateFile(file: File): string | null {
+    if (file.size < 1 || file.size > RECOVERY_MAX_IMAGE_BYTES) {
+      return recoveryError("PG_CLAIM_RESOLUTION_EVIDENCE_SIZE_INVALID");
+    }
+    if (!RECOVERY_ALLOWED_TYPES.has(file.type)) {
+      return recoveryError("PG_CLAIM_RESOLUTION_EVIDENCE_TYPE_INVALID");
+    }
+    return null;
+  }
+
+  function addFiles(files: File[]) {
+    if (!files.length || busy) return;
+    const freeSlots = [1, 2, 3, 4, 5].filter((slot) => !uploads.some((item) => item.slot === slot));
+    const selected = files.slice(0, freeSlots.length);
+    if (!selected.length) {
       setFeedback({ tone: "warning", text: "تم الوصول إلى الحد الأقصى: 5 صور." });
       return;
     }
 
-    setIsUploading(true);
-    setFeedback(null);
-    try {
-      for (let index = 0; index < selected.length; index += 1) {
-        const slot = freeSlots[index];
-        const result = await uploadAdminRecoveryCompletionEvidence(resolutionId, slot, selected[index]);
-        if (!result.ok) {
-          setFeedback({ tone: "error", text: recoveryError(result.code) });
-          break;
-        }
-        const position = current.findIndex((item) => item.slot === slot);
-        if (position >= 0) current[position] = result.evidence;
-        else current.push(result.evidence);
-        current.sort((left, right) => left.slot - right.slot);
-        setEvidence([...current]);
-        resetRequest();
+    const accepted: RecoveryUploadItem[] = [];
+    let firstError: string | null = null;
+    selected.forEach((file) => {
+      const error = validateFile(file);
+      if (error) {
+        firstError ??= error;
+        return;
       }
+      const slot = freeSlots[accepted.length];
+      accepted.push({
+        id: crypto.randomUUID(),
+        file,
+        slot,
+        label: `صورة ${slot}`,
+        status: "local",
+      });
+    });
+
+    if (accepted.length) {
+      payloadChanged();
+      setUploads((current) => [...current, ...accepted].sort((left, right) => left.slot - right.slot));
+    }
+    if (firstError) setFeedback({ tone: "error", text: firstError });
+  }
+
+  async function removeUpload(item: RecoveryUploadItem) {
+    if (busy) return;
+    payloadChanged();
+    if (!item.evidence) {
+      setUploads((current) => current.filter((candidate) => candidate.id !== item.id));
+      return;
+    }
+
+    setUploads((current) => current.map((candidate) => candidate.id === item.id
+      ? { ...candidate, status: "uploading", error: undefined }
+      : candidate));
+    try {
+      const result = await removeAdminRecoveryCompletionEvidence(resolutionId, item.evidence.storagePath);
+      if (!result.ok) {
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "error", error: recoveryError(result.code ?? "PG_CLAIM_RESOLUTION_EVIDENCE_REMOVE_FAILED") }
+          : candidate));
+        return;
+      }
+      setUploads((current) => current.filter((candidate) => candidate.id !== item.id));
     } catch {
-      setFeedback({ tone: "error", text: "انقطع تأكيد رفع الصورة. أعد اختيار الملف نفسه لإعادة المحاولة بأمان." });
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setUploads((current) => current.map((candidate) => candidate.id === item.id
+        ? { ...candidate, status: "error", error: "انقطع تأكيد حذف الصورة. حاول الإزالة مرة أخرى قبل الإكمال." }
+        : candidate));
     }
   }
 
-  async function removeEvidence(item: RecoveryEvidenceReference) {
-    if (isUploading || isPending) return;
-    setFeedback(null);
-    try {
-      const result = await removeAdminRecoveryCompletionEvidence(resolutionId, item.storagePath);
-      if (!result.ok) {
-        setFeedback({ tone: "error", text: recoveryError(result.code ?? "") });
+  async function replaceUpload(item: RecoveryUploadItem, file: File) {
+    if (busy) return;
+    const validationError = validateFile(file);
+    if (validationError) {
+      setFeedback({ tone: "error", text: validationError });
+      return;
+    }
+
+    payloadChanged();
+    if (item.evidence) {
+      setUploads((current) => current.map((candidate) => candidate.id === item.id
+        ? { ...candidate, status: "uploading", error: undefined }
+        : candidate));
+      try {
+        const result = await removeAdminRecoveryCompletionEvidence(resolutionId, item.evidence.storagePath);
+        if (!result.ok) {
+          setUploads((current) => current.map((candidate) => candidate.id === item.id
+            ? { ...candidate, status: "error", error: recoveryError(result.code ?? "PG_CLAIM_RESOLUTION_EVIDENCE_REMOVE_FAILED") }
+            : candidate));
+          return;
+        }
+      } catch {
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "error", error: "انقطع تأكيد حذف الصورة القديمة. حاول الاستبدال مرة أخرى قبل الإكمال." }
+          : candidate));
         return;
       }
-      setEvidence((current) => current.filter((evidenceItem) => evidenceItem.storagePath !== item.storagePath));
-      resetRequest();
-    } catch {
-      setFeedback({ tone: "error", text: "انقطع تأكيد حذف الصورة. حدّث الصفحة قبل المتابعة إذا استمرت المشكلة." });
     }
+
+    setUploads((current) => current.map((candidate) => candidate.id === item.id
+      ? { ...candidate, file, status: "local", evidence: undefined, error: undefined }
+      : candidate));
+  }
+
+  async function prepareEvidence(): Promise<RecoveryEvidenceReference[] | null> {
+    const prepared: RecoveryEvidenceReference[] = [];
+    const ordered = [...uploads].sort((left, right) => left.slot - right.slot);
+
+    for (const item of ordered) {
+      if (item.status === "retained" && item.evidence) {
+        prepared.push(item.evidence);
+        continue;
+      }
+      if (item.status === "error" && item.evidence) {
+        setFeedback({ tone: "warning", text: "أزل أو استبدل أي صورة تعذر تأكيد حالتها قبل إعادة محاولة Admin recovery." });
+        return null;
+      }
+
+      setUploads((current) => current.map((candidate) => candidate.id === item.id
+        ? { ...candidate, status: "uploading", error: undefined }
+        : candidate));
+      try {
+        const result = await uploadAdminRecoveryCompletionEvidence(resolutionId, item.slot, item.file);
+        if (!result.ok) {
+          const tone = stateRaceCodes.has(result.code) ? "warning" : "error";
+          setUploads((current) => current.map((candidate) => candidate.id === item.id
+            ? { ...candidate, status: "error", evidence: result.evidence, error: recoveryError(result.code) }
+            : candidate));
+          setFeedback({ tone, text: recoveryError(result.code) });
+          if (stateRaceCodes.has(result.code)) router.refresh();
+          return null;
+        }
+        prepared.push(result.evidence);
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "retained", evidence: result.evidence, error: undefined }
+          : candidate));
+      } catch {
+        const message = "انقطع تأكيد رفع الصورة. راجع حالة الملف ثم أعد تأكيد Admin recovery بنفس البيانات.";
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "error", error: message }
+          : candidate));
+        setFeedback({ tone: "error", text: message });
+        return null;
+      }
+    }
+
+    return prepared;
   }
 
   function submitRecovery(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isUploading || isPending) return;
+    if (busy) return;
+    setFeedback(null);
     const note = completionNote.trim();
     const reason = recoveryReason.trim();
     const scan = replacementRollSerial.trim();
@@ -588,8 +708,11 @@ function AdminRecoveryCompletionPanel({
     if (reason.length < 5 || reason.length > 500) {
       return setFeedback({ tone: "error", text: recoveryError("PG_CLAIM_RESOLUTION_ADMIN_RECOVERY_REASON_INVALID") });
     }
-    if (evidence.length < 1) {
-      return setFeedback({ tone: "error", text: "ارفع صورة إكمال واحدة على الأقل قبل Admin recovery." });
+    if (uploads.length < 1) {
+      return setFeedback({ tone: "error", text: "أرفق صورة إكمال واحدة على الأقل قبل Admin recovery." });
+    }
+    if (hasAmbiguousEvidence) {
+      return setFeedback({ tone: "warning", text: "أزل أو استبدل أي صورة تعذر تأكيد حالتها قبل Admin recovery." });
     }
     if (isReplacement && (!scan || (expectedRollSerial && scan !== expectedRollSerial))) {
       return setFeedback({ tone: "error", text: recoveryError("PG_CLAIM_RESOLUTION_REPLACEMENT_SCAN_MISMATCH") });
@@ -599,13 +722,15 @@ function AdminRecoveryCompletionPanel({
 
     startTransition(() => {
       void (async () => {
+        const preparedEvidence = await prepareEvidence();
+        if (!preparedEvidence) return;
         try {
           const result = await completeWarrantyClaimResolutionByAdminRecovery({
             requestId,
             resolutionId,
             completionNote: note,
             recoveryReason: reason,
-            evidencePaths: evidence.map((item) => item.storagePath),
+            evidencePaths: preparedEvidence.map((item) => item.storagePath),
             replacementRollSerial: isReplacement ? scan : undefined,
           });
           if (!result.ok) {
@@ -619,7 +744,7 @@ function AdminRecoveryCompletionPanel({
           setFeedback({ tone: "success", text: "تم تسجيل الإكمال عبر مسار Admin recovery الاستثنائي." });
           router.refresh();
         } catch {
-          setFeedback({ tone: "error", text: "انقطع تأكيد الإكمال. أعد المحاولة دون تغيير المدخلات؛ سيستخدم النظام رقم المحاولة نفسه بأمان." });
+          setFeedback({ tone: "error", text: "انقطع تأكيد الإكمال. أعد المحاولة دون تغيير المدخلات؛ سيستخدم النظام رقم المحاولة نفسه والأدلة المرفوعة نفسها بأمان." });
         }
       })();
     });
@@ -637,69 +762,57 @@ function AdminRecoveryCompletionPanel({
       {feedback ? <FeedbackBanner tone={feedback.tone}>{feedback.text}</FeedbackBanner> : null}
 
       <div className={styles.form}>
-        <div className={styles.evidenceTop}>
-          <div>
-            <strong>صور إكمال خاصة</strong>
-            <p>من 1 إلى 5 صور، JPEG/PNG/WebP، بحد أقصى 8 MiB للصورة.</p>
-          </div>
-          <label className="button button-secondary">
-            {isUploading ? "جاري الرفع…" : "إضافة صور"}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              hidden
-              disabled={isUploading || isPending || evidence.length >= 5}
-              onChange={(event) => void uploadFiles(event.target.files)}
-            />
-          </label>
-        </div>
-        {evidence.length > 0 ? (
-          <div className={styles.evidenceList} aria-label="صور الإكمال المرفوعة">
-            {evidence.map((item) => (
-              <div className={styles.evidenceItem} key={item.storagePath}>
-                <div className={styles.evidenceMeta}>
-                  <strong>صورة {item.slot}</strong>
-                  <span>{item.mimeType} · {(item.sizeBytes / 1024).toFixed(0)} KiB</span>
-                </div>
-                <button type="button" className="button button-ghost" disabled={isUploading || isPending} onClick={() => void removeEvidence(item)}>حذف</button>
-              </div>
-            ))}
-          </div>
-        ) : <p>لم تُرفع صور بعد.</p>}
+        <LocalEvidenceReview
+          idPrefix="admin-recovery-evidence"
+          title="صور إكمال خاصة"
+          help="من 1 إلى 5 صور، JPEG/PNG/WebP، بحد أقصى 8 MiB للصورة. راجع الأدلة قبل أن يبدأ أي رفع."
+          items={uploads}
+          maxFiles={RECOVERY_MAX_IMAGES}
+          accept={RECOVERY_EVIDENCE_ACCEPT}
+          disabled={busy}
+          addLabel="إضافة صور"
+          onAdd={addFiles}
+          onRemove={(reviewItem) => {
+            const item = uploads.find((candidate) => candidate.id === reviewItem.id);
+            if (item) void removeUpload(item);
+          }}
+          onReplace={(reviewItem, file) => {
+            const item = uploads.find((candidate) => candidate.id === reviewItem.id);
+            if (item) void replaceUpload(item, file);
+          }}
+        />
       </div>
 
       <form className={styles.form} onSubmit={submitRecovery}>
         <label className={styles.field}>
           <span>سبب استخدام Admin recovery</span>
-          <textarea minLength={5} maxLength={500} required value={recoveryReason} disabled={isPending || isUploading} onChange={(event) => {
-            resetRequest();
+          <textarea minLength={5} maxLength={500} required value={recoveryReason} disabled={busy} onChange={(event) => {
+            payloadChanged();
             setRecoveryReason(event.target.value);
           }} />
         </label>
         <label className={styles.field}>
           <span>ملاحظة الإكمال الفعلية</span>
-          <textarea minLength={10} maxLength={2000} required value={completionNote} disabled={isPending || isUploading} onChange={(event) => {
-            resetRequest();
+          <textarea minLength={10} maxLength={2000} required value={completionNote} disabled={busy} onChange={(event) => {
+            payloadChanged();
             setCompletionNote(event.target.value);
           }} />
         </label>
         {isReplacement ? (
           <label className={styles.field}>
             <span>رقم اللفة المستخدمة فعليًا</span>
-            <input dir="ltr" required value={replacementRollSerial} disabled={isPending || isUploading} onChange={(event) => {
-              resetRequest();
+            <input dir="ltr" required value={replacementRollSerial} disabled={busy} onChange={(event) => {
+              payloadChanged();
               setReplacementRollSerial(event.target.value);
             }} placeholder={expectedRollSerial ?? "Scan / serial"} />
           </label>
         ) : null}
         <div className={styles.actions}>
           <ConfirmSubmitButton
-            title="تسجيل إكمال استثنائي بواسطة Admin؟"
-            description="سيُغلق الـResolution والمطالبة ويُسجل actor_kind=admin_recovery. لا تستخدمه كبديل عن مركز قادر على الإكمال الطبيعي."
+            title={`تسجيل Admin recovery مع ${uploads.length.toLocaleString("en-US")} صورة؟`}
+            description="بعد هذا التأكيد فقط سيبدأ رفع الصور المختارة، ثم سيُغلق الـResolution والمطالبة ويُسجل actor_kind=admin_recovery إذا نجحت السلطة النهائية."
             confirmLabel="تأكيد Admin recovery"
-            disabled={isPending || isUploading || evidence.length < 1 || completionNote.trim().length < 10 || recoveryReason.trim().length < 5}
+            disabled={busy || hasAmbiguousEvidence || uploads.length < 1 || completionNote.trim().length < 10 || recoveryReason.trim().length < 5}
           >{isPending ? "جاري الإكمال…" : "إكمال عبر Admin recovery"}</ConfirmSubmitButton>
         </div>
       </form>
