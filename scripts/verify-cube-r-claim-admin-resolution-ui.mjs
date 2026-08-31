@@ -7,11 +7,13 @@ function assert(condition, message) {
 const queuePath = "app/operations/claim-resolutions/page.tsx";
 const detailPath = "app/operations/claim-resolutions/[id]/page.tsx";
 const actionsPath = "components/claims/admin-claim-resolution-actions.tsx";
+const localReviewPath = "components/ui/local-evidence-review.tsx";
 const homePath = "app/operations/page.tsx";
 
 const queue = fs.readFileSync(queuePath, "utf8");
 const detail = fs.readFileSync(detailPath, "utf8");
 const actions = fs.readFileSync(actionsPath, "utf8");
+const localReview = fs.readFileSync(localReviewPath, "utf8");
 const home = fs.readFileSync(homePath, "utf8");
 
 for (const [label, source] of [["queue", queue], ["detail", detail]]) {
@@ -75,8 +77,46 @@ assert(actions.includes('allocationStatus === "reserved"')
   "PD-079 UX must distinguish reserved/consumed material before customer-withdrawal closure.");
 assert(actions.includes('performingCenterStatus === "suspended" || activeOperatorCount === 0'),
   "Admin recovery UI must only render after assigned-Center capability loss.");
-assert(actions.includes("evidence.map((item) => item.storagePath)"),
-  "Admin recovery completion must submit only paths returned by the qualified upload boundary.");
+
+const recoveryPanelIndex = actions.indexOf("function AdminRecoveryCompletionPanel");
+const addFilesIndex = actions.indexOf("function addFiles", recoveryPanelIndex);
+const prepareEvidenceIndex = actions.indexOf("async function prepareEvidence", recoveryPanelIndex);
+const recoveryUploadIndex = actions.indexOf(
+  "uploadAdminRecoveryCompletionEvidence(resolutionId, item.slot, item.file)",
+  prepareEvidenceIndex,
+);
+assert(
+  recoveryPanelIndex >= 0
+    && addFilesIndex > recoveryPanelIndex
+    && prepareEvidenceIndex > addFilesIndex
+    && !actions.slice(addFilesIndex, prepareEvidenceIndex).includes("uploadAdminRecoveryCompletionEvidence(")
+    && recoveryUploadIndex > prepareEvidenceIndex,
+  "Admin recovery evidence selection must remain local-only; qualified Stage/Storage upload may begin only after final confirmation in prepareEvidence.",
+);
+assert(
+  actions.includes("preparedEvidence.map((item) => item.storagePath)")
+    && actions.includes('item.status === "retained" && item.evidence'),
+  "Admin recovery completion must submit only evidence paths returned by the qualified upload boundary and retain them for same-request retry.",
+);
+assert(
+  actions.includes("hasAmbiguousEvidence")
+    && actions.includes("evidence: result.evidence")
+    && actions.includes("onRemove={(reviewItem)")
+    && actions.includes("onReplace={(reviewItem, file)")
+    && actions.includes("RECOVERY_MAX_IMAGES")
+    && actions.includes("uploads.some((item) => item.slot === slot)"),
+  "Ambiguous Admin recovery evidence must remain visible, slot-reserving, blocking, and explicitly removable/replaceable before completion.",
+);
+assert(
+  actions.includes("LocalEvidenceReview")
+    && actions.includes("ConfirmSubmitButton")
+    && actions.includes("بعد هذا التأكيد فقط سيبدأ رفع الصور المختارة")
+    && localReview.includes("خاص على جهازك — لم يُرفع بعد")
+    && localReview.includes("جارٍ الرفع بعد تأكيد الإرسال…")
+    && localReview.includes("تم الرفع ومحفوظ للمحاولة الحالية")
+    && localReview.includes('item.status === "error"'),
+  "Admin recovery must expose local evidence review plus local/uploading/retained/error state before irreversible completion.",
+);
 assert(actions.includes("expectedRollSerial && scan !== expectedRollSerial"),
   "Replacement recovery UI must fail obvious wrong-Roll scans before authoritative server revalidation.");
 
@@ -85,4 +125,4 @@ assert(home.includes('href: "/operations/claim-resolutions"')
   && home.includes("resolutionModule"),
   "Admin home must expose a discoverable Resolution execution module.");
 
-console.log("Cube R Admin Resolution UI contract PASS: Admin-only bounded reads, authoritative server mutations, candidate-only material selection, idempotent retries, PD-079 and recovery guards, and discoverable queue/detail navigation.");
+console.log("Cube R Admin Resolution UI contract PASS: Admin-only bounded reads, authoritative server mutations, candidate-only material selection, idempotent retries, PD-079/recovery guards, pre-upload evidence review, and discoverable queue/detail navigation.");
