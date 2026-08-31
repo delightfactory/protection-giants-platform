@@ -7,6 +7,15 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function assertOrder(section, needles, message) {
+  let previous = -1;
+  for (const needle of needles) {
+    const index = section.indexOf(needle);
+    assert(index >= 0 && index > previous, message);
+    previous = index;
+  }
+}
+
 assert(source.includes('"use server";'), "Center Resolution completion actions must remain server-only.");
 assert(source.includes('createSupabaseAdminClient'), "Completion evidence upload must use the server Admin client.");
 assert(source.includes('createSupabaseServerClient'), "Completion authorization/mutation must use the authenticated server client.");
@@ -26,9 +35,9 @@ assert(source.includes('bytes.toString("ascii", 0, 4) === "RIFF"')
   "WebP validation must inspect file bytes, not trust browser MIME alone.");
 
 assert(source.includes('supabase.rpc("get_center_warranty_claim_resolution_task"'),
-  "Staged completion evidence must authorize through the exact assigned-task read boundary.");
+  "Staged completion evidence must retain the exact assigned-task advisory read boundary.");
 assert(source.includes('data[0]?.resolution_id === resolutionId'),
-  "Task authorization must bind the RPC result to the requested Resolution id.");
+  "Task advisory authorization must bind the RPC result to the requested Resolution id.");
 
 const uploadStart = source.indexOf("export async function uploadClaimResolutionCompletionEvidence");
 const removeStart = source.indexOf("export async function removeClaimResolutionCompletionEvidence");
@@ -40,9 +49,9 @@ const removeSection = source.slice(removeStart, completeStart);
 const completeSection = source.slice(completeStart);
 
 assert(uploadSection.includes("await authorizeAssignedResolution(resolutionId)"),
-  "Upload must authorize the exact currently assigned unresolved Resolution before touching Storage.");
-assert(uploadSection.match(/await authorizeAssignedResolution\(resolutionId\)/g)?.length >= 3,
-  "Upload must re-authorize after existing/probed/new object paths so reassignment/completion revokes staged access promptly.");
+  "Upload must retain the exact assigned-task advisory precheck before staging.");
+assert(uploadSection.includes('supabase.rpc("register_warranty_claim_resolution_completion_evidence_stage"'),
+  "Center completion upload must register a server-owned stage before Storage acceptance.");
 assert(uploadSection.includes('const storagePath = `resolutions/${resolutionId}/completion/${slot}-${digest}.${extension}`'),
   "Completion evidence path must remain Resolution-scoped, slot-bounded and content-addressed.");
 assert(uploadSection.includes("createHash(\"sha256\")") || source.includes('createHash("sha256")'),
@@ -50,17 +59,28 @@ assert(uploadSection.includes("createHash(\"sha256\")") || source.includes('crea
 assert(uploadSection.includes(".upload(storagePath, bytes"),
   "Evidence bytes must be uploaded only by the server-controlled Storage client.");
 assert(uploadSection.includes("upsert: false"), "Completion evidence upload must not overwrite existing objects.");
-assert(uploadSection.includes("await admin.storage.from(EVIDENCE_BUCKET).remove([storagePath])"),
-  "If assignment is lost after upload, the server must compensate by removing the staged object.");
+assertOrder(uploadSection, [
+  'supabase.rpc("register_warranty_claim_resolution_completion_evidence_stage"',
+  ".upload(storagePath, bytes",
+], "Center completion stage registration must precede Storage upload.");
+assert(!uploadSection.includes("await admin.storage.from(EVIDENCE_BUCKET).remove([storagePath])"),
+  "Center upload must not bypass the staged reserve/remove/finalize lifecycle with direct compensation deletion.");
 assert(!uploadSection.includes("createSignedUploadUrl") && !uploadSection.includes("getPublicUrl"),
   "Center completion must not grant direct/public Storage upload access.");
 
 assert(removeSection.includes("completionPathPattern(resolutionId).test(storagePath)"),
   "Removal must accept only exact Resolution completion paths.");
-assert(removeSection.includes("await authorizeAssignedResolution(resolutionId)"),
-  "Removal must require the currently assigned unresolved Center task.");
+assert(removeSection.includes('supabase.rpc("reserve_operational_evidence_stage_delete"'),
+  "Removal must revalidate the registering actor/current assigned-task authority through stage delete reservation.");
 assert(removeSection.includes(".remove([storagePath])"),
   "Removal must be server-controlled.");
+assert(removeSection.includes('supabase.rpc("finalize_operational_evidence_stage_delete"'),
+  "Removal must finalize the stage only after Storage deletion succeeds.");
+assertOrder(removeSection, [
+  'supabase.rpc("reserve_operational_evidence_stage_delete"',
+  ".remove([storagePath])",
+  'supabase.rpc("finalize_operational_evidence_stage_delete"',
+], "Center completion removal must preserve reserve -> Storage delete -> finalize ordering.");
 
 assert(completeSection.includes('Database["public"]["Functions"]["complete_warranty_claim_resolution"]["Args"]'),
   "Completion RPC arguments must stay bound to generated DB types.");
@@ -79,4 +99,4 @@ assert(completeSection.includes("p_replacement_roll_serial: replacementRollSeria
 assert(!completeSection.includes("service_role") && !source.includes("NEXT_PUBLIC_SUPABASE_SERVICE_ROLE"),
   "Completion actions must never expose service-role credentials.");
 
-console.log("Cube R Center completion server actions PASS: exact-task authorization, private content-addressed evidence, reassignment compensation, typed authoritative completion, and no direct Storage authority.");
+console.log("Cube R Center completion server actions PASS: server-owned staging-before-upload, authority-bound two-phase deletion, typed authoritative completion, and no direct Storage authority.");
