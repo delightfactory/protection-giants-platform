@@ -19,28 +19,28 @@ const options = new Map(
 );
 
 const staleBeforeRaw = options.get("stale-before");
-if (!staleBeforeRaw) {
-  throw new Error("--stale-before=<ISO-8601 timestamp> is required.");
-}
+if (!staleBeforeRaw) throw new Error("--stale-before=<ISO-8601 timestamp> is required.");
 
 const staleBefore = new Date(staleBeforeRaw);
-if (Number.isNaN(staleBefore.getTime())) {
-  throw new Error("--stale-before must be a valid ISO-8601 timestamp.");
-}
-if (staleBefore.getTime() > Date.now()) {
-  throw new Error("--stale-before must not be in the future.");
-}
+if (Number.isNaN(staleBefore.getTime())) throw new Error("--stale-before must be a valid ISO-8601 timestamp.");
+if (staleBefore.getTime() > Date.now()) throw new Error("--stale-before must not be in the future.");
 
 const limitRaw = options.get("limit") ?? "10";
 const limit = Number(limitRaw);
-if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
-  throw new Error("--limit must be an integer between 1 and 50.");
-}
+if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error("--limit must be an integer between 1 and 50.");
 
 for (const key of options.keys()) {
-  if (key !== "stale-before" && key !== "limit") {
-    throw new Error(`Unsupported option: --${key}`);
-  }
+  if (key !== "stale-before" && key !== "limit") throw new Error(`Unsupported option: --${key}`);
+}
+
+function isAlreadyMissing(error) {
+  if (!error) return false;
+  const statusCode = String(error.statusCode ?? error.status ?? "");
+  const errorCode = String(error.error ?? error.name ?? "").toLowerCase();
+  const message = String(error.message ?? "").toLowerCase();
+  return statusCode === "404"
+    || (statusCode === "400" && errorCode === "not_found")
+    || (statusCode === "400" && message === "object not found");
 }
 
 const supabase = createClient(url, serviceRoleKey, {
@@ -51,10 +51,7 @@ const { data: candidates, error: claimError } = await supabase.rpc(
   "claim_stale_operational_evidence_cleanup_candidates",
   { p_stale_before: staleBefore.toISOString(), p_limit: limit },
 );
-
-if (claimError) {
-  throw new Error(`Could not claim operational evidence cleanup candidates: ${claimError.message}`);
-}
+if (claimError) throw new Error(`Could not claim operational evidence cleanup candidates: ${claimError.message}`);
 
 let removed = 0;
 let failed = 0;
@@ -68,7 +65,7 @@ for (const candidate of candidates ?? []) {
   }
 
   const { error: storageError } = await supabase.storage.from(bucket).remove([storagePath]);
-  if (storageError) {
+  if (storageError && !isAlreadyMissing(storageError)) {
     failed += 1;
     console.error(`Storage cleanup failed for stage ${stageId}; stage remains delete_pending: ${storageError.message}`);
     continue;
