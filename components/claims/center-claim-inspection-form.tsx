@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   removeClaimInspectionEvidence,
@@ -8,20 +8,22 @@ import {
   uploadClaimInspectionEvidence,
   type InspectionEvidenceReference,
 } from "@/app/operations/claim-inspections/actions";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import {
+  LocalEvidenceReview,
+  type LocalEvidenceReviewItem,
+} from "@/components/ui/local-evidence-review";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import styles from "./center-claim-inspection-form.module.css";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const EVIDENCE_ACCEPT = "image/jpeg,image/png,image/webp";
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-type UploadItem = {
-  localId: string;
-  fileName: string;
+type UploadItem = LocalEvidenceReviewItem & {
   slot: number;
-  status: "uploading" | "ready" | "error";
   evidence?: InspectionEvidenceReference;
-  error?: string;
 };
 
 function errorText(code: string): string {
@@ -59,10 +61,14 @@ function errorText(code: string): string {
   }
 }
 
-function formatBytes(size: number) {
-  return size >= 1024 * 1024
-    ? `${(size / (1024 * 1024)).toFixed(1)} MB`
-    : `${Math.max(1, Math.round(size / 1024))} KB`;
+function validateFile(file: File): string | null {
+  if (file.size < 1 || file.size > MAX_IMAGE_BYTES) {
+    return errorText("PG_CLAIM_INSPECTION_EVIDENCE_SIZE_INVALID");
+  }
+  if (!ALLOWED_TYPES.has(file.type)) {
+    return errorText("PG_CLAIM_INSPECTION_EVIDENCE_TYPE_INVALID");
+  }
+  return null;
 }
 
 export function CenterClaimInspectionForm({ inspectionId }: { inspectionId: string }) {
@@ -74,15 +80,7 @@ export function CenterClaimInspectionForm({ inspectionId }: { inspectionId: stri
   const [feedback, setFeedback] = useState<{ tone: "error" | "warning" | "info" | "success"; text: string } | null>(null);
   const [isSubmitting, startSubmit] = useTransition();
   const requestIdRef = useRef<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const readyEvidence = useMemo(
-    () => uploads
-      .filter((item) => item.status === "ready" && item.evidence)
-      .sort((a, b) => a.slot - b.slot)
-      .map((item) => item.evidence!),
-    [uploads],
-  );
   const anyUploading = uploads.some((item) => item.status === "uploading");
   const hasAmbiguousEvidence = uploads.some((item) => item.status === "error" && item.evidence);
   const busy = anyUploading || isSubmitting;
@@ -92,87 +90,149 @@ export function CenterClaimInspectionForm({ inspectionId }: { inspectionId: stri
     setFeedback(null);
   }
 
-  async function uploadFiles(files: FileList | null) {
-    if (!files?.length || busy) return;
-    const currentReserved = uploads.filter((item) => item.status !== "error" || item.evidence).length;
-    const remaining = MAX_IMAGES - currentReserved;
-    const selected = Array.from(files).slice(0, Math.max(0, remaining));
-    if (selected.length === 0) {
+  function addFiles(files: File[]) {
+    if (!files.length || busy) return;
+    const freeSlots = [1, 2, 3, 4, 5].filter((slot) => !uploads.some((item) => item.slot === slot));
+    const selected = files.slice(0, freeSlots.length);
+    if (!selected.length) {
       setFeedback({ tone: "error", text: "يمكن إرفاق حتى 5 صور فقط للفحص." });
       return;
     }
 
-    const usedSlots = new Set(uploads.map((item) => item.slot));
-    payloadChanged();
-
-    for (const file of selected) {
-      if (file.size < 1 || file.size > MAX_IMAGE_BYTES) {
-        setFeedback({ tone: "error", text: errorText("PG_CLAIM_INSPECTION_EVIDENCE_SIZE_INVALID") });
-        continue;
+    const accepted: UploadItem[] = [];
+    let firstError: string | null = null;
+    selected.forEach((file) => {
+      const error = validateFile(file);
+      if (error) {
+        firstError ??= error;
+        return;
       }
-      if (!ALLOWED_TYPES.has(file.type)) {
-        setFeedback({ tone: "error", text: errorText("PG_CLAIM_INSPECTION_EVIDENCE_TYPE_INVALID") });
-        continue;
-      }
+      const slot = freeSlots[accepted.length];
+      accepted.push({
+        id: crypto.randomUUID(),
+        file,
+        slot,
+        label: `صورة ${slot}`,
+        status: "local",
+      });
+    });
 
-      const slot = [1, 2, 3, 4, 5].find((candidate) => !usedSlots.has(candidate));
-      if (!slot) break;
-      usedSlots.add(slot);
-      const localId = crypto.randomUUID();
-      setUploads((current) => [...current, { localId, fileName: file.name, slot, status: "uploading" }]);
-
-      try {
-        const result = await uploadClaimInspectionEvidence(inspectionId, slot, file);
-        if (!result.ok) {
-          setUploads((current) => current.map((item) => item.localId === localId
-            ? { ...item, status: "error", evidence: result.evidence, error: errorText(result.code) }
-            : item));
-          if ([
-            "PG_CLAIM_INSPECTION_NOT_ASSIGNED_CENTER",
-            "PG_CLAIM_INSPECTION_NOT_FOUND",
-            "PG_CLAIM_INSPECTION_CENTER_REQUIRED",
-          ].includes(result.code)) router.refresh();
-          continue;
-        }
-        setUploads((current) => current.map((item) => item.localId === localId
-          ? { ...item, status: "ready", evidence: result.evidence }
-          : item));
-      } catch {
-        setUploads((current) => current.map((item) => item.localId === localId
-          ? { ...item, status: "error", error: "انقطع تأكيد رفع الصورة. أزل العنصر وأعد رفع نفس الصورة." }
-          : item));
-      }
+    if (accepted.length) {
+      payloadChanged();
+      setUploads((current) => [...current, ...accepted].sort((left, right) => left.slot - right.slot));
     }
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (firstError) setFeedback({ tone: "error", text: firstError });
   }
 
   async function removeUpload(item: UploadItem) {
     if (busy) return;
     payloadChanged();
     if (!item.evidence) {
-      setUploads((current) => current.filter((candidate) => candidate.localId !== item.localId));
+      setUploads((current) => current.filter((candidate) => candidate.id !== item.id));
       return;
     }
 
-    setUploads((current) => current.map((candidate) => candidate.localId === item.localId
-      ? { ...candidate, status: "uploading" }
+    setUploads((current) => current.map((candidate) => candidate.id === item.id
+      ? { ...candidate, status: "uploading", error: undefined }
       : candidate));
     try {
       const result = await removeClaimInspectionEvidence(inspectionId, item.evidence.storagePath);
       if (!result.ok) {
-        setUploads((current) => current.map((candidate) => candidate.localId === item.localId
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
           ? { ...candidate, status: "error", error: errorText(result.code ?? "PG_CLAIM_INSPECTION_EVIDENCE_REMOVE_FAILED") }
           : candidate));
         if (result.code === "PG_CLAIM_INSPECTION_NOT_ASSIGNED_CENTER") router.refresh();
         return;
       }
-      setUploads((current) => current.filter((candidate) => candidate.localId !== item.localId));
+      setUploads((current) => current.filter((candidate) => candidate.id !== item.id));
     } catch {
-      setUploads((current) => current.map((candidate) => candidate.localId === item.localId
+      setUploads((current) => current.map((candidate) => candidate.id === item.id
         ? { ...candidate, status: "error", error: "انقطع تأكيد حذف الصورة. حاول الإزالة مرة أخرى قبل إرسال الفحص." }
         : candidate));
     }
+  }
+
+  async function replaceUpload(item: UploadItem, file: File) {
+    if (busy) return;
+    const validationError = validateFile(file);
+    if (validationError) {
+      setFeedback({ tone: "error", text: validationError });
+      return;
+    }
+
+    payloadChanged();
+    if (item.evidence) {
+      setUploads((current) => current.map((candidate) => candidate.id === item.id
+        ? { ...candidate, status: "uploading", error: undefined }
+        : candidate));
+      try {
+        const result = await removeClaimInspectionEvidence(inspectionId, item.evidence.storagePath);
+        if (!result.ok) {
+          setUploads((current) => current.map((candidate) => candidate.id === item.id
+            ? { ...candidate, status: "error", error: errorText(result.code ?? "PG_CLAIM_INSPECTION_EVIDENCE_REMOVE_FAILED") }
+            : candidate));
+          if (result.code === "PG_CLAIM_INSPECTION_NOT_ASSIGNED_CENTER") router.refresh();
+          return;
+        }
+      } catch {
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "error", error: "انقطع تأكيد حذف الصورة القديمة. حاول الاستبدال مرة أخرى قبل الإرسال." }
+          : candidate));
+        return;
+      }
+    }
+
+    setUploads((current) => current.map((candidate) => candidate.id === item.id
+      ? { ...candidate, file, status: "local", evidence: undefined, error: undefined }
+      : candidate));
+  }
+
+  async function prepareEvidence(): Promise<InspectionEvidenceReference[] | null> {
+    const prepared: InspectionEvidenceReference[] = [];
+    const ordered = [...uploads].sort((left, right) => left.slot - right.slot);
+
+    for (const item of ordered) {
+      if (item.status === "retained" && item.evidence) {
+        prepared.push(item.evidence);
+        continue;
+      }
+      if (item.status === "error" && item.evidence) {
+        setFeedback({ tone: "warning", text: "أزل أو استبدل أي صورة تعذر تأكيد حالتها قبل إعادة إرسال الفحص." });
+        return null;
+      }
+
+      setUploads((current) => current.map((candidate) => candidate.id === item.id
+        ? { ...candidate, status: "uploading", error: undefined }
+        : candidate));
+      try {
+        const result = await uploadClaimInspectionEvidence(inspectionId, item.slot, item.file);
+        if (!result.ok) {
+          setUploads((current) => current.map((candidate) => candidate.id === item.id
+            ? { ...candidate, status: "error", evidence: result.evidence, error: errorText(result.code) }
+            : candidate));
+          setFeedback({ tone: "error", text: errorText(result.code) });
+          if ([
+            "PG_CLAIM_INSPECTION_NOT_ASSIGNED_CENTER",
+            "PG_CLAIM_INSPECTION_NOT_FOUND",
+            "PG_CLAIM_INSPECTION_CENTER_REQUIRED",
+          ].includes(result.code)) router.refresh();
+          return null;
+        }
+        prepared.push(result.evidence);
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "retained", evidence: result.evidence, error: undefined }
+          : candidate));
+      } catch {
+        const message = "انقطع تأكيد رفع الصورة. راجع حالة الملف ثم أعد تأكيد الإرسال.";
+        setUploads((current) => current.map((candidate) => candidate.id === item.id
+          ? { ...candidate, status: "error", error: message }
+          : candidate));
+        setFeedback({ tone: "error", text: message });
+        return null;
+      }
+    }
+
+    return prepared;
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -189,16 +249,16 @@ export function CenterClaimInspectionForm({ inspectionId }: { inspectionId: stri
       setFeedback({ tone: "error", text: errorText("PG_CLAIM_INSPECTION_CAUSE_INVALID") });
       return;
     }
-    if (readyEvidence.length < 1) {
+    if (uploads.length < 1) {
       setFeedback({ tone: "error", text: "أرفق صورة فحص واحدة على الأقل قبل الإرسال." });
       return;
     }
     if (anyUploading) {
-      setFeedback({ tone: "warning", text: "انتظر حتى يكتمل رفع الصور أولًا." });
+      setFeedback({ tone: "warning", text: "انتظر حتى تنتهي محاولة رفع الصور الحالية." });
       return;
     }
     if (hasAmbiguousEvidence) {
-      setFeedback({ tone: "warning", text: "أزل أي صورة تعذر تأكيد رفعها ثم أعد رفعها قبل إرسال الفحص." });
+      setFeedback({ tone: "warning", text: "أزل أو استبدل أي صورة تعذر تأكيد حالتها قبل إرسال الفحص." });
       return;
     }
     if (!acknowledged) {
@@ -210,13 +270,15 @@ export function CenterClaimInspectionForm({ inspectionId }: { inspectionId: stri
     const requestId = requestIdRef.current;
     startSubmit(() => {
       void (async () => {
+        const evidence = await prepareEvidence();
+        if (!evidence) return;
         try {
           const result = await submitClaimInspection({
             requestId,
             inspectionId,
             technicalObservation: observation,
             suspectedCause: cause,
-            evidencePaths: readyEvidence.map((item) => item.storagePath),
+            evidencePaths: evidence.map((item) => item.storagePath),
           });
           if (!result.ok) {
             setFeedback({ tone: "error", text: errorText(result.code) });
@@ -235,7 +297,7 @@ export function CenterClaimInspectionForm({ inspectionId }: { inspectionId: stri
         } catch {
           setFeedback({
             tone: "error",
-            text: "انقطع تأكيد إرسال الفحص. لا تغيّر البيانات أو الصور؛ أعد الضغط على الإرسال ليستخدم النظام نفس رقم المحاولة بأمان.",
+            text: "انقطع تأكيد إرسال الفحص. لا تغيّر البيانات أو الصور؛ أعد التأكيد ليستخدم النظام نفس رقم المحاولة بأمان.",
           });
         }
       })();
@@ -249,7 +311,7 @@ export function CenterClaimInspectionForm({ inspectionId }: { inspectionId: stri
           <span className={styles.eyebrow}>نتيجة المركز الفنية</span>
           <h2>تسجيل الفحص</h2>
         </div>
-        <span className={styles.counter}>{readyEvidence.length}/{MAX_IMAGES} صور جاهزة</span>
+        <span className={styles.counter}>{uploads.length}/{MAX_IMAGES} صور محددة</span>
       </div>
       <p className={styles.note}>
         سجّل ما شاهدته فنيًا فقط. المركز يقدم الدليل والملاحظة ولا يقرر قبول أو رفض المطالبة.
@@ -291,47 +353,25 @@ export function CenterClaimInspectionForm({ inspectionId }: { inspectionId: stri
           />
         </label>
 
-        <div className={styles.uploadBlock}>
-          <div>
-            <strong>صور الفحص</strong>
-            <p>من 1 إلى 5 صور · JPEG / PNG / WebP · حتى 8MB للصورة.</p>
-          </div>
-          <label className={`button button-secondary ${styles.fileButton}`}>
-            إضافة صور
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              disabled={busy || uploads.length >= MAX_IMAGES}
-              onChange={(event) => void uploadFiles(event.target.files)}
-            />
-          </label>
-        </div>
-
-        {uploads.length > 0 ? (
-          <div className={styles.uploadList} aria-live="polite">
-            {[...uploads].sort((a, b) => a.slot - b.slot).map((item) => (
-              <div className={styles.uploadItem} key={item.localId}>
-                <div>
-                  <strong>صورة {item.slot}: {item.fileName}</strong>
-                  <span>
-                    {item.status === "uploading"
-                      ? "جاري المعالجة…"
-                      : item.status === "ready" && item.evidence
-                        ? `جاهزة · ${formatBytes(item.evidence.sizeBytes)}`
-                        : item.error ?? "تعذر تجهيز الصورة"}
-                  </span>
-                </div>
-                {item.status !== "uploading" ? (
-                  <button type="button" className="button button-ghost" disabled={busy} onClick={() => void removeUpload(item)}>
-                    إزالة
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : null}
+        <LocalEvidenceReview
+          idPrefix="claim-inspection-evidence"
+          title="صور الفحص"
+          help="من 1 إلى 5 صور · JPEG / PNG / WebP · حتى 8MB للصورة. راجع الصور هنا قبل أن يبدأ الرفع."
+          items={uploads}
+          maxFiles={MAX_IMAGES}
+          accept={EVIDENCE_ACCEPT}
+          disabled={busy}
+          addLabel="إضافة صور"
+          onAdd={addFiles}
+          onRemove={(reviewItem) => {
+            const item = uploads.find((candidate) => candidate.id === reviewItem.id);
+            if (item) void removeUpload(item);
+          }}
+          onReplace={(reviewItem, file) => {
+            const item = uploads.find((candidate) => candidate.id === reviewItem.id);
+            if (item) void replaceUpload(item, file);
+          }}
+        />
 
         <label className={styles.acknowledgement}>
           <input
@@ -347,9 +387,15 @@ export function CenterClaimInspectionForm({ inspectionId }: { inspectionId: stri
         </label>
 
         <div className={styles.actions}>
-          <button type="submit" className="button button-primary" disabled={busy || readyEvidence.length < 1 || !acknowledged}>
+          <ConfirmSubmitButton
+            title={`إرسال الفحص مع ${uploads.length.toLocaleString("en-US")} صورة؟`}
+            description="بعد هذا التأكيد فقط سيبدأ رفع الصور المختارة، ثم تُسجل نتيجة الفحص كسجل ثابت إذا نجحت العملية النهائية."
+            confirmLabel="تأكيد وإرسال الفحص"
+            tone="primary"
+            disabled={busy || uploads.length < 1 || !acknowledged || hasAmbiguousEvidence}
+          >
             {isSubmitting ? "جاري إرسال الفحص…" : "إرسال نتيجة الفحص"}
-          </button>
+          </ConfirmSubmitButton>
         </div>
       </form>
     </section>

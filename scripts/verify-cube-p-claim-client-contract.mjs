@@ -11,6 +11,7 @@ function read(path) {
 const publicPage = read("app/(public)/w/[publicCode]/page.tsx");
 const claimPage = read("app/(public)/w/[publicCode]/claim/page.tsx");
 const claimClient = read("app/(public)/w/[publicCode]/claim/claim-client.tsx");
+const localEvidenceReview = read("components/ui/local-evidence-review.tsx");
 const actions = read("app/(public)/w/[publicCode]/claim/actions.ts");
 const access = read("lib/warranty/claim-access.server.ts");
 const domain = read("lib/warranty/claim-intake.ts");
@@ -94,12 +95,31 @@ const uploadRegisterIndex = actions.indexOf("registerDraftEvidence(access, evide
 const physicalUploadIndex = actions.indexOf(".upload(storagePath, bytes", uploadFunctionIndex);
 assert(uploadRegisterIndex > uploadFunctionIndex && physicalUploadIndex > uploadRegisterIndex,
   "Evidence registry reservation must commit before physical Storage upload so a late upload cannot outrun final Claim submission.");
+
+const addFilesIndex = claimClient.indexOf("function addFiles");
+const prepareEvidenceIndex = claimClient.indexOf("async function prepareEvidence");
+const customerUploadCallIndex = claimClient.indexOf("uploadWarrantyClaimEvidence(publicCode, item.file)", prepareEvidenceIndex);
+assert(
+  addFilesIndex >= 0
+    && prepareEvidenceIndex > addFilesIndex
+    && !claimClient.slice(addFilesIndex, prepareEvidenceIndex).includes("uploadWarrantyClaimEvidence(")
+    && customerUploadCallIndex > prepareEvidenceIndex,
+  "Customer evidence selection must stay local-only; server draft/Storage upload may begin only from the post-confirmation prepareEvidence stage.",
+);
 assert(
   domain.includes("evidence?: WarrantyClaimEvidenceReference")
     && claimClient.includes("evidence: result.evidence")
-    && claimClient.includes("reservedUploadCount")
+    && claimClient.includes("WARRANTY_CLAIM_MAX_IMAGES - uploads.length")
+    && claimClient.includes("hasReservedUploadError")
+    && claimClient.includes("onRemove={(reviewItem)")
     && claimClient.includes("PG_CLAIM_EVIDENCE_UPLOAD_AMBIGUOUS"),
   "Any upload failure after registry reservation must stay visible/removable in the verified UI and continue to count against the five-slot draft cap until explicitly cleared.",
+);
+assert(
+  claimClient.includes("status: \"retained\"")
+    && claimClient.includes("item.status === \"retained\" && item.evidence")
+    && claimClient.includes("evidencePaths: evidence.map((item) => item.storagePath)"),
+  "Successfully uploaded customer evidence must be retained for the same submission attempt and reused by path on retry instead of being blindly uploaded again.",
 );
 assert(
   actions.includes("p_verified_phone_normalized: access.currentPhoneNormalized")
@@ -159,8 +179,16 @@ for (const category of [
   assert(domain.includes(`"${category}"`), `Frozen Claim category ${category} is missing.`);
 }
 
-assert(claimClient.includes("جارٍ الرفع") && claimClient.includes("تم الرفع") && claimClient.includes("uploadList"),
-  "Mobile Claim UI must expose per-image upload/error state rather than a blind bulk submit.");
+assert(
+  claimClient.includes("LocalEvidenceReview")
+    && claimClient.includes("ConfirmSubmitButton")
+    && claimClient.includes("بعد هذا التأكيد فقط سيبدأ رفع الصور المختارة")
+    && localEvidenceReview.includes("خاص على جهازك — لم يُرفع بعد")
+    && localEvidenceReview.includes("جارٍ الرفع بعد تأكيد الإرسال…")
+    && localEvidenceReview.includes("تم الرفع ومحفوظ للمحاولة الحالية")
+    && localEvidenceReview.includes('item.status === "error"'),
+  "Mobile Claim UI must expose local preview plus per-image upload/retained/error state and must not start upload before final confirmation.",
+);
 assert(claimClient.includes("currentOpenClaim") && claimClient.includes("recentClosedClaims"),
   "Customer surface must use the Warranty-scoped open/history management envelope.");
 assert(claimClient.includes("لا يمكن إنشاء مطالبة أخرى قبل إغلاق المطالبة الحالية"),

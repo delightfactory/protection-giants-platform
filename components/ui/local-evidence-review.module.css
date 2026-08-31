@@ -1,0 +1,160 @@
+.review {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.heading > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.heading strong {
+  font-size: 1rem;
+}
+
+.heading p,
+.empty {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.count {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.privacy {
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface));
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.addButton {
+  width: fit-content;
+}
+
+.addButton[aria-disabled="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.7rem;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--surface);
+}
+
+.preview {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 0.7rem;
+  background: var(--surface-raised);
+}
+
+.preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.fileFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.3rem;
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.fileFallback > span {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.fileFallback small {
+  color: var(--muted);
+}
+
+.meta {
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.meta > span {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.fileName {
+  overflow-wrap: anywhere;
+}
+
+.state {
+  color: var(--text-secondary) !important;
+}
+
+.error {
+  color: var(--danger) !important;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.actions label[aria-disabled="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+@media (max-width: 560px) {
+  .heading {
+    align-items: stretch;
+  }
+
+  .count {
+    align-self: flex-start;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
