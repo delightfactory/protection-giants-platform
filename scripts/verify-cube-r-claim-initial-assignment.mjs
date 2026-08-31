@@ -206,7 +206,7 @@ const expectedCenterRecipients = querySql(`select count(*) from private.notifica
 assert(Number(expectedCenterRecipients) >= 1, "Assigned Center must expose at least one active notification recipient.");
 const notificationShape = querySql(`
   select concat_ws('|', count(*), bool_and(notification.attention_level = 'action_required'),
-    bool_and(notification.push_eligible), bool_and(notification.action_path is null))
+    bool_and(notification.push_eligible), bool_and(notification.action_path = '/operations/claim-resolution-tasks/${resolutionId}'))
   from public.notifications notification
   where notification.source_domain = 'warranty_claim_resolution'
     and notification.source_event_key = ${sqlText(`warranty_claim_resolution_events:${assignmentEventId}`)}
@@ -226,7 +226,8 @@ assert(centerInbox.response.ok && centerInbox.body.some((notification) =>
   notification.event_type === "claim_resolution.assigned"
   && notification.source_event_key === `warranty_claim_resolution_events:${assignmentEventId}`
   && notification.attention_level === "action_required"
-  && notification.push_eligible === true && notification.action_path === null
+  && notification.push_eligible === true
+  && notification.action_path === `/operations/claim-resolution-tasks/${resolutionId}`
 ), `Assigned Center Inbox is missing the durable action-required row: ${JSON.stringify(centerInbox.body)}`);
 
 const retry = await userRpc("assign_warranty_claim_resolution", {

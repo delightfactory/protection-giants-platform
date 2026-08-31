@@ -323,7 +323,7 @@ const notificationShape = querySql(`
   select concat_ws('|',
     char_length(notification.body),
     notification.body = btrim(notification.body),
-    notification.action_path is null,
+    notification.action_path = '/operations/claims/${created.claim_id}/review',
     notification.push_eligible
   )
   from public.notifications notification

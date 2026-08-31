@@ -49,20 +49,18 @@ export default async function ClaimResolutionTaskDetailPage({ params }: PageProp
   });
   if (error) {
     if (error.message === "PG_CLAIM_RESOLUTION_CENTER_REQUIRED") redirect("/access-denied");
-    if (error.message === "PG_CLAIM_RESOLUTION_TASK_NOT_FOUND") notFound();
+    if (error.message === "PG_CLAIM_RESOLUTION_TASK_NOT_FOUND") redirect("/operations/claim-resolution-tasks");
     throw error;
   }
-  if (!data || data.length !== 1) notFound();
+  if (!data || data.length !== 1) redirect("/operations/claim-resolution-tasks");
   const task = data[0];
 
   const evidenceResult = await supabase.rpc("list_center_warranty_claim_resolution_evidence", {
     p_resolution_id: id,
   });
   if (evidenceResult.error) {
-    if (
-      evidenceResult.error.message === "PG_CLAIM_RESOLUTION_CENTER_REQUIRED"
-      || evidenceResult.error.message === "PG_CLAIM_RESOLUTION_TASK_NOT_FOUND"
-    ) notFound();
+    if (evidenceResult.error.message === "PG_CLAIM_RESOLUTION_CENTER_REQUIRED") redirect("/access-denied");
+    if (evidenceResult.error.message === "PG_CLAIM_RESOLUTION_TASK_NOT_FOUND") redirect("/operations/claim-resolution-tasks");
     throw evidenceResult.error;
   }
 

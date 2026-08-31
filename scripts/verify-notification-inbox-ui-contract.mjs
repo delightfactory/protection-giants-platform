@@ -13,12 +13,35 @@ const nav = read("components/operations-nav.tsx");
 const navLinks = read("components/operations-nav-links.tsx");
 const shellCss = read("app/operations/notification-shell.css");
 const inboxCss = read("app/operations/notifications/notifications.module.css");
+const resolutionTaskDetail = read("app/operations/claim-resolution-tasks/[id]/page.tsx");
+const pushContract = read("lib/notifications/push-worker-contract.ts");
+const serviceWorker = read("public/sw.js");
 
 assert(page.includes("<LocalDateTime"), "Inbox timestamps must use LocalDateTime.");
 assert(page.includes("غير مقروء"), "Unread state must be expressed textually, not color-only.");
 assert(page.includes("قراءة الإشعار لا تعني تنفيذ الإجراء"), "Inbox must separate read state from business completion semantics.");
 assert(page.includes("NOTIFICATION_PAGE_SIZE"), "Inbox must preserve bounded pagination.");
 assert(page.includes("markAllNotificationsReadAction"), "Inbox must expose mark-all-read.");
+for (const [sourceDomain, label] of [
+  ["warranty", "الضمان"],
+  ["warranty_claim", "مطالبات الضمان"],
+  ["warranty_claim_resolution", "تنفيذ مطالبات الضمان"],
+]) {
+  assert(page.includes(`${sourceDomain}: "${label}"`), `Inbox must present ${sourceDomain} with the current Arabic source label.`);
+}
+
+assert(resolutionTaskDetail.includes('if (error.message === "PG_CLAIM_RESOLUTION_TASK_NOT_FOUND") redirect("/operations/claim-resolution-tasks");'),
+  "A stale exact Resolution task must fall back to the current Center queue instead of a dead-end 404.");
+assert(resolutionTaskDetail.includes('if (!data || data.length !== 1) redirect("/operations/claim-resolution-tasks");'),
+  "A stale/removed Resolution task result must fall back to the current Center queue.");
+assert(resolutionTaskDetail.includes('if (evidenceResult.error.message === "PG_CLAIM_RESOLUTION_TASK_NOT_FOUND") redirect("/operations/claim-resolution-tasks");'),
+  "A reassignment race during evidence read must fall back to the current Center queue.");
+assert(pushContract.includes('const fallback = "/operations/notifications";')
+  && pushContract.includes('actionPath: safePushActionPath(claim.action_path)'),
+  "Push payloads must consume the same durable action_path as Inbox and retain the Inbox fallback.");
+assert(serviceWorker.includes('const DEFAULT_ACTION_PATH = "/operations/notifications";')
+  && serviceWorker.includes('const actionPath = safeActionPath(event.notification?.data?.actionPath);'),
+  "Push click must preserve same-origin action routing with a non-dead-end Inbox fallback.");
 
 assert(actions.includes('.from("notifications")'), "Open action must resolve the notification through the user's RLS-visible Inbox.");
 assert(actions.includes('trimmed.startsWith("/")'), "Deep-link action must require an application-relative path.");
