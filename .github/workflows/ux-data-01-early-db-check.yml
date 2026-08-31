@@ -1,0 +1,50 @@
+name: UX-DATA-01 Early DB Check
+
+on:
+  push:
+    branches:
+      - agent/ux-data-01-operational-evidence-lifecycle
+    paths:
+      - "supabase/migrations/20260831103000_ux_data_01_operational_evidence_lifecycle.sql"
+      - ".github/workflows/ux-data-01-early-db-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  db-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Show CLI contract
+        run: |
+          supabase --version
+          supabase migration --help >/tmp/supabase-migration-help.txt
+          supabase db --help >/tmp/supabase-db-help.txt
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Lint database
+        run: supabase db lint --local --level warning --fail-on error
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
