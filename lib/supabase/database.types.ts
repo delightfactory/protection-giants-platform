@@ -2418,6 +2418,13 @@ export type Database = {
           title: string
         }[]
       }
+      claim_stale_operational_evidence_cleanup_candidates: {
+        Args: { p_limit?: number; p_stale_before: string }
+        Returns: {
+          stage_id: string
+          storage_path: string
+        }[]
+      }
       complete_warranty_claim_resolution: {
         Args: {
           p_action_request_id: string
@@ -2571,6 +2578,14 @@ export type Database = {
       }
       finalize_expired_warranty_claim_draft_cleanup: {
         Args: { p_draft_id: string }
+        Returns: boolean
+      }
+      finalize_operational_evidence_cleanup: {
+        Args: { p_stage_id: string }
+        Returns: boolean
+      }
+      finalize_operational_evidence_stage_delete: {
+        Args: { p_storage_path: string }
         Returns: boolean
       }
       generate_operational_transfer_code: {
@@ -3253,6 +3268,36 @@ export type Database = {
         Args: { p_auth_secret: string; p_endpoint: string; p_p256dh: string }
         Returns: string
       }
+      register_warranty_claim_admin_recovery_evidence_stage: {
+        Args: {
+          p_mime_type: string
+          p_resolution_id: string
+          p_size_bytes: number
+          p_slot: number
+          p_storage_path: string
+        }
+        Returns: string
+      }
+      register_warranty_claim_inspection_evidence_stage: {
+        Args: {
+          p_inspection_id: string
+          p_mime_type: string
+          p_size_bytes: number
+          p_slot: number
+          p_storage_path: string
+        }
+        Returns: string
+      }
+      register_warranty_claim_resolution_completion_evidence_stage: {
+        Args: {
+          p_mime_type: string
+          p_resolution_id: string
+          p_size_bytes: number
+          p_slot: number
+          p_storage_path: string
+        }
+        Returns: string
+      }
       reject_roll_transfer: { Args: { p_transfer_id: string }; Returns: string }
       reject_warranty_claim: {
         Args: {
@@ -3302,6 +3347,10 @@ export type Database = {
           p_resolution_id: string
           p_roll_id: string
         }
+        Returns: string
+      }
+      reserve_operational_evidence_stage_delete: {
+        Args: { p_storage_path: string }
         Returns: string
       }
       resolve_opened_roll_recovery_candidate: {
