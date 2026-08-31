@@ -331,7 +331,7 @@ assert(result.response.ok && stageState(pendingPath).startsWith("delete_pending|
 
 result = await userRpc("reassign_warranty_claim_inspection", {
   p_action_request_id: randomUUID(),
-  p_inspection_id: inspectionId,
+  p_claim_id: claimId,
   p_center_party_id: centerBPartyId,
   p_reason: "UX-DATA-01 authority-loss cleanup verification.",
 }, adminToken);
