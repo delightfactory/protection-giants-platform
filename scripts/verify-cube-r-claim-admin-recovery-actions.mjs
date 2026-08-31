@@ -7,6 +7,15 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function assertOrder(section, needles, message) {
+  let previous = -1;
+  for (const needle of needles) {
+    const index = section.indexOf(needle);
+    assert(index >= 0 && index > previous, message);
+    previous = index;
+  }
+}
+
 assert(source.includes('"use server";'), "Admin recovery actions must remain server-only.");
 assert(source.includes("createSupabaseServerClient"), "Admin recovery authorization/completion must use the authenticated server client.");
 assert(source.includes("createSupabaseAdminClient"), "Recovery evidence bytes must use the server-only Storage Admin client.");
@@ -28,7 +37,7 @@ assert(source.includes('bytes.toString("ascii", 0, 4) === "RIFF"')
   "Recovery WebP validation must inspect file bytes.");
 
 assert(source.includes('supabase.rpc("get_admin_warranty_claim_resolution_detail"'),
-  "Recovery evidence staging must authorize through the bounded Admin Resolution detail read.");
+  "Recovery evidence staging must retain the bounded Admin Resolution advisory read.");
 assert(source.includes('detail.resolution_status !== "assigned"'),
   "Recovery evidence must stay bound to an assigned Resolution.");
 assert(source.includes('detail.claim_status !== "approved"') && source.includes("detail.claim_closed_at !== null"),
@@ -50,24 +59,35 @@ const removeSection = source.slice(removeStart, completeStart);
 const completeSection = source.slice(completeStart);
 
 assert(uploadSection.includes("await authorizeAdminRecoveryEvidence(resolutionId)"),
-  "Recovery upload must authorize before touching Storage.");
-assert(uploadSection.match(/await authorizeAdminRecoveryEvidence\(resolutionId\)/g)?.length >= 3,
-  "Recovery upload must re-authorize existing/new/probed objects to react to Center capability restoration.");
+  "Recovery upload must retain the bounded advisory precheck before staging.");
+assert(uploadSection.includes('supabase.rpc("register_warranty_claim_admin_recovery_evidence_stage"'),
+  "Recovery upload must register a server-owned Admin recovery stage before Storage acceptance.");
 assert(uploadSection.includes('const storagePath = `resolutions/${resolutionId}/completion/${slot}-${digest}.${extension}`'),
   "Recovery evidence path must retain the canonical Resolution completion namespace.");
 assert(source.includes('createHash("sha256")'), "Recovery evidence must be content-addressed with SHA-256.");
 assert(uploadSection.includes(".upload(storagePath, bytes") && uploadSection.includes("upsert: false"),
   "Recovery evidence upload must be server-controlled and non-overwriting.");
-assert(uploadSection.includes("await admin.storage.from(EVIDENCE_BUCKET).remove([storagePath])"),
-  "Newly staged recovery evidence must be compensated if recovery eligibility disappears after upload.");
+assertOrder(uploadSection, [
+  'supabase.rpc("register_warranty_claim_admin_recovery_evidence_stage"',
+  ".upload(storagePath, bytes",
+], "Recovery stage registration must precede Storage upload.");
+assert(!uploadSection.includes("await admin.storage.from(EVIDENCE_BUCKET).remove([storagePath])"),
+  "Recovery upload must not bypass the staged reserve/remove/finalize lifecycle with direct compensation deletion.");
 assert(!uploadSection.includes("createSignedUploadUrl") && !uploadSection.includes("getPublicUrl"),
   "Recovery must not grant direct/public Storage authority.");
 
 assert(removeSection.includes("completionPathPattern(resolutionId).test(storagePath)"),
   "Recovery evidence removal must accept only exact Resolution completion paths.");
-assert(removeSection.includes("await authorizeAdminRecoveryEvidence(resolutionId)"),
-  "Recovery evidence removal must remain bound to a currently eligible Admin recovery case.");
+assert(removeSection.includes('supabase.rpc("reserve_operational_evidence_stage_delete"'),
+  "Recovery evidence removal must revalidate actor/current recovery authority through the stage delete reservation RPC.");
 assert(removeSection.includes(".remove([storagePath])"), "Recovery evidence removal must remain server-controlled.");
+assert(removeSection.includes('supabase.rpc("finalize_operational_evidence_stage_delete"'),
+  "Recovery evidence removal must finalize the stage only after Storage deletion succeeds.");
+assertOrder(removeSection, [
+  'supabase.rpc("reserve_operational_evidence_stage_delete"',
+  ".remove([storagePath])",
+  'supabase.rpc("finalize_operational_evidence_stage_delete"',
+], "Recovery evidence removal must preserve reserve -> Storage delete -> finalize ordering.");
 
 assert(!completeSection.includes("authorizeAdminRecoveryEvidence"),
   "Authoritative recovery completion must not use the advisory precheck; exact retries must reach the idempotent DB RPC.");
@@ -110,4 +130,4 @@ for (const forbidden of [
   assert(!source.includes(forbidden), `12A6 Admin recovery must not absorb unrelated coordination scope: ${forbidden}.`);
 }
 
-console.log("Cube R Admin recovery server actions PASS: recovery-only Admin evidence staging, capability-loss rechecks/compensation, typed idempotent authoritative completion, and no DB/service-role bypass.");
+console.log("Cube R Admin recovery server actions PASS: staged recovery registration-before-upload, authority-bound two-phase deletion, typed idempotent authoritative completion, and no DB/service-role bypass.");

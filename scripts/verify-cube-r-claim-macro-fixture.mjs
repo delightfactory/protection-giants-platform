@@ -80,6 +80,15 @@ export async function resolution(label, remedy = null, party = partyA) {
 export async function evidence(resolutionId, label) {
   const bytes = Buffer.from([0xff,0xd8,0xff,0xe0,...Buffer.from(`macro-${label}-${resolutionId}`)]); const digest = createHash("sha256").update(bytes).digest("hex");
   const path = `resolutions/${resolutionId}/completion/1-${digest}.jpg`;
+  const staged = await userRpc("register_warranty_claim_resolution_completion_evidence_stage", {
+    p_resolution_id: resolutionId,
+    p_slot: 1,
+    p_storage_path: path,
+    p_mime_type: "image/jpeg",
+    p_size_bytes: bytes.length,
+  }, centerA);
+  assert(staged.response.ok && /^[0-9a-f-]{36}$/i.test(String(staged.body)),
+    `Evidence stage registration failed ${label}: ${staged.response.status} ${JSON.stringify(staged.body)}`);
   const u = await req(`/storage/v1/object/warranty-claim-evidence/${path}`, { method: "POST", raw: bytes, type: "image/jpeg" }); assert(u.response.ok, `Evidence upload failed ${label}`); return path;
 }
 export async function reserve(resolutionId, rollId) {

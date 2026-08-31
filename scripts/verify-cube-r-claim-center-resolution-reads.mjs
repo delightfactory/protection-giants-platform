@@ -294,7 +294,7 @@ async function createAssignedResolution() {
   const resolutionId = randomUUID();
   const claimNumber = nextClaimNumber();
   const customerEvidencePath = `claims/${claimId}/customer/1-center-read.jpg`;
-  const inspectionEvidencePath = `claims/${claimId}/inspection/1-center-read.jpg`;
+  const inspectionEvidencePath = `inspections/${inspectionId}/1-${"a".repeat(64)}.jpg`;
 
   runSql(`
     insert into public.warranty_claims (
@@ -326,6 +326,17 @@ async function createAssignedResolution() {
       'Inspection confirms the affected area and provides execution-relevant technical context.',
       'Surface preparation issue', now() - interval '2 seconds',
       now() - interval '5 seconds', now() - interval '2 seconds'
+    );
+
+    -- This read-only regression builds a historical submitted Inspection directly as fixture data.
+    -- Seed the matching transient stage immediately before the canonical evidence insert so the
+    -- production consume trigger remains fully enforced; no production bypass is introduced.
+    insert into private.operational_evidence_stages (
+      flow_kind, inspection_id, resolution_id, actor_profile_id, slot,
+      storage_path, mime_type, size_bytes, state, created_at
+    ) values (
+      'inspection', ${sqlUuid(inspectionId)}, null, ${sqlUuid(centerAProfileId)}, 1,
+      ${sqlText(inspectionEvidencePath)}, 'image/jpeg', 23456, 'staged', now() - interval '3 seconds'
     );
 
     insert into public.warranty_claim_inspection_evidence (

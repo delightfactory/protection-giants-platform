@@ -29,7 +29,9 @@ on:
       - agent/cube-r-claim-resolution-fulfillment
     paths:
       - "supabase/migrations/*cube_r*"
+      - "supabase/migrations/*ux_data_01*"
       - "scripts/verify-cube-r-claim-*.mjs"
+      - "scripts/ux-data-01-stage-test-adapter.mjs"
       - "lib/supabase/database.types.ts"
       - "lib/warranty/claim-access.server.ts"
       - "lib/warranty/claim-intake.ts"
@@ -47,7 +49,9 @@ on:
       - main
     paths:
       - "supabase/migrations/*cube_r*"
+      - "supabase/migrations/*ux_data_01*"
       - "scripts/verify-cube-r-claim-*.mjs"
+      - "scripts/ux-data-01-stage-test-adapter.mjs"
       - "lib/supabase/database.types.ts"
       - "lib/warranty/claim-access.server.ts"
       - "lib/warranty/claim-intake.ts"
@@ -117,6 +121,7 @@ jobs:
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
+          export NODE_OPTIONS="--import=$(pwd)/scripts/ux-data-01-stage-test-adapter.mjs"
           node scripts/verify-cube-q-claim-review.mjs
 
       - name: Verify Cube R replacement Product policy boundary
@@ -171,6 +176,7 @@ jobs:
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
+          export NODE_OPTIONS="--import=$(pwd)/scripts/ux-data-01-stage-test-adapter.mjs"
           node scripts/verify-cube-r-claim-normal-center-completion.mjs
 
       - name: Verify Cube R customer Resolution progress and Warranty service history
@@ -192,6 +198,7 @@ jobs:
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
+          export NODE_OPTIONS="--import=$(pwd)/scripts/ux-data-01-stage-test-adapter.mjs"
           node scripts/verify-cube-r-claim-admin-recovery-completion.mjs
 
       - name: Verify Cube R Admin recovery server actions
