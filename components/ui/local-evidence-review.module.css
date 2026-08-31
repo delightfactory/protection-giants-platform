@@ -34,8 +34,8 @@
   flex: 0 0 auto;
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
-  background: var(--surface-strong);
-  color: var(--muted-strong);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -80,7 +80,7 @@
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 0.7rem;
-  background: var(--surface-strong);
+  background: var(--surface-raised);
 }
 
 .preview img {
@@ -99,7 +99,7 @@
   gap: 0.3rem;
   padding: 1rem;
   text-align: center;
-  color: var(--muted-strong);
+  color: var(--text-secondary);
 }
 
 .fileFallback > span {
@@ -127,7 +127,7 @@
 }
 
 .state {
-  color: var(--muted-strong) !important;
+  color: var(--text-secondary) !important;
 }
 
 .error {
