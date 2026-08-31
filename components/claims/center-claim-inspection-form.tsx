@@ -101,13 +101,13 @@ export function CenterClaimInspectionForm({ inspectionId }: { inspectionId: stri
 
     const accepted: UploadItem[] = [];
     let firstError: string | null = null;
-    selected.forEach((file, index) => {
+    selected.forEach((file) => {
       const error = validateFile(file);
       if (error) {
         firstError ??= error;
         return;
       }
-      const slot = freeSlots[index];
+      const slot = freeSlots[accepted.length];
       accepted.push({
         id: crypto.randomUUID(),
         file,
