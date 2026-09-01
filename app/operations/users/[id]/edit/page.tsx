@@ -114,7 +114,20 @@ export default async function UserEditPage({ params, searchParams }: UserEditPag
               />
             </FormSection>
             <div className="operations-form-actions is-inline">
-              <button type="submit" className="button button-primary">حفظ البيانات</button>
+              <ConfirmSubmitButton
+                title="تغيير الدور أو الارتباط التشغيلي؟"
+                description="إذا تغيّر الدور أو الكيان المرتبط، ستتغير الصلاحيات ونطاق العمل الذي يمثله هذا الحساب. راجع الاختيار قبل الحفظ."
+                confirmLabel="تأكيد التغيير"
+                tone="primary"
+                confirmWhenChanged={[
+                  { name: "role", initialValue: profile.role },
+                  { name: "country_agent_id", initialValue: profile.country_agent_id },
+                  { name: "dealer_id", initialValue: profile.dealer_id },
+                  { name: "installation_center_id", initialValue: profile.installation_center_id },
+                ]}
+              >
+                حفظ البيانات
+              </ConfirmSubmitButton>
             </div>
           </form>
         </FormPanel>
@@ -143,7 +156,14 @@ export default async function UserEditPage({ params, searchParams }: UserEditPag
                 </FormGrid>
               </FormSection>
               <div className="operations-form-actions is-inline">
-                <button type="submit" className="button">تغيير البريد</button>
+                <ConfirmSubmitButton
+                  title="تغيير بريد تسجيل الدخول؟"
+                  description="سيتم استبدال البريد المستخدم لتسجيل الدخول وتأكيد البريد الجديد مباشرة بواسطة الإدارة."
+                  confirmLabel="تأكيد تغيير البريد"
+                  tone="primary"
+                >
+                  تغيير البريد
+                </ConfirmSubmitButton>
               </div>
             </form>
           </FormPanel>
@@ -153,7 +173,7 @@ export default async function UserEditPage({ params, searchParams }: UserEditPag
               <input type="hidden" name="user_id" value={profile.id} />
               <FormSection
                 title="إعادة ضبط كلمة المرور"
-                description="لا يتم عرض أو تخزين كلمة المرور الحالية داخل المنصة."
+                description="مسار استرداد إداري للطوارئ. لا يتم عرض أو تخزين كلمة المرور الحالية داخل المنصة."
               >
                 <FormGrid columns={1}>
                   <FormField label="كلمة المرور الجديدة" hint="12 حرفًا على الأقل، وقد ترفض Auth كلمة المرور إذا كانت سياسة المشروع أقوى.">
@@ -170,7 +190,14 @@ export default async function UserEditPage({ params, searchParams }: UserEditPag
                 </FormGrid>
               </FormSection>
               <div className="operations-form-actions is-inline">
-                <button type="submit" className="button">تعيين كلمة المرور</button>
+                <ConfirmSubmitButton
+                  title="إعادة ضبط كلمة مرور هذا الحساب؟"
+                  description="سيتم استبدال كلمة مرور تسجيل الدخول الحالية بالقيمة الجديدة التي أدخلتها. استخدم هذا المسار للاسترداد الإداري فقط."
+                  confirmLabel="تأكيد إعادة الضبط"
+                  tone="primary"
+                >
+                  تعيين كلمة المرور
+                </ConfirmSubmitButton>
               </div>
             </form>
           </FormPanel>
@@ -189,17 +216,16 @@ export default async function UserEditPage({ params, searchParams }: UserEditPag
                     <input type="hidden" name="user_id" value={profile.id} />
                     <input type="hidden" name="return_to" value="edit" />
                     <input type="hidden" name="target_status" value={isActive ? "suspended" : "active"} />
-                    {isActive ? (
-                      <ConfirmSubmitButton
-                        title="إيقاف الحساب؟"
-                        description="سيتم منع تسجيل الدخول وإيقاف الملف التشغيلي لهذا الحساب حتى إعادة تفعيله."
-                        confirmLabel="تأكيد الإيقاف"
-                      >
-                        إيقاف الحساب
-                      </ConfirmSubmitButton>
-                    ) : (
-                      <button type="submit" className="button button-primary">إعادة التفعيل</button>
-                    )}
+                    <ConfirmSubmitButton
+                      title={isActive ? "إيقاف الحساب؟" : "إعادة تفعيل الحساب؟"}
+                      description={isActive
+                        ? "سيتم منع تسجيل الدخول وإيقاف الملف التشغيلي لهذا الحساب حتى إعادة تفعيله."
+                        : "سيتم السماح بتسجيل الدخول وإعادة تنشيط الملف التشغيلي لهذا الحساب."}
+                      confirmLabel={isActive ? "تأكيد الإيقاف" : "تأكيد إعادة التفعيل"}
+                      tone={isActive ? "danger" : "primary"}
+                    >
+                      {isActive ? "إيقاف الحساب" : "إعادة التفعيل"}
+                    </ConfirmSubmitButton>
                   </form>
                 )}
               </div>
