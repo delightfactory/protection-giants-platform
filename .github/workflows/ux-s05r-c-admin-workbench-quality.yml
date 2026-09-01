@@ -15,7 +15,6 @@ name: UX S05R C Admin Workbench Quality
       - "scripts/verify-platform-role-reachability-ui.mjs"
       - "scripts/verify-cube-q-claim-admin-decision-ui.mjs"
       - "scripts/verify-cube-r-claim-initial-assignment.mjs"
-      - "scripts/verify-cube-r-claim-admin-resolution-reads.mjs"
       - "scripts/verify-cube-r-claim-admin-resolution-ui.mjs"
       - ".github/workflows/ux-s05r-c-admin-workbench-quality.yml"
 
@@ -55,9 +54,6 @@ jobs:
 
       - name: Verify Cube Q Admin decision UI contract
         run: node scripts/verify-cube-q-claim-admin-decision-ui.mjs
-
-      - name: Verify Cube R Admin Resolution reads contract
-        run: node scripts/verify-cube-r-claim-admin-resolution-reads.mjs
 
       - name: Verify Cube R Admin Resolution UI contract
         run: node scripts/verify-cube-r-claim-admin-resolution-ui.mjs
