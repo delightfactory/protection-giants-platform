@@ -59,6 +59,14 @@ for (const expression of [
 assertExcludes(publicClaim, "Africa/Cairo", "Public Claim must not force Cairo timezone");
 assertExcludes(publicClaim, "function formatDate", "Public Claim one-off formatter removal");
 
+const centerInspection = read("app/operations/claim-inspections/[id]/page.tsx");
+assertIncludes(centerInspection, "<LocalDateTime value={inspection.requested_at} />", "Center Claim inspection requested-at instant");
+assertExcludes(centerInspection, "Africa/Cairo", "Center Claim inspection must use viewer-local time");
+
+const centerResolutionTask = read("app/operations/claim-resolution-tasks/[id]/page.tsx");
+assertIncludes(centerResolutionTask, "<LocalDateTime value={task.assigned_at} />", "Center Resolution assignment instant");
+assertExcludes(centerResolutionTask, "Africa/Cairo", "Center Resolution task must use viewer-local time");
+
 const productionList = read("app/operations/production-orders/page.tsx");
 assertIncludes(productionList, 'import { BusinessDate } from "@/components/ui/business-date";', "Production list business-date contract");
 assertIncludes(productionList, "<BusinessDate value={order.production_date} />", "Production list date-only rendering");
@@ -97,7 +105,9 @@ const uiScopes = [
   "app/(public)",
   "app/operations/warranties",
   "app/operations/claims",
+  "app/operations/claim-inspections",
   "app/operations/claim-resolutions",
+  "app/operations/claim-resolution-tasks",
   "app/operations/production-orders",
   "app/print",
   "components/warranties",
