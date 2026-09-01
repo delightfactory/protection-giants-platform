@@ -1,0 +1,54 @@
+name: UX S06R A Center Admin Density Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/operations/centers/[id]/edit/page.tsx"
+      - "app/operations/centers/[id]/edit/center-edit.module.css"
+      - "app/operations/centers/[id]/edit/actions.ts"
+      - "app/operations/centers/[id]/edit/recovery-actions.ts"
+      - "components/center-core-fields.tsx"
+      - "components/ui/confirm-submit-button.tsx"
+      - "components/ui/local-date-time.tsx"
+      - "scripts/verify-ux-s06r-a-center-admin-density.mjs"
+      - "scripts/verify-platform-role-reachability-ui.mjs"
+      - ".github/workflows/ux-s06r-a-center-admin-density-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  center-admin-density-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify UX-S06R-A Center administration density contract
+        run: node scripts/verify-ux-s06r-a-center-admin-density.mjs
+
+      - name: Verify S03R role reachability contracts
+        run: node scripts/verify-platform-role-reachability-ui.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'

@@ -1,0 +1,162 @@
+.pageStack {
+  display: grid;
+  gap: 18px;
+  max-width: 860px;
+}
+
+.summary {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .012));
+}
+
+.summaryHeader {
+  display: grid;
+  gap: 5px;
+}
+
+.summaryHeader h2,
+.summaryHeader p {
+  margin: 0;
+}
+
+.summaryHeader h2 {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.summaryHeader p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.summaryItem {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, .22);
+}
+
+.summaryItem dt,
+.summaryItem dd {
+  margin: 0;
+}
+
+.summaryItem dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.summaryItem dd {
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.summaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.anchorTarget {
+  scroll-margin-top: 18px;
+}
+
+.primaryPanel {
+  border-color: var(--accent-border);
+}
+
+.stateNote {
+  display: grid;
+  gap: 8px;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .025);
+  color: #d8d4d4;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.stateNote[data-tone="warning"] {
+  border-color: rgba(245, 183, 77, .34);
+  background: rgba(245, 183, 77, .08);
+}
+
+.stateNote[data-tone="success"] {
+  border-color: rgba(94, 211, 154, .28);
+  background: rgba(94, 211, 154, .07);
+}
+
+.stateNote p,
+.stateNote strong {
+  margin: 0;
+}
+
+.stateNote p {
+  overflow-wrap: anywhere;
+}
+
+.stateNoteHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.accountContext {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+@media (max-width: 600px) {
+  .pageStack {
+    gap: 22px;
+  }
+
+  .summary {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .summaryActions :global(.button) {
+    width: 100%;
+    min-height: 50px;
+    justify-content: center;
+  }
+
+  .stateNote {
+    border-radius: 17px;
+  }
+}
