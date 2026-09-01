@@ -1,0 +1,173 @@
+name: UX A11Y 01 guarded patch
+
+on:
+  push:
+    branches:
+      - agent/ux-a11y-01-accessible-dialog-sheet
+    paths:
+      - .github/workflows/ux-a11y-01-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/ux-a11y-01-accessible-dialog-sheet
+
+      - name: Migrate custom overlays to shared dialog
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}\n---\n{old[:240]}")
+              p.write_text(text.replace(old, new, 1))
+
+          # QR scanner sheet: native modal owns Escape, focus, inertness and scroll lock.
+          path = "components/transfers/qr-scanner-sheet.tsx"
+          replace_once(path,
+              'import { useEffect, useRef, useState } from "react";\n',
+              'import { useEffect, useRef, useState } from "react";\nimport { AccessibleDialog } from "@/components/ui/accessible-dialog";\n')
+          replace_once(path,
+              '    const previousBodyOverflow = document.body.style.overflow;\n    document.body.style.overflow = "hidden";\n',
+              '')
+          replace_once(path,
+              '''    function handleEscape(event: KeyboardEvent) {\n      if (event.key === "Escape") onCloseRef.current();\n    }\n    window.addEventListener("keydown", handleEscape);\n\n''',
+              '')
+          replace_once(path,
+              '''      document.body.style.overflow = previousBodyOverflow;\n      window.removeEventListener("keydown", handleEscape);\n''',
+              '')
+          replace_once(path,
+              '''    <div className={styles.scannerBackdrop} role="presentation" onMouseDown={(event) => {\n      if (event.target === event.currentTarget) onClose();\n    }}>\n      <section className={styles.scannerSheet} role="dialog" aria-modal="true" aria-labelledby="scanner-title">''',
+              '''    <AccessibleDialog\n      open={open}\n      onClose={onClose}\n      titleId="scanner-title"\n      descriptionId="scanner-instruction"\n      placement="responsive"\n    >\n      <section className={styles.scannerSheet}>''')
+          replace_once(path,
+              '<button type="button" className={styles.closeButton} onClick={onClose} aria-label="إغلاق الماسح">×</button>',
+              '<button type="button" className={styles.closeButton} onClick={onClose} aria-label="إغلاق الماسح" data-dialog-initial-focus>×</button>')
+          replace_once(path,
+              '<p className={styles.scannerInstruction}>{instruction}</p>',
+              '<p id="scanner-instruction" className={styles.scannerInstruction}>{instruction}</p>')
+          replace_once(path,
+              '''      </section>\n    </div>\n  );\n}''',
+              '''      </section>\n    </AccessibleDialog>\n  );\n}''')
+
+          # Transfer send decisions: preserve non-backdrop-cancellable behavior.
+          path = "components/transfers/transfer-send-flow.tsx"
+          replace_once(path,
+              'import { FeedbackBanner } from "@/components/ui/feedback-banner";\n',
+              'import { AccessibleDialog } from "@/components/ui/accessible-dialog";\nimport { FeedbackBanner } from "@/components/ui/feedback-banner";\n')
+          replace_once(path,
+              '''  const selectedCount = selectedIds.size;\n  const decisionOpen = Boolean(pendingLot || recipientChangePending || clearSelectionPending);\n\n  useEffect(() => {\n    if (!decisionOpen) return;\n\n    const previousBodyOverflow = document.body.style.overflow;\n    document.body.style.overflow = "hidden";\n\n    function handleEscape(event: KeyboardEvent) {\n      if (event.key !== "Escape") return;\n      setPendingLot(null);\n      setRecipientChangePending(false);\n      setClearSelectionPending(false);\n    }\n\n    window.addEventListener("keydown", handleEscape);\n    return () => {\n      document.body.style.overflow = previousBodyOverflow;\n      window.removeEventListener("keydown", handleEscape);\n    };\n  }, [decisionOpen]);\n''',
+              '''  const selectedCount = selectedIds.size;\n''')
+          replace_once(path,
+              '''      {pendingLot ? (\n        <div className={styles.decisionBackdrop} role="presentation">\n          <section className={styles.decisionSheet} role="dialog" aria-modal="true" aria-labelledby="partial-lot-title">''',
+              '''      <AccessibleDialog\n        open={Boolean(pendingLot)}\n        onClose={() => setPendingLot(null)}\n        titleId="partial-lot-title"\n        descriptionId="partial-lot-description"\n        placement="responsive"\n        closeOnBackdrop={false}\n      >\n        {pendingLot ? (\n          <section className={styles.decisionSheet}>''')
+          replace_once(path,
+              '<p>سيتم اختيار اللفات المتاحة فقط. اللفات المفتوحة والمحجوزة واللفات الموجودة لدى جهات أخرى لن تدخل هذا التحويل.</p>',
+              '<p id="partial-lot-description">سيتم اختيار اللفات المتاحة فقط. اللفات المفتوحة والمحجوزة واللفات الموجودة لدى جهات أخرى لن تدخل هذا التحويل.</p>')
+          replace_once(path,
+              '<button type="button" className="button button-ghost" onClick={() => setPendingLot(null)}>إلغاء</button>',
+              '<button type="button" className="button button-ghost" onClick={() => setPendingLot(null)} data-dialog-initial-focus>إلغاء</button>')
+          replace_once(path,
+              '''          </section>\n        </div>\n      ) : null}\n\n      {recipientChangePending ? (''',
+              '''          </section>\n        ) : null}\n      </AccessibleDialog>\n\n      <AccessibleDialog\n        open={recipientChangePending}\n        onClose={() => setRecipientChangePending(false)}\n        titleId="change-recipient-title"\n        descriptionId="change-recipient-description"\n        placement="responsive"\n        closeOnBackdrop={false}\n      >\n        {recipientChangePending ? (''')
+          replace_once(path,
+              '''        <div className={styles.decisionBackdrop} role="presentation">\n          <section className={styles.decisionSheet} role="dialog" aria-modal="true" aria-labelledby="change-recipient-title">''',
+              '''          <section className={styles.decisionSheet}>''')
+          replace_once(path,
+              '<p>لأن الوجهة تغيرت، لن نحتفظ باختيار جاهز للإرسال إلى مستلم آخر بشكل صامت. سيتم مسح اللفات الحالية ثم تعود لتحديد المستلم.</p>',
+              '<p id="change-recipient-description">لأن الوجهة تغيرت، لن نحتفظ باختيار جاهز للإرسال إلى مستلم آخر بشكل صامت. سيتم مسح اللفات الحالية ثم تعود لتحديد المستلم.</p>')
+          replace_once(path,
+              '<button type="button" className="button button-ghost" onClick={() => setRecipientChangePending(false)}>الاحتفاظ بالمستلم</button>',
+              '<button type="button" className="button button-ghost" onClick={() => setRecipientChangePending(false)} data-dialog-initial-focus>الاحتفاظ بالمستلم</button>')
+          replace_once(path,
+              '''          </section>\n        </div>\n      ) : null}\n\n      {clearSelectionPending ? (''',
+              '''          </section>\n        ) : null}\n      </AccessibleDialog>\n\n      <AccessibleDialog\n        open={clearSelectionPending}\n        onClose={() => setClearSelectionPending(false)}\n        titleId="clear-selection-title"\n        descriptionId="clear-selection-description"\n        placement="responsive"\n        closeOnBackdrop={false}\n      >\n        {clearSelectionPending ? (''')
+          replace_once(path,
+              '''        <div className={styles.decisionBackdrop} role="presentation">\n          <section className={styles.decisionSheet} role="dialog" aria-modal="true" aria-labelledby="clear-selection-title">''',
+              '''          <section className={styles.decisionSheet}>''')
+          replace_once(path,
+              '<p>سيتم إلغاء الاختيار الحالي فقط. لن يتم إنشاء أو إلغاء أي تحويل في قاعدة البيانات.</p>',
+              '<p id="clear-selection-description">سيتم إلغاء الاختيار الحالي فقط. لن يتم إنشاء أو إلغاء أي تحويل في قاعدة البيانات.</p>')
+          replace_once(path,
+              '<button type="button" className="button button-ghost" onClick={() => setClearSelectionPending(false)}>الاحتفاظ بالاختيار</button>',
+              '<button type="button" className="button button-ghost" onClick={() => setClearSelectionPending(false)} data-dialog-initial-focus>الاحتفاظ بالاختيار</button>')
+          replace_once(path,
+              '''          </section>\n        </div>\n      ) : null}\n    </div>''',
+              '''          </section>\n        ) : null}\n      </AccessibleDialog>\n    </div>''')
+
+          # Transfer receipt: two cancellable bottom sheets, submit confirmation becomes busy-safe.
+          path = "components/transfers/transfer-receipt-flow.tsx"
+          replace_once(path,
+              'import { FeedbackBanner } from "@/components/ui/feedback-banner";\n',
+              'import { AccessibleDialog } from "@/components/ui/accessible-dialog";\nimport { FeedbackBanner } from "@/components/ui/feedback-banner";\n')
+          replace_once(path,
+              '''  useEffect(() => {\n    if (!confirmOpen && !lotConfirmation) return;\n    const previous = document.body.style.overflow;\n    document.body.style.overflow = "hidden";\n    const onKey = (event: KeyboardEvent) => {\n      if (event.key !== "Escape" || isSubmitting) return;\n      if (confirmOpen) setConfirmOpen(false);\n      else setLotConfirmation(null);\n    };\n    window.addEventListener("keydown", onKey);\n    return () => {\n      document.body.style.overflow = previous;\n      window.removeEventListener("keydown", onKey);\n    };\n  }, [confirmOpen, isSubmitting, lotConfirmation]);\n\n''',
+              '')
+          replace_once(path,
+              '''      {lotConfirmation && lotSelectionPlan ? (\n        <div className={styles.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setLotConfirmation(null); }}>\n          <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="lot-selection-confirm-title">''',
+              '''      <AccessibleDialog\n        open={Boolean(lotConfirmation && lotSelectionPlan)}\n        onClose={() => setLotConfirmation(null)}\n        titleId="lot-selection-confirm-title"\n        descriptionId="lot-selection-confirm-description"\n      >\n        {lotConfirmation && lotSelectionPlan ? (\n          <section className={styles.sheet}>''')
+          replace_once(path,
+              '<p>هذه الخطوة تضيف اللفات إلى الاختيار فقط؛ لن تنتقل العهدة قبل مراجعة الاستلام ثم تأكيده صراحةً.</p>',
+              '<p id="lot-selection-confirm-description">هذه الخطوة تضيف اللفات إلى الاختيار فقط؛ لن تنتقل العهدة قبل مراجعة الاستلام ثم تأكيده صراحةً.</p>')
+          replace_once(path,
+              '<button type="button" className="button button-ghost" onClick={() => setLotConfirmation(null)}>رجوع</button>',
+              '<button type="button" className="button button-ghost" onClick={() => setLotConfirmation(null)} data-dialog-initial-focus>رجوع</button>')
+          replace_once(path,
+              '''          </section>\n        </div>\n      ) : null}\n\n      {confirmOpen ? (''',
+              '''          </section>\n        ) : null}\n      </AccessibleDialog>\n\n      <AccessibleDialog\n        open={confirmOpen}\n        onClose={() => setConfirmOpen(false)}\n        titleId="receipt-confirm-title"\n        descriptionId="receipt-confirm-description"\n        busy={isSubmitting}\n      >\n        {confirmOpen ? (''')
+          replace_once(path,
+              '''        <div className={styles.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSubmitting) setConfirmOpen(false); }}>\n          <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="receipt-confirm-title">''',
+              '''          <section className={styles.sheet}>''')
+          replace_once(path,
+              '<p>أنت تؤكد أنك استلمت فعليًا {selectedCount} لفة أمامك. {afterReceiptRemaining > 0 ? `سيظل ${afterReceiptRemaining} لفة معلقًا في التحويل دون نقل عهدته.` : "سيُغلق التحويل كمستلم بالكامل."}</p>',
+              '<p id="receipt-confirm-description">أنت تؤكد أنك استلمت فعليًا {selectedCount} لفة أمامك. {afterReceiptRemaining > 0 ? `سيظل ${afterReceiptRemaining} لفة معلقًا في التحويل دون نقل عهدته.` : "سيُغلق التحويل كمستلم بالكامل."}</p>')
+          replace_once(path,
+              '<button type="button" className="button button-ghost" onClick={() => setConfirmOpen(false)} disabled={isSubmitting}>رجوع</button>',
+              '<button type="button" className="button button-ghost" onClick={() => setConfirmOpen(false)} disabled={isSubmitting} data-dialog-initial-focus>رجوع</button>')
+          replace_once(path,
+              '''          </section>\n        </div>\n      ) : null}\n    </div>''',
+              '''          </section>\n        ) : null}\n      </AccessibleDialog>\n    </div>''')
+
+          # Unresolved transfer resolution confirmation.
+          path = "components/transfers/unresolved-resolution-panel.tsx"
+          replace_once(path,
+              'import { useCallback, useEffect, useMemo, useState, useTransition } from "react";\n',
+              'import { useCallback, useMemo, useState, useTransition } from "react";\n')
+          replace_once(path,
+              'import { FeedbackBanner } from "@/components/ui/feedback-banner";\n',
+              'import { AccessibleDialog } from "@/components/ui/accessible-dialog";\nimport { FeedbackBanner } from "@/components/ui/feedback-banner";\n')
+          replace_once(path,
+              '''  useEffect(() => {\n    if (!confirmOpen) return;\n    const previous = document.body.style.overflow;\n    document.body.style.overflow = "hidden";\n    const onKey = (event: KeyboardEvent) => {\n      if (event.key === "Escape" && !isSubmitting) setConfirmOpen(false);\n    };\n    window.addEventListener("keydown", onKey);\n    return () => {\n      document.body.style.overflow = previous;\n      window.removeEventListener("keydown", onKey);\n    };\n  }, [confirmOpen, isSubmitting]);\n\n''',
+              '')
+          replace_once(path,
+              '''      {confirmOpen ? (\n        <div className={styles.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSubmitting) setConfirmOpen(false); }}>\n          <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="resolution-confirm-title">''',
+              '''      <AccessibleDialog\n        open={confirmOpen}\n        onClose={() => setConfirmOpen(false)}\n        titleId="resolution-confirm-title"\n        descriptionId="resolution-confirm-description"\n        busy={isSubmitting}\n      >\n        {confirmOpen ? (\n          <section className={styles.sheet}>''')
+          replace_once(path,
+              '<p>هذا الحسم نهائي داخل التحويل ولا يمكن التراجع عنه من هذه الشاشة.</p>',
+              '<p id="resolution-confirm-description">هذا الحسم نهائي داخل التحويل ولا يمكن التراجع عنه من هذه الشاشة.</p>')
+          replace_once(path,
+              '<button type="button" className="button button-ghost" onClick={() => setConfirmOpen(false)} disabled={isSubmitting}>رجوع</button>',
+              '<button type="button" className="button button-ghost" onClick={() => setConfirmOpen(false)} disabled={isSubmitting} data-dialog-initial-focus>رجوع</button>')
+          replace_once(path,
+              '''          </section>\n        </div>\n      ) : null}\n    </section>''',
+              '''          </section>\n        ) : null}\n      </AccessibleDialog>\n    </section>''')
+          PY
+
+      - name: Commit guarded migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/transfers/qr-scanner-sheet.tsx components/transfers/transfer-send-flow.tsx components/transfers/transfer-receipt-flow.tsx components/transfers/unresolved-resolution-panel.tsx
+          git diff --cached --check
+          git commit -m "refactor(ux-a11y-01): migrate operational overlays"
+          git push origin HEAD:agent/ux-a11y-01-accessible-dialog-sheet
