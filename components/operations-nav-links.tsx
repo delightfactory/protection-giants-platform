@@ -2,93 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Icon, type IconName } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
+import {
+  getDesktopNavItems,
+  getMobileNavItems,
+  isOperationsTaskRoute,
+} from "@/lib/navigation/operations-navigation";
+import type { OperationalRole } from "@/lib/auth/operational-profile";
 import styles from "./operations-nav-links.module.css";
 
-type OperationalRole = "admin" | "agent" | "dealer" | "center";
 type NavVariant = "desktop" | "mobile";
-type NavItem = {
-  href: string;
-  label: string;
-  icon: IconName;
-};
-
-const adminMobileItems: NavItem[] = [
-  { href: "/operations", label: "الرئيسية", icon: "home" },
-  { href: "/operations/users", label: "الحسابات", icon: "users" },
-  { href: "/operations/dealers", label: "الوكلاء", icon: "dealers" },
-  { href: "/operations/centers", label: "المراكز", icon: "centers" },
-  { href: "/operations/products", label: "المنتجات", icon: "products" },
-];
-
-const adminDesktopItems: NavItem[] = [
-  { href: "/operations", label: "الرئيسية", icon: "home" },
-  { href: "/operations/users", label: "الحسابات", icon: "users" },
-  { href: "/operations/agents", label: "وكلاء الدول", icon: "users" },
-  { href: "/operations/dealers", label: "الوكلاء", icon: "dealers" },
-  { href: "/operations/centers", label: "المراكز", icon: "centers" },
-  { href: "/operations/products", label: "المنتجات", icon: "products" },
-  { href: "/operations/production-orders", label: "الإنتاج", icon: "production" },
-  { href: "/operations/rolls", label: "العهدة", icon: "production" },
-  { href: "/operations/transfers", label: "التحويلات", icon: "transfer" },
-];
-
-const agentMobileItems: NavItem[] = [
-  { href: "/operations", label: "الرئيسية", icon: "home" },
-  { href: "/operations/dealers", label: "الموزعون", icon: "dealers" },
-  { href: "/operations/centers", label: "المراكز", icon: "centers" },
-  { href: "/operations/products", label: "المنتجات", icon: "products" },
-  { href: "/operations/rolls", label: "العهدة", icon: "production" },
-];
-const agentDesktopItems: NavItem[] = [
-  ...agentMobileItems,
-  { href: "/operations/transfers", label: "التحويلات", icon: "transfer" },
-];
-
-const dealerMobileItems: NavItem[] = [
-  { href: "/operations", label: "الرئيسية", icon: "home" },
-  { href: "/operations/centers", label: "المراكز", icon: "centers" },
-  { href: "/operations/products", label: "المنتجات", icon: "products" },
-  { href: "/operations/rolls", label: "العهدة", icon: "production" },
-];
-const dealerDesktopItems: NavItem[] = [
-  ...dealerMobileItems,
-  { href: "/operations/transfers", label: "التحويلات", icon: "transfer" },
-];
-
-const centerMobileItems: NavItem[] = [
-  { href: "/operations", label: "الرئيسية", icon: "home" },
-  { href: "/operations/claim-inspections", label: "الفحوصات", icon: "production" },
-  { href: "/operations/claim-resolution-tasks", label: "التنفيذ", icon: "production" },
-  { href: "/operations/products", label: "المنتجات", icon: "products" },
-  { href: "/operations/rolls", label: "العهدة", icon: "production" },
-];
-const centerDesktopItems: NavItem[] = [
-  ...centerMobileItems,
-  { href: "/operations/transfers", label: "التحويلات", icon: "transfer" },
-];
-
-function itemsForRole(role: OperationalRole, variant: NavVariant) {
-  if (role === "admin") return variant === "mobile" ? adminMobileItems : adminDesktopItems;
-  if (role === "agent") return variant === "mobile" ? agentMobileItems : agentDesktopItems;
-  if (role === "dealer") return variant === "mobile" ? dealerMobileItems : dealerDesktopItems;
-  return variant === "mobile" ? centerMobileItems : centerDesktopItems;
-}
 
 function isActivePath(pathname: string, href: string) {
-  return href === "/operations" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  if (href === "/operations") return pathname === href;
+  if (href === "/operations/more") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function OperationsNavLinks({ role, variant }: { role: OperationalRole; variant: NavVariant }) {
   const pathname = usePathname();
-  const items = itemsForRole(role, variant);
-  const isTaskRoute = ["/new", "/edit", "/receive", "/open", "/recovery"].some((suffix) => pathname.endsWith(suffix))
-    || pathname.startsWith("/operations/claim-inspections/")
-    || pathname.startsWith("/operations/claim-resolution-tasks/");
+  const items = variant === "mobile" ? getMobileNavItems(role) : getDesktopNavItems(role);
 
-  if (variant === "mobile" && isTaskRoute) {
-    return null;
-  }
+  if (variant === "mobile" && isOperationsTaskRoute(pathname)) return null;
 
   return (
     <nav className={variant === "mobile" ? "operations-mobile-nav" : "operations-nav"} aria-label="تنقل بوابة التشغيل">
@@ -96,7 +31,7 @@ export function OperationsNavLinks({ role, variant }: { role: OperationalRole; v
         const active = isActivePath(pathname, item.href);
         return (
           <Link
-            key={item.href}
+            key={item.id}
             href={item.href}
             className="operations-nav-link"
             aria-current={active ? "page" : undefined}
