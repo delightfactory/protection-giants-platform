@@ -35,7 +35,7 @@ includes(home, "unassignedResolutions.slice(0, 3)", "Unassigned Resolution rende
 excludes(home, 'p_status: "awaiting_inspection"', "Claims waiting for Center inspection must not be promoted as Admin attention");
 excludes(home, 'p_status: "assigned"', "Assigned Resolution work must not be promoted as Admin attention");
 includes(home, "لا نعرض هنا ما ينتظر المركز", "Admin Home must explain the responsibility boundary");
-includes(home, "المطالبات التي تنتظر فحص مركز أو مهام التنفيذ التي تم إسنادها لا تظهر هنا كعمل على الإدارة", "Admin zero state must preserve responsibility handoff semantics");
+includes(home, "ما ينتظر فحص مركز أو تنفيذًا تم إسناده يظل خارج هذه القائمة", "Admin zero state must preserve responsibility handoff semantics");
 
 includes(home, 'href={`/operations/claims/${claim.claim_id}/review`}', "Admin Claim attention must deep-link to the existing review workspace");
 includes(home, 'href={`/operations/claim-resolutions/${resolution.resolution_id}`}', "Admin Resolution attention must deep-link to the exact Resolution workspace");

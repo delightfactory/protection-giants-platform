@@ -29,6 +29,7 @@ type AdminResolutionAttention = {
 };
 
 type AdminAttention = {
+  incomingActionCount: number;
   submittedClaims: AdminClaimAttention[];
   reviewClaims: AdminClaimAttention[];
   unassignedResolutions: AdminResolutionAttention[];
@@ -83,7 +84,8 @@ export default async function OperationsPage() {
 
   if (profile.role === "admin") {
     const supabase = await createSupabaseServerClient();
-    const [submittedResult, reviewResult, resolutionsResult] = await Promise.all([
+    const [transferAttention, submittedResult, reviewResult, resolutionsResult] = await Promise.all([
+      getTransferAttentionCounts(),
       supabase.rpc("list_admin_warranty_claims", {
         p_limit: 4,
         p_offset: 0,
@@ -118,6 +120,7 @@ export default async function OperationsPage() {
     });
 
     adminAttention = {
+      incomingActionCount: transferAttention.incomingActionCount,
       submittedClaims: (submittedResult.data ?? []).map(mapClaim),
       reviewClaims: (reviewResult.data ?? []).map(mapClaim),
       unassignedResolutions: (resolutionsResult.data ?? []).map((resolution) => ({
@@ -213,7 +216,8 @@ export default async function OperationsPage() {
   }
 
   const adminHasAttention = Boolean(adminAttention && (
-    adminAttention.submittedClaims.length > 0
+    adminAttention.incomingActionCount > 0
+    || adminAttention.submittedClaims.length > 0
     || adminAttention.reviewClaims.length > 0
     || adminAttention.unassignedResolutions.length > 0
   ));
@@ -235,7 +239,7 @@ export default async function OperationsPage() {
         eyebrow="بوابة التشغيل"
         title={<>مرحبًا، <span className="ui-heading-accent">{profile.display_name}</span></>}
         description={profile.role === "admin"
-          ? "ابدأ بالقرارات والإسنادات التي تنتظر الشركة الآن، ثم استخدم أدوات الإدارة والمراجع لباقي الأعمال."
+          ? "ابدأ بالتحويلات الواردة والقرارات والإسنادات التي تنتظر الشركة الآن، ثم استخدم أدوات الإدارة والمراجع لباقي الأعمال."
           : profile.role === "center"
             ? "ابدأ بما يحتاج تدخلك الآن، ثم استخدم أدوات المركز والمراجع لباقي الأعمال."
             : profile.role === "agent"
@@ -259,12 +263,25 @@ export default async function OperationsPage() {
       {profile.role === "admin" && adminAttention ? (
         <section className={styles.section} aria-labelledby="admin-attention-title">
           <div className={styles.sectionHeader}>
-            <h2 id="admin-attention-title">يحتاج قرار الشركة الآن</h2>
-            <p>هذه حالات من قوائم المطالبات والتنفيذ المعتمدة نفسها. لا نعرض هنا ما ينتظر المركز، ولا نحول السجل التشغيلي إلى مؤشرات تحليلية.</p>
+            <h2 id="admin-attention-title">يحتاج تدخل الشركة الآن</h2>
+            <p>هذه حالات من قوائم التحويلات والمطالبات والتنفيذ المعتمدة نفسها. لا نعرض هنا ما ينتظر المركز، ولا نحول السجل التشغيلي إلى مؤشرات تحليلية.</p>
           </div>
 
           {adminHasAttention ? (
-            <RecordList label="القرارات والإسنادات الحالية التي تنتظر الشركة">
+            <RecordList label="الأعمال الحالية التي تنتظر تدخل الشركة">
+              {adminAttention.incomingActionCount > 0 ? (
+                <RecordItem
+                  kicker="تحويلات واردة"
+                  title="يوجد استلام أو حسم مطلوب على تحويلات واردة"
+                  subtitle="العهدة لا تنتقل إلا لللفات التي تؤكد الشركة استلامها فعليًا."
+                  facts={[
+                    { label: "تحتاج إجراء", value: adminAttention.incomingActionCount.toLocaleString("en-US") },
+                  ]}
+                  status={<StatusBadge tone="warning">إجراء مطلوب</StatusBadge>}
+                  actions={<Link href="/operations/transfers?direction=incoming&scope=active" className="button button-primary">فتح الوارد</Link>}
+                />
+              ) : null}
+
               {adminAttention.submittedClaims.slice(0, 3).map((claim) => (
                 <RecordItem
                   key={`submitted-${claim.claim_id}`}
@@ -314,10 +331,10 @@ export default async function OperationsPage() {
             </RecordList>
           ) : (
             <EmptyState
-              eyebrow="قرارات الشركة"
-              title="لا توجد قرارات أو إسنادات تنتظر الشركة الآن"
-              description="المطالبات التي تنتظر فحص مركز أو مهام التنفيذ التي تم إسنادها لا تظهر هنا كعمل على الإدارة. تظل السجلات الكاملة متاحة من الأدوات أدناه."
-              action={<Link href="/operations/claims" className="button button-primary">مراجعة سجل المطالبات</Link>}
+              eyebrow="عمل الشركة الحالي"
+              title="لا توجد أعمال تحتاج تدخل الشركة الآن"
+              description="لا توجد تحويلات واردة تحتاج إجراء ولا قرارات أو إسنادات معلقة على الشركة. ما ينتظر فحص مركز أو تنفيذًا تم إسناده يظل خارج هذه القائمة، وتبقى السجلات الكاملة متاحة من الأدوات أدناه."
+              action={<Link href="/operations/transfers?direction=incoming&scope=active" className="button button-primary">مراجعة التحويلات الواردة</Link>}
             />
           )}
         </section>
@@ -456,7 +473,7 @@ export default async function OperationsPage() {
         <section className={styles.moduleSection} aria-labelledby="admin-modules-title">
           <div className={styles.sectionHeader}>
             <h2 id="admin-modules-title">أدوات الإدارة والمراجع</h2>
-            <p>استخدمها للوصول إلى التشغيل الكامل والسجلات والإعدادات التي لا تمثل قرارًا عاجلًا الآن. كل الوجهات تظل من خريطة S03R نفسها.</p>
+            <p>استخدمها للوصول إلى التشغيل الكامل والسجلات والإعدادات التي لا تمثل عملًا عاجلًا الآن. كل الوجهات تظل من خريطة S03R نفسها.</p>
           </div>
           <div className="ui-module-grid" aria-label="أدوات الإدارة والمراجع">
             {modules.map((module) => (
