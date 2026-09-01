@@ -29,6 +29,10 @@ assert(queue.includes('rpc("list_center_assigned_warranty_claim_resolution_tasks
   "Center fulfillment queue must use the bounded assigned-task RPC.");
 assert(queue.includes('href={`/operations/claim-resolution-tasks/${task.resolution_id}`}'),
   "Center queue must route only to the exact Resolution task.");
+assert(queue.includes("انتهت هذه المهمة ولا يوجد إجراء آخر على نفس المطالبة من المركز"),
+  "Completed fulfillment must terminate the Center journey explicitly instead of implying another same-Claim action.");
+assert(queue.includes("أي تكليف جديد سيظهر كمهمة مستقلة هنا"),
+  "Completion guidance must explain how future Center responsibility re-enters the bounded task queue.");
 
 assert(detail.includes('rpc("get_center_warranty_claim_resolution_task"'),
   "Center task detail must use the exact qualified task RPC.");
@@ -133,4 +137,4 @@ assert(navigationRegistry.includes('/^\\/operations\\/claim-resolution-tasks\\/[
 assert(home.includes("getHomeDestinations(profile.role)"),
   "Center home must expose fulfillment work through the shared navigation registry.");
 
-console.log("Cube R Center Fulfillment UI contract PASS: Center-only bounded queue/detail, private signed evidence reads, exact Roll/task continuity through physical detours, local review before qualified deferred upload, server-only evidence/completion mutations, idempotent retry, and no PII/Admin/global-inventory authority.");
+console.log("Cube R Center Fulfillment UI contract PASS: Center-only bounded queue/detail, private signed evidence reads, exact Roll/task continuity through physical detours, local review before qualified deferred upload, server-only evidence/completion mutations, idempotent retry, explicit terminal completion guidance, and no PII/Admin/global-inventory authority.");
