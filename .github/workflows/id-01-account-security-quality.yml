@@ -1,6 +1,6 @@
 name: ID 01 Account Security Quality
 
-on:
+"on":
   pull_request:
     branches:
       - main
@@ -11,9 +11,6 @@ on:
       - components/ui/confirm-submit-button.tsx
       - lib/users/operational-user-input.ts
       - scripts/verify-id-01-account-security-contract.mjs
-      - package.json
-      - package-lock.json
-      - supabase/migrations/**
       - .github/workflows/id-01-account-security-quality.yml
 
 permissions:
@@ -36,8 +33,10 @@ jobs:
           set -euo pipefail
           base_sha="${{ github.event.pull_request.base.sha }}"
           changed="$(git diff --name-only "$base_sha"...HEAD)"
-          if printf '%s\n' "$changed" | grep -Eq '^(supabase/migrations/|package\.json$|package-lock\.json$)'; then
-            echo "ID-01 must not add database migrations or dependency changes."
+          id_scope_changed="$(printf '%s\n' "$changed" | grep -E '^(app/operations/account/|app/operations/users/|components/operations-nav\.tsx$|components/ui/confirm-submit-button\.tsx$|lib/users/operational-user-input\.ts$|scripts/verify-id-01-account-security-contract\.mjs$)' || true)"
+
+          if [ -n "$id_scope_changed" ] && printf '%s\n' "$changed" | grep -Eq '^(supabase/migrations/|package\.json$|package-lock\.json$)'; then
+            echo "ID-01 implementation changes must not add database migrations or dependency changes."
             printf '%s\n' "$changed"
             exit 1
           fi
