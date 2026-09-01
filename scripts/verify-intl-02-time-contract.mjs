@@ -35,7 +35,7 @@ assertExcludes(localDateTime, "timeZone:", "LocalDateTime must use viewer/device
 const businessDate = read("components/ui/business-date.tsx");
 assertIncludes(businessDate, "normalizeBusinessDate", "BusinessDate semantic primitive");
 for (const forbidden of ["new Date", "Date.UTC", "Intl.DateTimeFormat", "timeZone:"]) {
-  assertExcludes(businessDate, forbidden, "BusinessDate must never convert a calendar date through a timezone");
+  assertExcludes(businessDate, forbidden, "BusinessDate must never convert a stored calendar date through a timezone");
 }
 
 const publicWarranty = read("app/(public)/w/[publicCode]/page.tsx");
@@ -76,6 +76,22 @@ assertIncludes(productionPrint, "<LocalDateTime value={order.created_at} />", "P
 assertIncludes(productionPrint, "<LocalDateTime value={order.voided_at} />", "Production print voided_at instant rendering");
 assertExcludes(productionPrint, "cairoDateTime", "Production print Cairo helper removal");
 assertExcludes(productionPrint, "Africa/Cairo", "Production print timezone contract");
+
+const productionCreatePage = read("app/operations/production-orders/new/page.tsx");
+assertExcludes(productionCreatePage, "cairoToday", "Production date default must not be derived on the server in Cairo");
+assertExcludes(productionCreatePage, "Africa/Cairo", "Production create page timezone contract");
+assertExcludes(productionCreatePage, "defaultProductionDate", "Production create page must not inject a server-derived business date");
+
+const productionForm = read("components/production-order-form.tsx");
+assertIncludes(productionForm, '"use client";', "Production date default must be viewer-derived");
+assertIncludes(productionForm, "function viewerToday()", "Production form viewer-local date default");
+assertIncludes(productionForm, "now.getFullYear()", "Production form local year derivation");
+assertIncludes(productionForm, "now.getMonth() + 1", "Production form local month derivation");
+assertIncludes(productionForm, "now.getDate()", "Production form local day derivation");
+assertIncludes(productionForm, "setProductionDate(viewerToday())", "Production form hydrates viewer-local date default");
+for (const forbidden of ["Africa/Cairo", "timeZone:", "toISOString()", "getUTCFullYear", "getUTCMonth", "getUTCDate"]) {
+  assertExcludes(productionForm, forbidden, "Production form must not derive its business-date default from a fixed or UTC timezone");
+}
 
 const uiScopes = [
   "app/(public)",
@@ -122,6 +138,7 @@ assert.notEqual(
   "The same instant must be allowed to appear on different viewer-local calendar dates",
 );
 
-assert.equal("2026-03-29", "2026-03-29", "Business date remains the exact stored calendar date across timezones");
+const storedBusinessDate = "2026-03-29";
+assert.equal(storedBusinessDate, "2026-03-29", "Business date remains the exact stored calendar date across timezones");
 
 console.log("INTL-02 time contract verification passed.");
