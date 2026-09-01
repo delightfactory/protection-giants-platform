@@ -22,6 +22,10 @@ import {
   type WarrantyClaimEvidenceReference,
   type WarrantyClaimRemedyKind,
 } from "@/lib/warranty/claim-intake";
+import {
+  INTERNATIONAL_PHONE_GUIDANCE_AR,
+  normalizeInternationalPhone,
+} from "@/lib/warranty/international-phone";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import {
   LocalEvidenceReview,
@@ -64,7 +68,7 @@ function customerClaimStatusLabel(claim: CustomerClaimSummary): string {
 function errorText(code: string): string {
   switch (code) {
     case "PG_CLAIM_VERIFICATION_FAILED":
-      return "تعذر التحقق. تأكد أن الرقم هو نفس الرقم المسجل على الضمان.";
+      return "تعذر التحقق. تأكد أن الرقم هو نفس الرقم الدولي المسجل على الضمان.";
     case "PG_CLAIM_SERVICE_UNAVAILABLE":
       return "خدمة المطالبات غير متاحة مؤقتًا. حاول مرة أخرى.";
     case "PG_CLAIM_VERIFICATION_REQUIRED":
@@ -188,8 +192,15 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
   function verify(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setVerificationError(null);
+
+    const normalizedPhone = normalizeInternationalPhone(phone);
+    if (!normalizedPhone) {
+      setVerificationError(INTERNATIONAL_PHONE_GUIDANCE_AR);
+      return;
+    }
+
     startTransition(async () => {
-      const result = await verifyWarrantyClaimPhone(publicCode, phone);
+      const result = await verifyWarrantyClaimPhone(publicCode, normalizedPhone);
       if (!result.ok) {
         setVerificationError(errorText(result.code));
         return;
@@ -394,11 +405,11 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
         <div className={styles.headingBlock}>
           <span className={styles.eyebrow}>خدمة الضمان</span>
           <h1>تحقق من رقم الهاتف</h1>
-          <p>لإنشاء مطالبة أو متابعة مطالبة سابقة، أدخل نفس رقم الهاتف المسجل على الضمان.</p>
+          <p>لإنشاء مطالبة أو متابعة مطالبة سابقة، أدخل نفس رقم الهاتف الدولي المسجل على الضمان.</p>
           {publicProductName ? <span className={styles.productLine}>{publicProductName}</span> : null}
         </div>
         <form className={styles.verifyForm} onSubmit={verify}>
-          <label htmlFor="claim-phone">رقم الهاتف المسجل</label>
+          <label htmlFor="claim-phone">رقم الهاتف المسجل — بصيغة دولية</label>
           <input
             id="claim-phone"
             name="phone"
@@ -407,12 +418,13 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
             autoComplete="tel"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
-            minLength={5}
             maxLength={32}
             required
             dir="ltr"
-            placeholder="01xxxxxxxxx"
+            placeholder="+20 10 1234 5678"
+            title={INTERNATIONAL_PHONE_GUIDANCE_AR}
           />
+          <p className={styles.quietNotice}>{INTERNATIONAL_PHONE_GUIDANCE_AR}</p>
           {verificationError ? <p className={styles.errorText} role="alert">{verificationError}</p> : null}
           <button className={styles.primaryButton} type="submit" disabled={isPending}>
             {isPending ? "جارٍ التحقق…" : "متابعة"}
