@@ -57,7 +57,9 @@ includes(approvalMigration, "or target.location_captured_at is null", "Approval 
 includes(approvalMigration, "or target.location_source is null", "Approval authority must continue requiring location provenance");
 includes(approvalMigration, "or target.location_updated_by_profile_id is null", "Approval authority must continue requiring a location actor");
 includes(approvalPage, 'profile.role !== "admin" && profile.role !== "agent"', "Approval page authority must remain Admin/Agent-only");
-includes(approvalPage, 'const canApprove = center.status === "active" && hasLocation && !isApproved', "Approval UI must retain its active/location readiness boundary");
+includes(approvalPage, 'const isActive = center.status === "active"', "Approval UI must explicitly derive active Center state");
+includes(approvalPage, 'const hasLocation = center.latitude !== null && center.longitude !== null && center.location_captured_at !== null', "Approval UI must explicitly derive current location readiness");
+includes(approvalPage, 'const canApprove = !isApproved && isActive && hasLocation', "Approval UI must retain its unapproved/active/location readiness boundary");
 
 for (const forbidden of [
   "approve_center_network(",
