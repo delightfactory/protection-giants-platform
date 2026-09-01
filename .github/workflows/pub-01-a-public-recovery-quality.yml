@@ -1,0 +1,51 @@
+name: PUB 01 A Public Recovery Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/(public)/r/[serial]/page.tsx"
+      - "app/(public)/r/[serial]/not-found.tsx"
+      - "app/(public)/r/[serial]/route.ts"
+      - "app/not-found.tsx"
+      - "scripts/verify-pub-01-a-public-recovery.mjs"
+      - "scripts/verify-roll-qr-contract.mjs"
+      - ".github/workflows/pub-01-a-public-recovery-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  public-recovery-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify PUB-01-A public recovery contract
+        run: node scripts/verify-pub-01-a-public-recovery.mjs
+
+      - name: Verify contextual Roll QR regression
+        run: node --experimental-strip-types scripts/verify-roll-qr-contract.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
