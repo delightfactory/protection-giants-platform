@@ -33,15 +33,15 @@ export function OperationsNav({ profile, notificationUnreadCount }: OperationsNa
       <aside className="operations-sidebar">
         <BrandLockup href="/operations" />
 
-        <div className="operations-user" aria-label="المستخدم الحالي">
+        <Link href="/operations/account" className="operations-user" aria-label="أمان الحساب">
           <span className="operations-user-avatar" aria-hidden="true">
             {profile.display_name.trim().slice(0, 1)}
           </span>
           <span className="operations-user-copy">
             <strong>{profile.display_name}</strong>
-            <span>{roleLabels[profile.role]}</span>
+            <span>{roleLabels[profile.role]} · الحساب</span>
           </span>
-        </div>
+        </Link>
 
         <Link href="/operations/notifications" className="operations-notification-entry" aria-label={notificationLabel}>
           <span className="operations-notification-icon" aria-hidden="true"><Icon name="notifications" /></span>
@@ -60,15 +60,15 @@ export function OperationsNav({ profile, notificationUnreadCount }: OperationsNa
       </aside>
 
       <header className="operations-mobile-header">
-        <div className="operations-mobile-identity">
+        <Link href="/operations/account" className="operations-mobile-identity" aria-label="أمان الحساب">
           <span className="operations-user-avatar" aria-hidden="true">
             {profile.display_name.trim().slice(0, 1)}
           </span>
           <span className="operations-mobile-user">
             <strong>{profile.display_name}</strong>
-            <span>{roleLabels[profile.role]}</span>
+            <span>{roleLabels[profile.role]} · الحساب</span>
           </span>
-        </div>
+        </Link>
         <div className="operations-mobile-tools">
           <BrandLockup href="/operations" compact className="operations-mobile-brand" />
           <Link
