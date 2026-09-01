@@ -191,12 +191,19 @@ export default async function RollPreinstallIssueDetailPage({ params }: IssueDet
                 <p>هذا البلاغ لم يعد يمنع التفعيل، مع بقاء أي شروط تشغيلية أخرى واجبة التحقق قبل تفعيل الضمان.</p>
               ) : null}
               {issue.status === "return_required" ? (
-                <p>الرول يظل محظورًا من التفعيل. قرار الإرجاع لا ينقل العهدة؛ يتم تسجيل استرداد الرول فقط عند الاستلام المادي.</p>
+                <p>لا تستخدم الرول. انتظر تنسيق الشركة لاسترداده؛ قرار الإرجاع لا ينقل العهدة، ويتم تسجيل الاسترداد فقط عند الاستلام المادي.</p>
               ) : null}
               {issue.status === "reported_in_error" ? (
                 <p>تم رفع إيقاف التفعيل المؤقت الخاص بهذا البلاغ باعتباره تصحيحًا إداريًا، مع بقاء البلاغ والأدلة محفوظة في التاريخ.</p>
               ) : null}
             </div>
+            {!isAdmin && (issue.status === "cleared_for_use" || issue.status === "reported_in_error") ? (
+              <div className={styles.actions}>
+                <Link href={`/operations/warranties/activate?roll=${encodeURIComponent(issue.serial_number)}`} className="button button-primary">
+                  متابعة تفعيل الضمان على هذا الرول
+                </Link>
+              </div>
+            ) : null}
             {isAdmin && issue.status === "return_required" ? (
               <div className={styles.actions}>
                 <Link href="/operations/rolls/recovery" className="button button-primary">فتح مسار الاسترداد عند الاستلام</Link>
