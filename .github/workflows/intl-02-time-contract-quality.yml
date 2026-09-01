@@ -7,6 +7,7 @@ name: INTL 02 Time Contract Quality
     paths:
       - "components/ui/local-date-time.tsx"
       - "components/ui/business-date.tsx"
+      - "components/production-order-form.tsx"
       - "app/(public)/w/[publicCode]/**"
       - "app/operations/warranties/**"
       - "app/operations/claims/**"
