@@ -62,7 +62,9 @@ export default async function ClaimResolutionTasksPage({ searchParams }: PagePro
       />
 
       {params.notice === "completed" ? (
-        <FeedbackBanner tone="success">تم توثيق تنفيذ المطالبة وإغلاقها بنجاح.</FeedbackBanner>
+        <FeedbackBanner tone="success">
+          تم توثيق تنفيذ المطالبة وإغلاقها بنجاح. انتهت هذه المهمة ولا يوجد إجراء آخر على نفس المطالبة من المركز؛ أي تكليف جديد سيظهر كمهمة مستقلة هنا.
+        </FeedbackBanner>
       ) : null}
 
       {tasks.length === 0 ? (
