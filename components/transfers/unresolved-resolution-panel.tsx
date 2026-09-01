@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   adminReleaseUnreceivedTransferItems,
   releaseUnreceivedTransferItems,
 } from "@/app/operations/transfers/[transferId]/actions";
+import { AccessibleDialog } from "@/components/ui/accessible-dialog";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
@@ -54,20 +55,6 @@ export function UnresolvedResolutionPanel({
   const [isSubmitting, startTransition] = useTransition();
 
   const pendingLots = lotGroups.filter((lot) => lot.pending_count > 0);
-
-  useEffect(() => {
-    if (!confirmOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !isSubmitting) setConfirmOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [confirmOpen, isSubmitting]);
 
   const loadRows = useCallback(async (nextPage = 0, rawSearch = search) => {
     setLoading(true);
@@ -233,9 +220,15 @@ export function UnresolvedResolutionPanel({
         </button>
       </div>
 
-      {confirmOpen ? (
-        <div className={styles.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSubmitting) setConfirmOpen(false); }}>
-          <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="resolution-confirm-title">
+      <AccessibleDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        titleId="resolution-confirm-title"
+        descriptionId="resolution-confirm-description"
+        busy={isSubmitting}
+      >
+        {confirmOpen ? (
+          <section className={styles.sheet}>
             <div className={styles.sheetHeader}>
               <div>
                 <span className={styles.eyebrow}>{adminMode ? "حسم إداري موثق" : "حسم نهائي للمتبقي"}</span>
@@ -246,16 +239,16 @@ export function UnresolvedResolutionPanel({
             <p>
               سيتم تحرير حجز {selected.size} لفة من هذا التحويل، ولن تُنشأ حركة عهدة جديدة؛ ستظل العهدة المؤكدة لهذه اللفات لدى المرسل.
             </p>
-            <p>هذا الحسم نهائي داخل التحويل ولا يمكن التراجع عنه من هذه الشاشة.</p>
+            <p id="resolution-confirm-description">هذا الحسم نهائي داخل التحويل ولا يمكن التراجع عنه من هذه الشاشة.</p>
             <div className={styles.sheetActions}>
-              <button type="button" className="button button-ghost" onClick={() => setConfirmOpen(false)} disabled={isSubmitting}>رجوع</button>
+              <button type="button" className="button button-ghost" onClick={() => setConfirmOpen(false)} disabled={isSubmitting} data-dialog-initial-focus>رجوع</button>
               <button type="button" className="button button-primary" onClick={submitResolution} disabled={isSubmitting}>
                 {isSubmitting ? "جارٍ التحقق والحسم…" : `نعم، احسم ${selected.size} لفة`}
               </button>
             </div>
           </section>
-        </div>
-      ) : null}
+        ) : null}
+      </AccessibleDialog>
     </section>
   );
 }

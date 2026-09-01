@@ -37,6 +37,13 @@ vi.mock("@/components/transfers/qr-scanner-sheet", () => ({
   QrScannerSheet: () => null,
 }));
 
+vi.mock("@/components/ui/accessible-dialog", async () => {
+  const ReactModule = await vi.importActual("react");
+  return {
+    AccessibleDialog: ({ children }) => ReactModule.createElement(ReactModule.Fragment, null, children),
+  };
+});
+
 vi.mock("@/components/ui/feedback-banner", async () => {
   const ReactModule = await vi.importActual("react");
   return {

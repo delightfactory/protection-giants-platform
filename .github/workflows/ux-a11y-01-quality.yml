@@ -1,0 +1,58 @@
+name: UX A11Y 01 Quality
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - components/ui/accessible-dialog.tsx
+      - components/ui/accessible-dialog.module.css
+      - components/transfers/qr-scanner-sheet.tsx
+      - components/transfers/transfer-send-flow.tsx
+      - components/transfers/transfer-receipt-flow.tsx
+      - components/transfers/unresolved-resolution-panel.tsx
+      - scripts/verify-ux-a11y-01-accessible-dialog.mjs
+      - scripts/verify-transfer-receipt-interactions.test.mjs
+      - .github/workflows/ux-a11y-01-quality.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify accessible dialog and sheet contracts
+        run: node scripts/verify-ux-a11y-01-accessible-dialog.mjs
+
+      - name: Verify Transfer Send client contracts
+        run: node --experimental-strip-types scripts/verify-transfer-send-client-contract.mjs
+
+      - name: Verify Transfer Receipt client retry contracts
+        run: node --experimental-strip-types scripts/verify-transfer-receipt-client-contract.mjs
+
+      - name: Verify Transfer Receipt component interactions
+        run: npx vitest run scripts/verify-transfer-receipt-interactions.test.mjs --config vitest.config.mjs
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- package-lock.json tsconfig.json next-env.d.ts

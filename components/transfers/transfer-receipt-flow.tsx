@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { useRouter } from "next/navigation";
 import { receiveTransferItems } from "@/app/operations/transfers/[transferId]/actions";
 import { QrScannerSheet, type ScannerDecodeOutcome } from "@/components/transfers/qr-scanner-sheet";
+import { AccessibleDialog } from "@/components/ui/accessible-dialog";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { normalizeRollSerial, parseRollQrPayload } from "@/lib/rolls/roll-qr";
@@ -118,22 +119,6 @@ export function TransferReceiptFlow({
     if (ids.length === 0) sessionStorage.removeItem(receiptDraftStorageKey(detail.transfer_id));
     else sessionStorage.setItem(receiptDraftStorageKey(detail.transfer_id), JSON.stringify(ids));
   }, [detail.transfer_id, draftHydrated, selected]);
-
-  useEffect(() => {
-    if (!confirmOpen && !lotConfirmation) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || isSubmitting) return;
-      if (confirmOpen) setConfirmOpen(false);
-      else setLotConfirmation(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [confirmOpen, isSubmitting, lotConfirmation]);
 
   const queryItems = useCallback(async (rawSearch: string | null, status: string | null, limit = PAGE_SIZE + 1, offset = 0) => {
     return supabase.rpc("list_roll_transfer_items", {
@@ -524,36 +509,47 @@ export function TransferReceiptFlow({
         onDecode={handleScannedPayload}
       />
 
-      {lotConfirmation && lotSelectionPlan ? (
-        <div className={styles.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setLotConfirmation(null); }}>
-          <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="lot-selection-confirm-title">
+      <AccessibleDialog
+        open={Boolean(lotConfirmation && lotSelectionPlan)}
+        onClose={() => setLotConfirmation(null)}
+        titleId="lot-selection-confirm-title"
+        descriptionId="lot-selection-confirm-description"
+      >
+        {lotConfirmation && lotSelectionPlan ? (
+          <section className={styles.sheet}>
             <h2 id="lot-selection-confirm-title">إضافة {lotSelectionPlan.additions.length} لفة من Lot {lotConfirmation.lot.lot_number}؟</h2>
             <p>
               {lotConfirmation.lot.transfer_contains_full_lot
                 ? `سيتم إضافة ${lotSelectionPlan.additions.length} لفة معلقة من هذا الـLot إلى اختيار الاستلام الحالي.`
                 : `التحويل يشمل جزءًا فقط من هذا الـLot؛ سيتم إضافة ${lotSelectionPlan.additions.length} لفة معلقة ومسجلة داخل هذا التحويل فقط.`}
             </p>
-            <p>هذه الخطوة تضيف اللفات إلى الاختيار فقط؛ لن تنتقل العهدة قبل مراجعة الاستلام ثم تأكيده صراحةً.</p>
+            <p id="lot-selection-confirm-description">هذه الخطوة تضيف اللفات إلى الاختيار فقط؛ لن تنتقل العهدة قبل مراجعة الاستلام ثم تأكيده صراحةً.</p>
             <div className={styles.sheetActions}>
-              <button type="button" className="button button-ghost" onClick={() => setLotConfirmation(null)}>رجوع</button>
+              <button type="button" className="button button-ghost" onClick={() => setLotConfirmation(null)} data-dialog-initial-focus>رجوع</button>
               <button type="button" className="button button-primary" onClick={confirmLotSelection} disabled={!draftHydrated || lotSelectionPlan.additions.length === 0}>نعم، أضف {lotSelectionPlan.additions.length} لفة</button>
             </div>
           </section>
-        </div>
-      ) : null}
+        ) : null}
+      </AccessibleDialog>
 
-      {confirmOpen ? (
-        <div className={styles.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSubmitting) setConfirmOpen(false); }}>
-          <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="receipt-confirm-title">
+      <AccessibleDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        titleId="receipt-confirm-title"
+        descriptionId="receipt-confirm-description"
+        busy={isSubmitting}
+      >
+        {confirmOpen ? (
+          <section className={styles.sheet}>
             <h2 id="receipt-confirm-title">{finalReceipt ? "تأكيد الاستلام الكامل؟" : "تأكيد الاستلام الجزئي؟"}</h2>
-            <p>أنت تؤكد أنك استلمت فعليًا {selectedCount} لفة أمامك. {afterReceiptRemaining > 0 ? `سيظل ${afterReceiptRemaining} لفة معلقًا في التحويل دون نقل عهدته.` : "سيُغلق التحويل كمستلم بالكامل."}</p>
+            <p id="receipt-confirm-description">أنت تؤكد أنك استلمت فعليًا {selectedCount} لفة أمامك. {afterReceiptRemaining > 0 ? `سيظل ${afterReceiptRemaining} لفة معلقًا في التحويل دون نقل عهدته.` : "سيُغلق التحويل كمستلم بالكامل."}</p>
             <div className={styles.sheetActions}>
-              <button type="button" className="button button-ghost" onClick={() => setConfirmOpen(false)} disabled={isSubmitting}>رجوع</button>
+              <button type="button" className="button button-ghost" onClick={() => setConfirmOpen(false)} disabled={isSubmitting} data-dialog-initial-focus>رجوع</button>
               <button type="button" className="button button-primary" onClick={submitReceipt} disabled={isSubmitting}>{isSubmitting ? "جارٍ تثبيت العهدة…" : "نعم، استلمت هذه اللفات"}</button>
             </div>
           </section>
-        </div>
-      ) : null}
+        ) : null}
+      </AccessibleDialog>
     </div>
   );
 }
