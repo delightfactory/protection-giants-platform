@@ -5,6 +5,7 @@ import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
 import { FormPanel, FormSection } from "@/components/ui/form-layout";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
@@ -18,6 +19,7 @@ import {
   updateCenter,
 } from "./actions";
 import { recoverCenterOnboardingInvitation } from "./recovery-actions";
+import styles from "./center-edit.module.css";
 
 type CenterEditPageProps = {
   params: Promise<{ id: string }>;
@@ -62,15 +64,6 @@ const reviewFailureLabels: Record<string, string> = {
   "profile-mismatch": "نتيجة Profile لم تطابق الربط المتوقع بعد provisioning.",
   "profile-read-uncertain": "تعذر إثبات حالة Profile بعد provisioning، فتم إيقاف Auth احترازيًا.",
 };
-
-function formatInviteDate(value: string | null) {
-  if (!value) return "غير متاح";
-
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 export default async function CenterEditPage({ params, searchParams }: CenterEditPageProps) {
   const profile = await requireOperationalProfile();
@@ -182,187 +175,298 @@ export default async function CenterEditPage({ params, searchParams }: CenterEdi
   const errorMessage = error ? errorMessages[error] : undefined;
   const successMessage = success ? successMessages[success] : undefined;
 
+  const currentDealer = center.dealer_id
+    ? dealersResult.data.find((dealer) => dealer.id === center.dealer_id)
+    : null;
+  const currentAgent = center.country_agent_id
+    ? agentsResult.data.find((agent) => agent.id === center.country_agent_id)
+    : null;
+  const currentParentLabel = currentDealer
+    ? `الموزع: ${currentDealer.name} (${currentDealer.code})`
+    : currentAgent
+      ? `وكيل الدولة: ${currentAgent.name} (${currentAgent.code})`
+      : "مباشر لشركة Protection Giants";
+
+  const onboardingStateTone: "success" | "warning" | "neutral" = reviewInvitation
+    ? "warning"
+    : centerHasAccount && pendingInvitation
+      ? "warning"
+      : centerHasAccount
+        ? "success"
+        : "neutral";
+  const onboardingStateLabel = reviewInvitation
+    ? "تحتاج مراجعة أمنية"
+    : centerHasAccount && pendingInvitation
+      ? "مرتبط + دعوة زائدة"
+      : centerHasAccount
+        ? "الحساب مرتبط"
+        : finalizingInvitation
+          ? "قيد الإكمال"
+          : pendingInvitation
+            ? "دعوة معلقة"
+            : centerActive
+              ? "لم تبدأ الدعوة"
+              : "متوقف حتى التفعيل";
+  const onboardingStateDescription = reviewInvitation
+    ? "تم إيقاف إكمال الحساب احترازيًا حتى تحسم الإدارة حالة Auth وProfile."
+    : centerHasAccount && pendingInvitation
+      ? "المركز لديه حساب تشغيلي بالفعل، لكن توجد دعوة قديمة معلقة تحتاج تنظيفًا."
+      : centerHasAccount
+        ? "يوجد حساب تشغيلي مرتبط بالمركز، لذلك انتهى مسار الحساب الأول."
+        : finalizingInvitation
+          ? "بدأ المستلم إكمال الحساب، وتم قفل الإلغاء وإعادة الإصدار حتى تنتهي العملية بأمان."
+          : pendingInvitation
+            ? "الدعوة أُرسلت وتنتظر أن يبدأ المستلم إعداد حسابه."
+            : centerActive
+              ? "المركز نشط ولا يوجد حساب أو دعوة معلقة؛ يمكن بدء دعوة المستخدم الأول."
+              : "المركز موقوف، لذلك لا يمكن بدء دعوة المستخدم الأول قبل إعادة تفعيله.";
+
   return (
     <>
       <PageHeader
         eyebrow="مراكز التركيب"
         title={center.name}
-        description="تعديل هوية المركز وموقعه وتبعيته، وإدارة دعوة الحساب الأول داخل نفس النطاق التشغيلي."
-        meta={partyResult.data?.transfer_code ? <span dir="ltr">Transfer ID: {partyResult.data.transfer_code}</span> : undefined}
+        description="راجع حالة المركز أولًا، ثم عدّل بياناته وتبعيته أو انتقل إلى إدارة الحساب الأول حسب العمل المطلوب."
+        meta={<><span dir="ltr">{center.code}</span> · {center.city} · <span dir="ltr">{center.country_code}</span></>}
         actions={<TaskBackLink href="/operations/centers" label="العودة للمراكز" />}
       />
 
       {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
       {successMessage ? <FeedbackBanner tone="success">{successMessage}</FeedbackBanner> : null}
 
-      <div className="user-settings-stack">
-        <FormPanel>
-          <form action={updateCenter} className="operations-form">
-            <input type="hidden" name="center_id" value={center.id} />
-            <input type="hidden" name="current_parent_ref" value={currentParentRef} />
-            <FormSection
-              title="بيانات مركز التركيب"
-              description={profile.role === "dealer"
-                ? "يمكنك تعديل بيانات مركز تابع لك، بينما تظل التبعية ثابتة على موزعك."
-                : "يمكنك نقل المركز فقط بين الأطراف التي تظهر لك ضمن نطاقك التشغيلي."}
-            >
-              <CenterCoreFields
-                parentOptions={parentOptions}
-                lockParent={profile.role === "dealer"}
-                values={{
-                  code: center.code,
-                  name: center.name,
-                  parentRef: currentParentRef,
-                  countryCode: center.country_code,
-                  city: center.city,
-                }}
-              />
-            </FormSection>
+      <div className={styles.pageStack}>
+        <section className={styles.summary} aria-labelledby="center-current-state-title">
+          <div className={styles.summaryHeader}>
+            <h2 id="center-current-state-title">الحالة الحالية قبل أي تغيير</h2>
+            <p>ملخص سريع يساعدك تحدد المسار الصحيح قبل فتح حقول التعديل أو إجراءات الحساب.</p>
+          </div>
 
-            <div className="operations-form-actions">
-              <button type="submit" className="button button-primary">حفظ التعديلات</button>
-              <Link href="/operations/centers" className="button button-ghost">إلغاء</Link>
+          <dl className={styles.summaryGrid}>
+            <div className={styles.summaryItem}>
+              <dt>الحالة التشغيلية</dt>
+              <dd><StatusBadge tone={centerActive ? "success" : "neutral"}>{centerActive ? "نشط" : "موقوف"}</StatusBadge></dd>
             </div>
-          </form>
-        </FormPanel>
+            <div className={styles.summaryItem}>
+              <dt>التبعية الحالية</dt>
+              <dd>{currentParentLabel}</dd>
+            </div>
+            <div className={styles.summaryItem}>
+              <dt>الحساب الأول</dt>
+              <dd><StatusBadge tone={onboardingStateTone}>{onboardingStateLabel}</StatusBadge></dd>
+            </div>
+            <div className={styles.summaryItem}>
+              <dt>Transfer ID</dt>
+              <dd dir="ltr">{partyResult.data?.transfer_code ?? "غير متاح"}</dd>
+            </div>
+          </dl>
 
-        <FormPanel>
-          <FormSection
-            title="دعوة الحساب الأول للمركز"
-            description="الدعوة تخص أول مستخدم يمثل هذا المركز. الدور والمركز محددان مسبقًا ولا يختارهما المستلم."
-          >
-            {reviewInvitation ? (
-              <div className="operations-form">
-                <div className="user-role-note">
-                  <div className="operations-form-actions is-inline">
-                    <StatusBadge tone="warning">تحتاج مراجعة</StatusBadge>
-                  </div>
-                  <p>البريد: <span dir="ltr">{reviewInvitation.invited_email}</span></p>
-                  <p>وقت الإيقاف الاحترازي: <span dir="ltr">{formatInviteDate(reviewInvitation.review_required_at)}</span></p>
-                  <p>{reviewFailureLabels[reviewInvitation.failure_code ?? ""] ?? "حدث فشل غير متوقع أثناء التحقق النهائي من onboarding."}</p>
-                  <p>المستلم ممنوع من إعادة المحاولة حتى تُحسم هذه الحالة من الإدارة.</p>
+          <p className={styles.accountContext}>{onboardingStateDescription}</p>
+
+          <div className={styles.summaryActions} aria-label="مسارات إدارة المركز">
+            <a href="#center-core-settings" className="button button-primary">بيانات المركز والتبعية</a>
+            <a href="#center-onboarding" className="button button-ghost">الحساب الأول والوصول</a>
+            {profile.role === "admin" ? (
+              <Link href={`/operations/centers/${center.id}/location`} className="button button-ghost">الموقع الجغرافي</Link>
+            ) : null}
+            {profile.role === "admin" || profile.role === "agent" ? (
+              <Link href={`/operations/centers/${center.id}/approval`} className="button button-ghost">اعتماد الشبكة</Link>
+            ) : null}
+          </div>
+        </section>
+
+        <section id="center-core-settings" className={styles.anchorTarget} aria-labelledby="center-core-settings-title">
+          <FormPanel className={styles.primaryPanel}>
+            <form action={updateCenter} className="operations-form">
+              <input type="hidden" name="center_id" value={center.id} />
+              <input type="hidden" name="current_parent_ref" value={currentParentRef} />
+              <FormSection
+                title="بيانات المركز والتبعية"
+                description={profile.role === "dealer"
+                  ? "هذا هو المسار الأساسي لتعديل بيانات المركز التابع لك؛ تبعيته تظل ثابتة على موزعك."
+                  : "عدّل الهوية والمدينة أو انقل التبعية فقط عند وجود سبب تشغيلي واضح. تغيير التبعية يحتاج تأكيدًا إضافيًا قبل الحفظ."}
+              >
+                <span id="center-core-settings-title" className="sr-only">بيانات المركز والتبعية</span>
+                <CenterCoreFields
+                  parentOptions={parentOptions}
+                  lockParent={profile.role === "dealer"}
+                  values={{
+                    code: center.code,
+                    name: center.name,
+                    parentRef: currentParentRef,
+                    countryCode: center.country_code,
+                    city: center.city,
+                  }}
+                />
+              </FormSection>
+
+              <div className="operations-form-actions">
+                <ConfirmSubmitButton
+                  title="تغيير تبعية المركز؟"
+                  description={`التبعية الحالية: ${currentParentLabel}. إذا اخترت طرفًا آخر فسيتغير نطاق المركز التشغيلي بعد الحفظ. راجع الاختيار قبل التأكيد.`}
+                  confirmLabel="تأكيد التبعية والحفظ"
+                  tone="primary"
+                  confirmWhenChanged={[{ name: "parent_ref", initialValue: currentParentRef }]}
+                >
+                  حفظ التعديلات
+                </ConfirmSubmitButton>
+                <Link href="/operations/centers" className="button button-ghost">إلغاء</Link>
+              </div>
+            </form>
+          </FormPanel>
+        </section>
+
+        <section id="center-onboarding" className={styles.anchorTarget} aria-labelledby="center-onboarding-title">
+          <FormPanel>
+            <FormSection
+              title="الحساب الأول والوصول"
+              description="هذا المسار مستقل عن بيانات المركز. نعرض فقط الإجراء المناسب للحالة الحالية حتى لا تختلط الدعوة أو الاسترداد بتعديل الكيان نفسه."
+            >
+              <span id="center-onboarding-title" className="sr-only">الحساب الأول والوصول</span>
+              <div className={styles.stateNote} data-tone={onboardingStateTone}>
+                <div className={styles.stateNoteHeader}>
+                  <strong>الحالة الحالية للحساب الأول</strong>
+                  <StatusBadge tone={onboardingStateTone}>{onboardingStateLabel}</StatusBadge>
                 </div>
+                <p>{onboardingStateDescription}</p>
+              </div>
 
-                {profile.role === "admin" ? (
-                  <div className="operations-form-actions">
-                    <form action={recoverCenterOnboardingInvitation}>
+              {reviewInvitation ? (
+                <div className="operations-form">
+                  <div className={styles.stateNote} data-tone="warning">
+                    <div className={styles.stateNoteHeader}>
+                      <strong>مراجعة أمنية مطلوبة</strong>
+                      <StatusBadge tone="warning">تحتاج مراجعة</StatusBadge>
+                    </div>
+                    <p>البريد: <span dir="ltr">{reviewInvitation.invited_email}</span></p>
+                    <p>وقت الإيقاف الاحترازي: <LocalDateTime value={reviewInvitation.review_required_at} /></p>
+                    <p>{reviewFailureLabels[reviewInvitation.failure_code ?? ""] ?? "حدث فشل غير متوقع أثناء التحقق النهائي من onboarding."}</p>
+                    <p>المستلم ممنوع من إعادة المحاولة حتى تُحسم هذه الحالة من الإدارة.</p>
+                  </div>
+
+                  {profile.role === "admin" ? (
+                    <div className="operations-form-actions">
+                      <form action={recoverCenterOnboardingInvitation}>
+                        <input type="hidden" name="center_id" value={center.id} />
+                        <input type="hidden" name="invitation_id" value={reviewInvitation.id} />
+                        <ConfirmSubmitButton
+                          tone="primary"
+                          title="فحص واستعادة حالة onboarding؟"
+                          description="سيعيد النظام التحقق من Auth وProfile. لن يُعاد فتح الدعوة إذا وُجد أي Profile لهذا المستخدم. وإذا كان للمركز حساب آخر، ستُغلق الدعوة غير المكتملة بدل إنشاء حساب إضافي."
+                          confirmLabel="بدء الفحص الآمن"
+                        >
+                          فحص الحالة واستعادتها
+                        </ConfirmSubmitButton>
+                      </form>
+                      <Link href="/operations/users" className="button button-ghost">فتح إدارة الحسابات</Link>
+                    </div>
+                  ) : (
+                    <div className={styles.stateNote} data-tone="warning">هذه حالة أمنية استثنائية تحتاج تدخل إدارة Protection Giants؛ لا يحاول Agent أو Dealer إعادة إصدار الدعوة.</div>
+                  )}
+                </div>
+              ) : centerHasAccount ? (
+                <div className={styles.stateNote} data-tone={pendingInvitation ? "warning" : "success"}>
+                  <div className={styles.stateNoteHeader}>
+                    <strong>الحساب التشغيلي مرتبط</strong>
+                    <StatusBadge tone={pendingInvitation ? "warning" : "success"}>{pendingInvitation ? "دعوة زائدة" : "تم الربط"}</StatusBadge>
+                  </div>
+                  <p>يوجد حساب تشغيلي واحد على الأقل مرتبط بالمركز؛ onboarding الأولي مغلق لهذا المركز.</p>
+                  {pendingInvitation ? (
+                    <form action={cancelCenterInvitation} className="operations-form">
                       <input type="hidden" name="center_id" value={center.id} />
-                      <input type="hidden" name="invitation_id" value={reviewInvitation.id} />
+                      <input type="hidden" name="invitation_id" value={pendingInvitation.id} />
+                      <p>توجد أيضًا دعوة قديمة معلقة إلى <span dir="ltr">{pendingInvitation.invited_email}</span>. يمكن إبطالها بأمان.</p>
+                      <div className="operations-form-actions is-inline">
+                        <ConfirmSubmitButton
+                          title="إلغاء الدعوة الزائدة؟"
+                          description="المركز لديه حساب تشغيلي بالفعل. سيتم إبطال هذه الدعوة وحذف مستخدم Auth غير المُطالب به إن وُجد، دون المساس بحساب المركز الحالي."
+                          confirmLabel="إلغاء الدعوة"
+                        >
+                          إلغاء الدعوة الزائدة
+                        </ConfirmSubmitButton>
+                      </div>
+                    </form>
+                  ) : null}
+                </div>
+              ) : finalizingInvitation ? (
+                <div className={styles.stateNote}>
+                  <div className={styles.stateNoteHeader}>
+                    <strong>المستلم بدأ الإكمال</strong>
+                    <StatusBadge tone="neutral">قيد الإكمال</StatusBadge>
+                  </div>
+                  <p>
+                    المستلم <span dir="ltr">{finalizingInvitation.invited_email}</span> بدأ إكمال onboarding في <LocalDateTime value={finalizingInvitation.accepted_at ?? finalizingInvitation.created_at} />.
+                  </p>
+                  <p>تم قفل الإلغاء وإعادة الإصدار حتى لا تتسابق عملية الإدارة مع إنشاء Profile التشغيلي.</p>
+                </div>
+              ) : pendingInvitation ? (
+                <div className="operations-form">
+                  <div className={styles.stateNote}>
+                    <div className={styles.stateNoteHeader}>
+                      <strong>الدعوة في انتظار المستلم</strong>
+                      <StatusBadge tone="neutral">دعوة معلقة</StatusBadge>
+                    </div>
+                    <p>البريد: <span dir="ltr">{pendingInvitation.invited_email}</span></p>
+                    <p>تاريخ الإصدار: <LocalDateTime value={pendingInvitation.created_at} /></p>
+                  </div>
+
+                  <div className="operations-form-actions">
+                    <form action={reissueCenterInvitation}>
+                      <input type="hidden" name="center_id" value={center.id} />
+                      <input type="hidden" name="invitation_id" value={pendingInvitation.id} />
                       <ConfirmSubmitButton
                         tone="primary"
-                        title="فحص واستعادة حالة onboarding؟"
-                        description="سيعيد النظام التحقق من Auth وProfile. لن يُعاد فتح الدعوة إذا وُجد أي Profile لهذا المستخدم. وإذا كان للمركز حساب آخر، ستُغلق الدعوة غير المكتملة بدل إنشاء حساب إضافي."
-                        confirmLabel="بدء الفحص الآمن"
+                        title="إعادة إصدار الدعوة؟"
+                        description="سيتم إبطال رابط الدعوة الحالي وحذف مستخدم Auth غير المُطالب به ثم إصدار دعوة جديدة لنفس البريد."
+                        confirmLabel="إعادة الإصدار"
+                        disabled={!centerActive}
                       >
-                        فحص الحالة واستعادتها
+                        إعادة إصدار الدعوة
                       </ConfirmSubmitButton>
                     </form>
-                    <Link href="/operations/users" className="button button-ghost">فتح إدارة الحسابات</Link>
-                  </div>
-                ) : (
-                  <div className="user-role-note">هذه حالة أمنية استثنائية تحتاج تدخل إدارة Protection Giants؛ لا يحاول Agent أو Dealer إعادة إصدار الدعوة.</div>
-                )}
-              </div>
-            ) : centerHasAccount ? (
-              <div className="user-role-note">
-                <div className="operations-form-actions is-inline">
-                  <StatusBadge tone="success">تم الربط</StatusBadge>
-                </div>
-                <p>يوجد حساب تشغيلي واحد على الأقل مرتبط بالمركز؛ onboarding الأولي مغلق لهذا المركز.</p>
-                {pendingInvitation ? (
-                  <form action={cancelCenterInvitation} className="operations-form">
-                    <input type="hidden" name="center_id" value={center.id} />
-                    <input type="hidden" name="invitation_id" value={pendingInvitation.id} />
-                    <p>توجد أيضًا دعوة قديمة معلقة إلى <span dir="ltr">{pendingInvitation.invited_email}</span>. يمكن إبطالها بأمان.</p>
-                    <div className="operations-form-actions is-inline">
+
+                    <form action={cancelCenterInvitation}>
+                      <input type="hidden" name="center_id" value={center.id} />
+                      <input type="hidden" name="invitation_id" value={pendingInvitation.id} />
                       <ConfirmSubmitButton
-                        title="إلغاء الدعوة الزائدة؟"
-                        description="المركز لديه حساب تشغيلي بالفعل. سيتم إبطال هذه الدعوة وحذف مستخدم Auth غير المُطالب به إن وُجد، دون المساس بحساب المركز الحالي."
-                        confirmLabel="إلغاء الدعوة"
+                        title="إلغاء الدعوة؟"
+                        description="سيتم إبطال الدعوة ومنعها من إنشاء Profile للمركز. إذا لم يبدأ المستلم الإكمال فسيتم تنظيف مستخدم Auth غير المُطالب به."
+                        confirmLabel="تأكيد الإلغاء"
                       >
-                        إلغاء الدعوة الزائدة
+                        إلغاء الدعوة
                       </ConfirmSubmitButton>
-                    </div>
-                  </form>
-                ) : null}
-              </div>
-            ) : finalizingInvitation ? (
-              <div className="user-role-note">
-                <div className="operations-form-actions is-inline">
-                  <StatusBadge tone="neutral">قيد الإكمال</StatusBadge>
-                </div>
-                <p>
-                  المستلم <span dir="ltr">{finalizingInvitation.invited_email}</span> بدأ إكمال onboarding في {formatInviteDate(finalizingInvitation.accepted_at ?? finalizingInvitation.created_at)}.
-                </p>
-                <p>تم قفل الإلغاء وإعادة الإصدار حتى لا تتسابق عملية الإدارة مع إنشاء Profile التشغيلي.</p>
-              </div>
-            ) : pendingInvitation ? (
-              <div className="operations-form">
-                <div className="user-role-note">
-                  <div className="operations-form-actions is-inline">
-                    <StatusBadge tone="neutral">دعوة معلقة</StatusBadge>
+                    </form>
                   </div>
-                  <p>البريد: <span dir="ltr">{pendingInvitation.invited_email}</span></p>
-                  <p>تاريخ الإصدار: <span dir="ltr">{formatInviteDate(pendingInvitation.created_at)}</span></p>
-                </div>
 
-                <div className="operations-form-actions">
-                  <form action={reissueCenterInvitation}>
-                    <input type="hidden" name="center_id" value={center.id} />
-                    <input type="hidden" name="invitation_id" value={pendingInvitation.id} />
-                    <ConfirmSubmitButton
-                      tone="primary"
-                      title="إعادة إصدار الدعوة؟"
-                      description="سيتم إبطال رابط الدعوة الحالي وحذف مستخدم Auth غير المُطالب به ثم إصدار دعوة جديدة لنفس البريد."
-                      confirmLabel="إعادة الإصدار"
-                      disabled={!centerActive}
-                    >
-                      إعادة إصدار الدعوة
-                    </ConfirmSubmitButton>
-                  </form>
-
-                  <form action={cancelCenterInvitation}>
-                    <input type="hidden" name="center_id" value={center.id} />
-                    <input type="hidden" name="invitation_id" value={pendingInvitation.id} />
-                    <ConfirmSubmitButton
-                      title="إلغاء الدعوة؟"
-                      description="سيتم إبطال الدعوة ومنعها من إنشاء Profile للمركز. إذا لم يبدأ المستلم الإكمال فسيتم تنظيف مستخدم Auth غير المُطالب به."
-                      confirmLabel="تأكيد الإلغاء"
-                    >
-                      إلغاء الدعوة
-                    </ConfirmSubmitButton>
-                  </form>
+                  {!centerActive ? (
+                    <div className={styles.stateNote} data-tone="warning">المركز موقوف؛ يمكن إلغاء الدعوة الحالية لكن لا يمكن إعادة إصدارها قبل إعادة تفعيل المركز.</div>
+                  ) : null}
                 </div>
-
-                {!centerActive ? (
-                  <div className="user-role-note">المركز موقوف؛ يمكن إلغاء الدعوة الحالية لكن لا يمكن إعادة إصدارها قبل إعادة تفعيل المركز.</div>
-                ) : null}
-              </div>
-            ) : centerActive ? (
-              <form action={sendCenterInvitation} className="operations-form">
-                <input type="hidden" name="center_id" value={center.id} />
-                <FormField label="البريد الإلكتروني للمستخدم الأول" hint="سيصل إليه رابط آمن لإعداد كلمة المرور والاسم الظاهر. لا يختار الدور أو المركز.">
-                  <input
-                    name="email"
-                    type="email"
-                    maxLength={254}
-                    required
-                    autoComplete="email"
-                    inputMode="email"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    dir="ltr"
-                  />
-                </FormField>
-                <div className="operations-form-actions is-inline">
-                  <button type="submit" className="button button-primary">إرسال دعوة onboarding</button>
-                </div>
-              </form>
-            ) : (
-              <div className="user-role-note">المركز موقوف؛ أعد تفعيله أولًا قبل إرسال دعوة الحساب الأول.</div>
-            )}
-          </FormSection>
-        </FormPanel>
+              ) : centerActive ? (
+                <form action={sendCenterInvitation} className="operations-form">
+                  <input type="hidden" name="center_id" value={center.id} />
+                  <FormField label="البريد الإلكتروني للمستخدم الأول" hint="سيصل إليه رابط آمن لإعداد كلمة المرور والاسم الظاهر. لا يختار الدور أو المركز.">
+                    <input
+                      name="email"
+                      type="email"
+                      maxLength={254}
+                      required
+                      autoComplete="email"
+                      inputMode="email"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      dir="ltr"
+                    />
+                  </FormField>
+                  <div className="operations-form-actions is-inline">
+                    <button type="submit" className="button button-primary">إرسال دعوة onboarding</button>
+                  </div>
+                </form>
+              ) : (
+                <div className={styles.stateNote} data-tone="warning">المركز موقوف؛ أعد تفعيله أولًا قبل إرسال دعوة الحساب الأول.</div>
+              )}
+            </FormSection>
+          </FormPanel>
+        </section>
       </div>
     </>
   );
