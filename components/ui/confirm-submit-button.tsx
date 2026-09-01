@@ -3,6 +3,11 @@
 import { useId, useRef } from "react";
 import { useFormStatus } from "react-dom";
 
+type ConfirmWhenChangedField = {
+  name: string;
+  initialValue: string | null;
+};
+
 type ConfirmSubmitButtonProps = {
   children: string;
   title: string;
@@ -11,6 +16,7 @@ type ConfirmSubmitButtonProps = {
   tone?: "danger" | "primary";
   className?: string;
   disabled?: boolean;
+  confirmWhenChanged?: readonly ConfirmWhenChangedField[];
 };
 
 export function ConfirmSubmitButton({
@@ -21,6 +27,7 @@ export function ConfirmSubmitButton({
   tone = "danger",
   className = "",
   disabled = false,
+  confirmWhenChanged,
 }: ConfirmSubmitButtonProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -32,6 +39,20 @@ export function ConfirmSubmitButton({
     if (pending || disabled) return;
     const form = button.form;
     if (form && !form.reportValidity()) return;
+
+    if (form && confirmWhenChanged?.length) {
+      const submitted = new FormData(form);
+      const sensitiveChange = confirmWhenChanged.some(({ name, initialValue }) => {
+        const nextValue = submitted.get(name);
+        return (typeof nextValue === "string" ? nextValue : "") !== (initialValue ?? "");
+      });
+
+      if (!sensitiveChange) {
+        form.requestSubmit();
+        return;
+      }
+    }
+
     dialogRef.current?.showModal();
   };
 
