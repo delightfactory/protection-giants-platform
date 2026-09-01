@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import styles from "./page.module.css";
 import {
   resolvePublicWarranty,
@@ -24,17 +25,6 @@ export const metadata: Metadata = {
 type PublicWarrantyPageProps = {
   params: Promise<{ publicCode: string }>;
 };
-
-const dateFormatter = new Intl.DateTimeFormat("ar-EG", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  timeZone: "UTC",
-});
-
-function formatWarrantyDate(value: string) {
-  return dateFormatter.format(new Date(value));
-}
 
 function stateCopy(view: Exclude<PublicWarrantyView, { kind: "not_found" }>) {
   switch (view.kind) {
@@ -102,11 +92,11 @@ function WarrantyFacts({ view }: { view: Extract<PublicWarrantyView, { kind: "ac
       </div>
       <div className={styles.fact}>
         <dt>تاريخ التفعيل</dt>
-        <dd>{formatWarrantyDate(view.activatedAt)}</dd>
+        <dd><LocalDateTime value={view.activatedAt} /></dd>
       </div>
       <div className={styles.fact}>
         <dt>نهاية التغطية</dt>
-        <dd>{formatWarrantyDate(view.coverageExpiresAt)}</dd>
+        <dd><LocalDateTime value={view.coverageExpiresAt} /></dd>
       </div>
       <div className={styles.fact}>
         <dt>مركز التركيب</dt>
