@@ -46,12 +46,17 @@ includes(issueNewPage, "taskId={taskId}", "Issue flow must receive bounded task 
 
 includes(issueFlow, 'useState(() => normalizeRollSerial(initialSerial) ?? "")', "Issue flow must preserve normalized Roll input");
 includes(issueFlow, '/operations/claim-resolution-tasks/${taskId}', "Issue flow must return to exact replacement task");
+includes(issueFlow, '/operations/rolls/issues/${completedIssueId}?task=${encodeURIComponent(taskId)}', "Replacement issue detail must retain bounded task context");
 includes(issueFlow, "لا تكمل استخدام الرول أو إغلاق المهمة حتى تحسم الشركة البلاغ", "Replacement issue must explicitly block physical continuation");
 
 includes(warrantyActivationPage, 'searchParams: Promise<{ roll?: string }>', "Warranty Activation must accept exact Roll continuation");
 includes(warrantyActivationPage, 'initialSerial={initialSerial}', "Warranty Activation must preserve Roll context");
-includes(issueDetail, '/operations/warranties/activate?roll=${encodeURIComponent(issue.serial_number)}', "Cleared Center issue must continue to Warranty Activation with exact Roll");
-includes(issueDetail, 'issue.status === "cleared_for_use" || issue.status === "reported_in_error"', "Only non-blocking issue outcomes may offer Warranty continuation");
+includes(issueDetail, 'searchParams: Promise<{ task?: string }>', "Issue detail bounded task context contract");
+includes(issueDetail, 'profile.role === "center" && uuidPattern.test(requestedTaskId)', "Issue detail task context must be UUID-bounded and Center-only");
+includes(issueDetail, 'href={taskHref ?? "/operations/rolls/issues"}', "Issue detail must return to exact replacement task when present");
+includes(issueDetail, '/operations/warranties/activate?roll=${encodeURIComponent(issue.serial_number)}', "Cleared ordinary Center issue must continue to Warranty Activation with exact Roll");
+includes(issueDetail, 'issue.status === "cleared_for_use" || issue.status === "reported_in_error"', "Only non-blocking issue outcomes may offer continuation");
+includes(issueDetail, "العودة إلى مهمة التنفيذ", "Replacement issue outcomes must return to the exact task rather than Warranty Activation");
 includes(issueDetail, "لا تستخدم الرول. انتظر تنسيق الشركة لاسترداده", "Return-required issue must explicitly block physical use");
 includes(issueDetail, "قرار الإرجاع لا ينقل العهدة", "Return-required issue must not imply custody movement");
 
