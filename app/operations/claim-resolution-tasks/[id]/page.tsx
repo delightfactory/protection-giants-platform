@@ -85,6 +85,15 @@ export default async function ClaimResolutionTaskDetailPage({ params }: PageProp
   const replacementBlocked = task.replacement_quality_state === "pending"
     || task.replacement_quality_state === "return_required";
   const canComplete = !isReplacement || (hasReplacementRoll && replacementOpened && !replacementBlocked);
+  const replacementTaskContext = task.replacement_roll_serial
+    ? `roll=${encodeURIComponent(task.replacement_roll_serial)}&task=${encodeURIComponent(task.resolution_id)}`
+    : null;
+  const replacementOpenHref = replacementTaskContext
+    ? `/operations/rolls/open?${replacementTaskContext}`
+    : "/operations/rolls/open";
+  const replacementIssueHref = replacementTaskContext
+    ? `/operations/rolls/issues/new?${replacementTaskContext}`
+    : "/operations/rolls/issues/new";
 
   return (
     <>
@@ -92,7 +101,7 @@ export default async function ClaimResolutionTaskDetailPage({ params }: PageProp
         eyebrow="تنفيذ مطالبة ضمان"
         title={task.claim_number}
         description="هذه الصفحة تعرض فقط سياق العمل المطلوب من مركزك. نفّذ العلاج المحدد، واستخدم الرول المعين فقط عند الاستبدال، ثم ارفع دليل الإكمال."
-        meta={`الإسناد: ${new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" }).format(new Date(task.assigned_at))}`}
+        meta={<span>الإسناد: <LocalDateTime value={task.assigned_at} /></span>}
         actions={<TaskBackLink href="/operations/claim-resolution-tasks" label="العودة إلى مهام التنفيذ" />}
       />
 
@@ -204,24 +213,24 @@ export default async function ClaimResolutionTaskDetailPage({ params }: PageProp
 
                 <div className={styles.guidance}>
                   <strong>التسلسل المطلوب</strong>
-                  <p>افتح نفس الرول المسند عبر Cube J. إذا اكتشفت مشكلة قبل التركيب استخدم بلاغات ما قبل التركيب (Cube K). لا تستخدم رولًا مختلفًا، ولا تكمل المهمة أثناء وجود بلاغ جودة معلق أو قرار إرجاع.</p>
+                  <p>افتح نفس الرول المحدد لهذه المهمة. إذا اكتشفت مشكلة قبل التركيب، سجّل بلاغ مشكلة على هذا الرول نفسه. لا تستخدم رولًا مختلفًا، ولا تكمل المهمة أثناء وجود بلاغ جودة معلق أو قرار إرجاع.</p>
                 </div>
 
                 <div className={styles.actions}>
                   {!replacementOpened ? (
-                    <Link href="/operations/rolls/open" className="button button-primary">فتح الرول عبر المسار المعتمد</Link>
+                    <Link href={replacementOpenHref} className="button button-primary">فتح الرول المحدد</Link>
                   ) : null}
                   {replacementOpened ? (
-                    <Link href="/operations/rolls/issues/new" className="button button-secondary">تسجيل مشكلة قبل التركيب</Link>
+                    <Link href={replacementIssueHref} className="button button-secondary">تسجيل مشكلة على هذا الرول</Link>
                   ) : null}
                   <Link href="/operations/rolls/issues" className="button button-ghost">متابعة بلاغات الرولات</Link>
                 </div>
 
                 {task.replacement_quality_state === "pending" ? (
-                  <p className={styles.blocked}>لا يمكن إغلاق المهمة قبل حسم بلاغ الجودة الحالي.</p>
+                  <p className={styles.blocked}>لا تستخدم الرول ولا تغلق المهمة قبل حسم بلاغ الجودة الحالي.</p>
                 ) : null}
                 {task.replacement_quality_state === "return_required" ? (
-                  <p className={styles.blocked}>هذا الرول صدر له قرار إرجاع ولا يمكن استهلاكه في المطالبة. تظل المهمة مفتوحة حتى تقوم الشركة بتحريره وتعيين رول صالح آخر.</p>
+                  <p className={styles.blocked}>لا تستخدم هذا الرول. صدر له قرار إرجاع، وتظل المهمة مفتوحة حتى تقوم الشركة بتحريره وتعيين رول صالح آخر.</p>
                 ) : null}
               </>
             ) : (
