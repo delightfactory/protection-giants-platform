@@ -148,9 +148,64 @@ export default async function ResolutionDetailPage({ params }: ResolutionDetailP
   }
 
   const activeOperatorCount = Number(resolution.active_operator_count ?? 0);
+  const recoveryAllowed = resolution.resolution_status === "assigned"
+    && (resolution.performing_center_status === "suspended" || activeOperatorCount === 0);
+  const replacementNeedsAllocation = resolution.resolution_status === "assigned"
+    && resolution.remedy_kind === "replacement_roll_reinstall"
+    && !hasActiveAllocation;
   const vehicle = [resolution.vehicle_make, resolution.vehicle_model, resolution.vehicle_year]
     .filter(Boolean)
     .join(" ") || "غير متاح";
+
+  let currentStepTitle = "راجع الحالة التشغيلية";
+  let currentStepDescription = "استخدم ملخص الحالة وإجراءات التنفيذ لتحديد الخطوة التالية دون تغيير قرار المطالبة أو الضمان.";
+  let currentStepBadge = <StatusBadge tone="neutral">متابعة</StatusBadge>;
+  let currentStepActionLabel = "مراجعة إجراءات الإدارة";
+  let currentStepActionPrimary = false;
+
+  if (resolution.resolution_status === "authorized") {
+    currentStepTitle = "إسناد التنفيذ إلى مركز";
+    currentStepDescription = "المعالجة معتمدة ولم تُسند بعد. الخطوة المطلوبة من الإدارة هي اختيار مركز التنفيذ وأسلوب المعالجة قبل بدء العمل الميداني.";
+    currentStepBadge = <StatusBadge tone="accent">مطلوب من الإدارة</StatusBadge>;
+    currentStepActionLabel = "فتح إجراءات الإسناد";
+    currentStepActionPrimary = true;
+  } else if (recoveryAllowed) {
+    currentStepTitle = "تدخل إدارة مطلوب لاستكمال التنفيذ";
+    currentStepDescription = "المركز المسند موقوف أو لا يملك مستخدم Center نشطًا. راجع مسار الإكمال الاستثنائي فقط بعد التحقق من فقد قدرة المركز على الإكمال الطبيعي.";
+    currentStepBadge = <StatusBadge tone="warning">استثناء يحتاج تدخل</StatusBadge>;
+    currentStepActionLabel = "فتح إجراءات التدخل";
+    currentStepActionPrimary = true;
+  } else if (replacementNeedsAllocation && rollCandidates.length > 0) {
+    currentStepTitle = "حجز لفة الاستبدال";
+    currentStepDescription = "المهمة مسندة إلى المركز ولا توجد مادة نشطة بعد. توجد لفة مؤهلة في عهدة مركز التنفيذ ويمكن حجزها من إجراءات التنفيذ.";
+    currentStepBadge = <StatusBadge tone="accent">مطلوب من الإدارة</StatusBadge>;
+    currentStepActionLabel = "فتح إجراءات المادة";
+    currentStepActionPrimary = true;
+  } else if (replacementNeedsAllocation) {
+    currentStepTitle = "توفير مادة مؤهلة لمركز التنفيذ";
+    currentStepDescription = "لا توجد حاليًا لفة مؤهلة غير مفتوحة في عهدة مركز التنفيذ. استخدم مسار التحويل التشغيلي المعتاد عند الحاجة ثم ارجع لهذه المعالجة.";
+    currentStepBadge = <StatusBadge tone="warning">المادة غير جاهزة</StatusBadge>;
+  } else if (resolution.resolution_status === "assigned" && resolution.allocation_status === "reserved") {
+    currentStepTitle = "المادة محجوزة — التنفيذ عند المركز";
+    currentStepDescription = "الإسناد والمادة جاهزان. لا يلزم إجراء إداري أساسي الآن ما لم تتغير مسؤولية المركز أو تظهر حالة استثنائية.";
+    currentStepBadge = <StatusBadge tone="warning">بانتظار المركز</StatusBadge>;
+  } else if (resolution.resolution_status === "assigned" && resolution.allocation_status === "consumed") {
+    currentStepTitle = "المادة استُهلكت — بانتظار تسجيل الإكمال";
+    currentStepDescription = "حقيقة استهلاك المادة ثبتت. المسار الطبيعي الآن هو إكمال المهمة من المركز وتسجيل إثبات التنفيذ، ما لم تتوفر شروط التدخل الاستثنائي.";
+    currentStepBadge = <StatusBadge tone="warning">بانتظار الإكمال</StatusBadge>;
+  } else if (resolution.resolution_status === "assigned") {
+    currentStepTitle = "التنفيذ الآن عند المركز";
+    currentStepDescription = "المهمة مسندة ولا توجد خطوة إدارية أساسية مطلوبة الآن. استخدم إجراءات الإدارة فقط للتصحيح أو الاستثناء عند وجود سبب تشغيلي حقيقي.";
+    currentStepBadge = <StatusBadge tone="warning">بانتظار المركز</StatusBadge>;
+  } else if (resolution.resolution_status === "completed") {
+    currentStepTitle = "التنفيذ مكتمل";
+    currentStepDescription = "لا توجد إجراءات تشغيلية متبقية. راجع حقائق الإكمال وسجل المطالبة عند الحاجة للتدقيق أو الدعم.";
+    currentStepBadge = <StatusBadge tone="success">لا يوجد إجراء</StatusBadge>;
+  } else if (resolution.resolution_status === "cancelled") {
+    currentStepTitle = "التنفيذ مغلق دون إكمال";
+    currentStepDescription = "لا توجد إجراءات تشغيلية متبقية. راجع سبب الإغلاق ورسالة العميل وسجل المطالبة عند الحاجة.";
+    currentStepBadge = <StatusBadge tone="neutral">لا يوجد إجراء</StatusBadge>;
+  }
 
   return (
     <>
@@ -182,6 +237,49 @@ export default async function ResolutionDetailPage({ params }: ResolutionDetailP
             <div><dt>الإكمال</dt><dd>{dateValue(resolution.completed_at)}</dd></div>
           </dl>
         </section>
+
+        <section className={`${styles.card} ${styles.focusCard}`} aria-label="الخطوة الحالية">
+          <div className={styles.header}>
+            <div className={styles.focusCopy}>
+              <span className={styles.eyebrow}>ما الذي يحتاج متابعة الآن؟</span>
+              <h2>{currentStepTitle}</h2>
+              <p>{currentStepDescription}</p>
+            </div>
+            {currentStepBadge}
+          </div>
+          {openForAdminAction ? (
+            <div className={styles.focusActions}>
+              <a
+                href="#resolution-actions"
+                className={currentStepActionPrimary ? "button button-primary" : "button button-ghost"}
+              >
+                {currentStepActionLabel}
+              </a>
+            </div>
+          ) : null}
+        </section>
+
+        <div id="resolution-actions" className={styles.actionWorkspace}>
+          <AdminClaimResolutionActions
+            resolutionId={resolution.resolution_id}
+            resolutionStatus={resolution.resolution_status}
+            remedyKind={resolution.remedy_kind}
+            performingCenterPartyId={resolution.performing_center_party_id}
+            performingCenterStatus={resolution.performing_center_status}
+            activeOperatorCount={activeOperatorCount}
+            allocationId={resolution.allocation_id}
+            allocationStatus={resolution.allocation_status}
+            replacementRollSerial={resolution.replacement_roll_serial}
+            centers={centers}
+            rollCandidates={rollCandidates}
+          />
+        </div>
+
+        <div className={styles.referenceHeading}>
+          <span className={styles.eyebrow}>تفاصيل مرجعية</span>
+          <h2>السياق والسجل المرتبط</h2>
+          <p>استخدم البيانات التالية لفهم الخلفية أو التدقيق، بعد تحديد الخطوة التشغيلية الحالية أعلاه.</p>
+        </div>
 
         <section className={styles.card} aria-label="سياق المطالبة والضمان">
           <div className={styles.header}><div><span className={styles.eyebrow}>Claim / Warranty</span><h2>السياق المرتبط</h2></div></div>
@@ -241,20 +339,6 @@ export default async function ResolutionDetailPage({ params }: ResolutionDetailP
             <div><span className={styles.eyebrow}>رسالة العميل</span><p className={styles.prose}>{resolution.customer_cancellation_message ?? "—"}</p></div>
           </section>
         ) : null}
-
-        <AdminClaimResolutionActions
-          resolutionId={resolution.resolution_id}
-          resolutionStatus={resolution.resolution_status}
-          remedyKind={resolution.remedy_kind}
-          performingCenterPartyId={resolution.performing_center_party_id}
-          performingCenterStatus={resolution.performing_center_status}
-          activeOperatorCount={activeOperatorCount}
-          allocationId={resolution.allocation_id}
-          allocationStatus={resolution.allocation_status}
-          replacementRollSerial={resolution.replacement_roll_serial}
-          centers={centers}
-          rollCandidates={rollCandidates}
-        />
       </div>
     </>
   );
