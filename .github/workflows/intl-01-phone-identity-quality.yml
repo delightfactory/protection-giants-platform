@@ -1,0 +1,83 @@
+name: INTL 01 Phone Identity Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/**"
+      - "lib/warranty/international-phone.ts"
+      - "components/warranties/warranty-activation-flow.tsx"
+      - "components/warranties/admin-warranty-support.tsx"
+      - "app/(public)/w/[publicCode]/claim/**"
+      - "scripts/verify-intl-01-phone-identity.mjs"
+      - "lib/supabase/database.types.ts"
+      - ".github/workflows/intl-01-phone-identity-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  phone-identity-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Lint local database
+        run: supabase db lint --local --level warning --fail-on error
+
+      - name: Verify INTL-01 phone identity contracts
+        run: node scripts/verify-intl-01-phone-identity.mjs
+
+      - name: Verify generated database types
+        run: |
+          supabase gen types typescript --local --schema public > /tmp/generated.database.types.ts
+          node <<'NODE'
+          const fs = require("node:fs");
+          for (const path of ["/tmp/generated.database.types.ts", "lib/supabase/database.types.ts"]) {
+            const content = fs.readFileSync(path, "utf8").replace(/\n*$/, "\n");
+            fs.writeFileSync(path, content);
+          }
+          NODE
+          diff -u lib/supabase/database.types.ts /tmp/generated.database.types.ts
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
+
+      - name: Stop local stack
+        if: always()
+        run: |
+          if command -v supabase >/dev/null 2>&1; then
+            supabase stop --no-backup
+          fi

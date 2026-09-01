@@ -8,6 +8,10 @@ import {
 } from "@/app/operations/warranties/support-actions";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import {
+  INTERNATIONAL_PHONE_GUIDANCE_AR,
+  normalizeInternationalPhone,
+} from "@/lib/warranty/international-phone";
 import styles from "./admin-warranty-support.module.css";
 
 type WarrantyDetails = {
@@ -29,7 +33,7 @@ const errorMessages: Record<string, string> = {
   PG_WARRANTY_REQUEST_CONFLICT: "نفس رقم المحاولة استُخدم ببيانات مختلفة. راجع الضمان وابدأ محاولة جديدة.",
   PG_WARRANTY_ADMIN_REQUIRED: "هذا الإجراء متاح لحساب Admin نشط فقط.",
   PG_WARRANTY_NOT_FOUND: "لم يعد هذا الضمان متاحًا في النطاق الحالي.",
-  PG_WARRANTY_DETAILS_INVALID: "راجع بيانات العميل والسيارة؛ توجد قيمة غير صالحة أو لا يوجد تغيير فعلي لحفظه.",
+  PG_WARRANTY_DETAILS_INVALID: `راجع بيانات العميل والسيارة. ${INTERNATIONAL_PHONE_GUIDANCE_AR}`,
   PG_WARRANTY_CORRECTION_REASON_INVALID: "اكتب سببًا واضحًا من 5 إلى 500 حرف يشرح سبب الإجراء.",
   PG_WARRANTY_ALREADY_VOIDED: "هذا التفعيل أُلغي كخطأ بالفعل ولا يقبل تعديلات جديدة.",
   PG_WARRANTY_SUPPORT_FAILED: "تعذر إكمال الإجراء الآن. أعد المحاولة بنفس البيانات، أو راجع مسؤول النظام إذا استمرت المشكلة.",
@@ -42,7 +46,7 @@ function supportError(code: string) {
 function normalizeDetails(details: WarrantyDetails): WarrantyDetails {
   return {
     customerName: details.customerName.trim(),
-    customerPhone: details.customerPhone.trim(),
+    customerPhone: normalizeInternationalPhone(details.customerPhone) ?? details.customerPhone.trim(),
     customerEmail: details.customerEmail.trim().toLowerCase(),
     vehicleMake: details.vehicleMake.trim(),
     vehicleModel: details.vehicleModel.trim(),
@@ -56,7 +60,7 @@ function normalizeDetails(details: WarrantyDetails): WarrantyDetails {
 function validateDetails(details: WarrantyDetails, reason: string): string | null {
   const normalized = normalizeDetails(details);
   if (normalized.customerName.length < 2 || normalized.customerName.length > 160) return "راجع اسم العميل.";
-  if (normalized.customerPhone.length < 5 || normalized.customerPhone.length > 32) return "راجع رقم هاتف العميل.";
+  if (!normalizeInternationalPhone(details.customerPhone)) return INTERNATIONAL_PHONE_GUIDANCE_AR;
   if (normalized.customerEmail && (normalized.customerEmail.length < 3 || normalized.customerEmail.length > 254)) return "راجع البريد الإلكتروني أو اتركه فارغًا.";
   if (!normalized.vehicleMake || normalized.vehicleMake.length > 120) return "راجع ماركة السيارة.";
   if (!normalized.vehicleModel || normalized.vehicleModel.length > 120) return "راجع موديل السيارة.";
@@ -228,14 +232,15 @@ export function AdminWarrantySupport({
           <form className={styles.form} onSubmit={submitCorrection}>
             <fieldset disabled={isCorrecting || isVoiding}>
               <legend>بيانات العميل</legend>
+              <p className={styles.note}>{INTERNATIONAL_PHONE_GUIDANCE_AR}</p>
               <div className={styles.grid}>
                 <label>
                   <span>الاسم الكامل</span>
                   <input value={details.customerName} maxLength={160} required onChange={(event) => updateDetail("customerName", event.target.value)} />
                 </label>
                 <label>
-                  <span>الهاتف</span>
-                  <input dir="ltr" value={details.customerPhone} maxLength={32} required onChange={(event) => updateDetail("customerPhone", event.target.value)} />
+                  <span>الهاتف — بصيغة دولية</span>
+                  <input dir="ltr" type="tel" inputMode="tel" autoComplete="tel" placeholder="+20 10 1234 5678" title={INTERNATIONAL_PHONE_GUIDANCE_AR} value={details.customerPhone} maxLength={32} required onChange={(event) => updateDetail("customerPhone", event.target.value)} />
                 </label>
                 <label className={styles.full}>
                   <span>البريد الإلكتروني — اختياري</span>
