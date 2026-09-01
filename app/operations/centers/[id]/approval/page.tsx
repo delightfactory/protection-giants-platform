@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import styles from "../center-detail.module.css";
 import { approveCenterNetwork, revokeCenterNetworkApproval } from "./actions";
 
 type CenterApprovalPageProps = {
@@ -23,10 +24,6 @@ const eventLabels: Record<string, string> = {
   revoked: "تم إلغاء الاعتماد",
   location_changed: "أُلغي الاعتماد بسبب تغير الموقع",
 };
-
-function formatDate(value: string) {
-  return <LocalDateTime value={value} />;
-}
 
 function formatCoordinate(value: number) {
   return value.toFixed(6);
@@ -106,9 +103,9 @@ export default async function CenterApprovalPage({ params, searchParams }: Cente
       <PageHeader
         eyebrow="اعتماد شبكة Protection Giants"
         title={center.name}
-        description="اعتماد الشبكة يعبّر عن حالة الثقة بالمركز داخل الشبكة، ويظل منفصلًا عن الحالة التشغيلية وباقي صلاحيات العمل."
+        description="راجع الحالة التشغيلية والموقع أولًا، ثم نفّذ قرار الاعتماد فقط إذا كانت الشروط الحالية واضحة ومكتملة."
         meta={<><span dir="ltr">{center.code}</span> · {center.city} · <span dir="ltr">{center.country_code}</span></>}
-        actions={<TaskBackLink href="/operations/centers" label="العودة للمراكز" />}
+        actions={<TaskBackLink href={`/operations/centers/${center.id}/edit`} label="العودة لإدارة المركز" />}
       />
 
       {pageError === "approve" ? (
@@ -124,25 +121,27 @@ export default async function CenterApprovalPage({ params, searchParams }: Cente
         <FeedbackBanner tone="success">تم إلغاء الاعتماد وتسجيل العملية دون تغيير الحالة التشغيلية للمركز.</FeedbackBanner>
       ) : null}
 
-      <div className="user-settings-stack">
+      <div className={styles.pageStack}>
         <FormPanel>
           <FormSection
             title="الحالة الحالية"
-            description="الحالة التشغيلية واعتماد الشبكة مستقلان عن بعضهما."
+            description="الحالة التشغيلية واعتماد الشبكة مستقلان عن بعضهما؛ راجعهما قبل أي قرار."
           >
-            <div className="user-role-note">
-              <p>التبعية: {parentLabel}</p>
+            <div className={styles.stateNote}>
+              <div className={styles.stateHeader}>
+                <strong>{parentLabel}</strong>
+                <StatusBadge tone={isApproved ? "success" : "neutral"}>
+                  {isApproved ? "معتمد" : "غير معتمد"}
+                </StatusBadge>
+              </div>
               <p>الحالة التشغيلية: <strong>{isActive ? "نشط" : "موقوف"}</strong></p>
               <p>اعتماد الشبكة: <strong>{isApproved ? "معتمد" : "غير معتمد"}</strong></p>
               {isApproved && center.approved_at ? (
-                <p>آخر اعتماد: <span dir="ltr">{formatDate(center.approved_at)}</span></p>
+                <p>آخر اعتماد: <LocalDateTime value={center.approved_at} /></p>
               ) : null}
               {isApproved && center.approved_by_profile_id ? (
                 <p>اعتمد بواسطة: {actorLabel(center.approved_by_profile_id)}</p>
               ) : null}
-              <StatusBadge tone={isApproved ? "success" : "neutral"}>
-                {isApproved ? "معتمد" : "غير معتمد"}
-              </StatusBadge>
             </div>
           </FormSection>
         </FormPanel>
@@ -153,9 +152,12 @@ export default async function CenterApprovalPage({ params, searchParams }: Cente
             description="لا يمكن منح اعتماد جديد قبل وجود موقع جغرافي حالي للمركز. أي تغير لاحق في الإحداثيات يلغي الاعتماد تلقائيًا للمراجعة من جديد."
           >
             {hasLocation ? (
-              <div className="user-role-note">
-                <strong><span dir="ltr">{formatCoordinate(center.latitude!)}, {formatCoordinate(center.longitude!)}</span></strong>
-                <p>آخر تسجيل: <span dir="ltr">{formatDate(center.location_captured_at!)}</span></p>
+              <div className={styles.stateNote}>
+                <div className={styles.stateHeader}>
+                  <strong className={styles.coordinate}>{formatCoordinate(center.latitude!)}, {formatCoordinate(center.longitude!)}</strong>
+                  <StatusBadge tone="success">موقع مسجل</StatusBadge>
+                </div>
+                <p>آخر تسجيل: <LocalDateTime value={center.location_captured_at!} /></p>
                 <p>المصدر: {center.location_source === "center_device" ? "جهاز المركز" : "تصحيح إداري"}</p>
               </div>
             ) : (
@@ -167,7 +169,7 @@ export default async function CenterApprovalPage({ params, searchParams }: Cente
         <FormPanel>
           <FormSection
             title="إجراء الاعتماد"
-            description="لا يغيّر هذا الإجراء حالة المركز التشغيلية ولا ينشئ صلاحيات تشغيلية جديدة."
+            description="هذا هو الإجراء الأساسي في الصفحة، ولا يغيّر حالة المركز التشغيلية ولا ينشئ صلاحيات تشغيلية جديدة."
           >
             {isApproved ? (
               <form action={revokeCenterNetworkApproval} className="operations-form">
@@ -215,7 +217,7 @@ export default async function CenterApprovalPage({ params, searchParams }: Cente
                   <RecordItem
                     key={event.id}
                     kicker={eventLabels[event.action] ?? event.action}
-                    title={<span dir="ltr">{formatDate(event.occurred_at)}</span>}
+                    title={<LocalDateTime value={event.occurred_at} />}
                     facts={[
                       { label: "بواسطة", value: actorLabel(event.actor_profile_id) },
                     ]}
