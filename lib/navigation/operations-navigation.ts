@@ -18,7 +18,7 @@ export type OperationsDestination = {
 
 const allRoles = ["admin", "agent", "dealer", "center"] as const satisfies readonly OperationalRole[];
 
-export const operationsDestinations = [
+export const operationsDestinations: readonly OperationsDestination[] = [
   {
     id: "home",
     href: "/operations",
@@ -203,7 +203,7 @@ export const operationsDestinations = [
     taxonomy: "reference",
     desktop: true,
   },
-] as const satisfies readonly OperationsDestination[];
+];
 
 export type OperationsNavItem = Pick<OperationsDestination, "href" | "label" | "icon"> & { id: string };
 
