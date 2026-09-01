@@ -1,0 +1,55 @@
+.pageStack {
+  display: grid;
+  gap: 18px;
+  max-width: 860px;
+}
+
+.stateNote {
+  display: grid;
+  gap: 8px;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .025);
+  color: #d8d4d4;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.stateNote p,
+.stateNote strong {
+  margin: 0;
+}
+
+.stateNote p {
+  overflow-wrap: anywhere;
+}
+
+.stateHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.coordinate {
+  direction: ltr;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .pageStack {
+    gap: 22px;
+  }
+
+  .stateNote {
+    border-radius: 17px;
+  }
+
+  .stateHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
