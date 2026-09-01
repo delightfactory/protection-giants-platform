@@ -1,0 +1,72 @@
+name: UX S05R C Admin Workbench Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/operations/page.tsx"
+      - "app/operations/claims/page.tsx"
+      - "app/operations/claim-resolutions/page.tsx"
+      - "lib/navigation/operations-navigation.ts"
+      - "scripts/verify-ux-s05r-a-center-workbench.mjs"
+      - "scripts/verify-ux-s05r-b-partner-workbench.mjs"
+      - "scripts/verify-ux-s05r-c-admin-workbench.mjs"
+      - "scripts/verify-platform-role-reachability-ui.mjs"
+      - "scripts/verify-cube-q-claim-admin-decision-ui.mjs"
+      - "scripts/verify-cube-r-claim-initial-assignment.mjs"
+      - "scripts/verify-cube-r-claim-admin-resolution-reads.mjs"
+      - "scripts/verify-cube-r-claim-admin-resolution-ui.mjs"
+      - ".github/workflows/ux-s05r-c-admin-workbench-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  admin-workbench-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify UX-S05R-C Admin workbench contracts
+        run: node scripts/verify-ux-s05r-c-admin-workbench.mjs
+
+      - name: Verify UX-S05R-B Partner workbench regression
+        run: node scripts/verify-ux-s05r-b-partner-workbench.mjs
+
+      - name: Verify UX-S05R-A Center workbench regression
+        run: node scripts/verify-ux-s05r-a-center-workbench.mjs
+
+      - name: Verify S03R role reachability contracts
+        run: node scripts/verify-platform-role-reachability-ui.mjs
+
+      - name: Verify Cube Q Admin decision UI contract
+        run: node scripts/verify-cube-q-claim-admin-decision-ui.mjs
+
+      - name: Verify Cube R Admin Resolution reads contract
+        run: node scripts/verify-cube-r-claim-admin-resolution-reads.mjs
+
+      - name: Verify Cube R Admin Resolution UI contract
+        run: node scripts/verify-cube-r-claim-admin-resolution-ui.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
