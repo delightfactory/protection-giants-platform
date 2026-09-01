@@ -61,7 +61,9 @@ for (const input of [
   assert(actual === "<NULL>", `INTL-01 must reject ambiguous/malformed phone ${JSON.stringify(input)}, got ${actual}.`);
 }
 
-for (const role of ["public", "anon", "authenticated", "service_role"]) {
+// PUBLIC grants are inherited by these project roles, so false for all three
+// proves the private helper is not exposed through either direct or PUBLIC EXECUTE.
+for (const role of ["anon", "authenticated", "service_role"]) {
   const helperAllowed = querySql(`
     select has_function_privilege(
       ${sqlText(role)},
@@ -94,7 +96,7 @@ const privateActivationSignature =
 const privateCorrectionSignature =
   "private.correct_warranty_details_pre_intl01(uuid,uuid,text,text,text,text,text,smallint,text,text,text,text)";
 
-for (const role of ["public", "anon", "authenticated", "service_role"]) {
+for (const role of ["anon", "authenticated", "service_role"]) {
   assert(querySql(`select has_function_privilege('${role}', '${privateActivationSignature}', 'EXECUTE');`) === "f",
     `${role} must not bypass INTL-01 through the private activation continuation.`);
   assert(querySql(`select has_function_privilege('${role}', '${privateCorrectionSignature}', 'EXECUTE');`) === "f",
