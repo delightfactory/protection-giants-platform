@@ -46,14 +46,22 @@ assert(!detail.includes("product_eligibility_basis") && !detail.includes("alloca
   "Center fulfillment UI must not expose Admin allocation/policy internals.");
 assert(!detail.includes('.from("rolls")') && !detail.includes("list_admin_claim_resolution_replacement_roll_candidates"),
   "Center fulfillment UI must not gain global inventory or Admin candidate authority.");
-assert(detail.includes('href="/operations/rolls/open"')
-  && detail.includes('href="/operations/rolls/issues/new"')
+assert(detail.includes("replacementTaskContext")
+  && detail.includes("roll=${encodeURIComponent(task.replacement_roll_serial)}&task=${encodeURIComponent(task.resolution_id)}")
+  && detail.includes("/operations/rolls/open?${replacementTaskContext}")
+  && detail.includes("/operations/rolls/issues/new?${replacementTaskContext}")
   && detail.includes('href="/operations/rolls/issues"'),
-  "Replacement execution must reuse existing Cube J Opening and Cube K issue routes.");
+  "Replacement execution must preserve the exact assigned Roll and Resolution task through opening and issue detours.");
+assert(!detail.includes("Cube J") && !detail.includes("Cube K"),
+  "Center-facing replacement guidance must use physical workflow language instead of internal Cube names.");
 assert(detail.includes("replacement_quality_state === \"pending\"")
   && detail.includes("replacement_quality_state === \"return_required\"")
   && detail.includes("replacement_roll_opened_at"),
-  "Replacement UI must fail closed around Opening and Cube K quality state.");
+  "Replacement UI must fail closed around Opening and pre-install quality state.");
+assert(detail.includes("لا تستخدم الرول ولا تغلق المهمة قبل حسم بلاغ الجودة الحالي"),
+  "Pending replacement quality state must explicitly block physical use and completion.");
+assert(detail.includes("لا تستخدم هذا الرول. صدر له قرار إرجاع"),
+  "Return-required replacement state must explicitly block physical use.");
 assert(detail.includes("<CenterClaimResolutionCompletionForm"),
   "Qualified Center task must delegate final mutation UX to the bounded completion component.");
 
@@ -125,4 +133,4 @@ assert(navigationRegistry.includes('/^\\/operations\\/claim-resolution-tasks\\/[
 assert(home.includes("getHomeDestinations(profile.role)"),
   "Center home must expose fulfillment work through the shared navigation registry.");
 
-console.log("Cube R Center Fulfillment UI contract PASS: Center-only bounded queue/detail, private signed evidence reads, local review before qualified deferred upload, exact allocated-Roll guidance through J/K, server-only evidence/completion mutations, idempotent retry, and no PII/Admin/global-inventory authority.");
+console.log("Cube R Center Fulfillment UI contract PASS: Center-only bounded queue/detail, private signed evidence reads, exact Roll/task continuity through physical detours, local review before qualified deferred upload, server-only evidence/completion mutations, idempotent retry, and no PII/Admin/global-inventory authority.");
