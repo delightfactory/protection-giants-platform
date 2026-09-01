@@ -31,6 +31,21 @@ type CenterAttention = {
   }>;
 };
 
+type AgentCenterAttention = {
+  id: string;
+  code: string;
+  name: string;
+  city: string;
+  country_code: string;
+  location_captured_at: string | null;
+};
+
+type PartnerAttention = {
+  incomingActionCount: number;
+  approvalReadyCenters: AgentCenterAttention[];
+  locationPendingCenters: AgentCenterAttention[];
+};
+
 function remedyLabel(remedy: string) {
   return remedy === "replacement_roll_reinstall" ? "إعادة تركيب برول بديل" : "إعادة تنفيذ الخدمة";
 }
@@ -41,6 +56,7 @@ export default async function OperationsPage() {
 
   let centerApprovalStatus: string | null = null;
   let centerAttention: CenterAttention | null = null;
+  let partnerAttention: PartnerAttention | null = null;
 
   if (profile.role === "center") {
     const supabase = await createSupabaseServerClient();
@@ -84,6 +100,47 @@ export default async function OperationsPage() {
         assigned_at: task.assigned_at,
       })),
     };
+  } else if (profile.role === "agent") {
+    const supabase = await createSupabaseServerClient();
+    const [transferAttention, approvalReadyResult, locationPendingResult] = await Promise.all([
+      getTransferAttentionCounts(),
+      supabase
+        .from("installation_centers")
+        .select("id, code, name, city, country_code, location_captured_at")
+        .eq("status", "active")
+        .eq("approval_status", "unapproved")
+        .not("latitude", "is", null)
+        .not("longitude", "is", null)
+        .not("location_captured_at", "is", null)
+        .not("location_source", "is", null)
+        .not("location_updated_by_profile_id", "is", null)
+        .order("name", { ascending: true })
+        .limit(4),
+      supabase
+        .from("installation_centers")
+        .select("id, code, name, city, country_code, location_captured_at")
+        .eq("status", "active")
+        .eq("approval_status", "unapproved")
+        .is("location_captured_at", null)
+        .order("name", { ascending: true })
+        .limit(4),
+    ]);
+
+    if (approvalReadyResult.error) throw approvalReadyResult.error;
+    if (locationPendingResult.error) throw locationPendingResult.error;
+
+    partnerAttention = {
+      incomingActionCount: transferAttention.incomingActionCount,
+      approvalReadyCenters: approvalReadyResult.data ?? [],
+      locationPendingCenters: locationPendingResult.data ?? [],
+    };
+  } else if (profile.role === "dealer") {
+    const transferAttention = await getTransferAttentionCounts();
+    partnerAttention = {
+      incomingActionCount: transferAttention.incomingActionCount,
+      approvalReadyCenters: [],
+      locationPendingCenters: [],
+    };
   }
 
   const centerHasAttention = Boolean(centerAttention && (
@@ -91,6 +148,12 @@ export default async function OperationsPage() {
     || centerAttention.inspections.length > 0
     || centerAttention.resolutionTasks.length > 0
   ));
+  const partnerHasAttention = Boolean(partnerAttention && (
+    partnerAttention.incomingActionCount > 0
+    || partnerAttention.approvalReadyCenters.length > 0
+    || partnerAttention.locationPendingCenters.length > 0
+  ));
+  const isPartner = profile.role === "agent" || profile.role === "dealer";
 
   return (
     <>
@@ -101,7 +164,11 @@ export default async function OperationsPage() {
           ? "الأعمال الإدارية والتشغيلية المتاحة حاليًا في المنصة، مرتبة من نفس خريطة الوصول المستخدمة في التنقل."
           : profile.role === "center"
             ? "ابدأ بما يحتاج تدخلك الآن، ثم استخدم أدوات المركز والمراجع لباقي الأعمال."
-            : "الأعمال التشغيلية المتاحة لدورك ونطاقك الحالي، من نفس خريطة الوصول المستخدمة في التنقل."}
+            : profile.role === "agent"
+              ? "ابدأ بالتحويلات الواردة وما يحتاج متابعة داخل شبكة وكالتك، ثم استخدم أدوات الشبكة لباقي الأعمال."
+              : profile.role === "dealer"
+                ? "ابدأ بالتحويلات الواردة التي تحتاج استلامًا، ثم استخدم أدوات الموزع والمراجع لباقي الأعمال."
+                : "الأعمال التشغيلية المتاحة لدورك ونطاقك الحالي، من نفس خريطة الوصول المستخدمة في التنقل."}
       />
 
       {profile.role === "center" && centerApprovalStatus === "approved" ? (
@@ -179,6 +246,71 @@ export default async function OperationsPage() {
         </section>
       ) : null}
 
+      {isPartner && partnerAttention ? (
+        <section className={styles.section} aria-labelledby="partner-attention-title">
+          <div className={styles.sectionHeader}>
+            <h2 id="partner-attention-title">يحتاج انتباهك الآن</h2>
+            <p>نعرض فقط العمل المستند إلى حالة تشغيلية حالية داخل نطاقك، بدون مؤشرات تحليلية أو أرقام مصطنعة.</p>
+          </div>
+
+          {partnerHasAttention ? (
+            <RecordList label={profile.role === "agent" ? "الأعمال الحالية في نطاق الوكيل" : "الأعمال الحالية في نطاق الموزع"}>
+              {partnerAttention.incomingActionCount > 0 ? (
+                <RecordItem
+                  kicker="تحويلات واردة"
+                  title="يوجد استلام أو حسم مطلوب على تحويلات واردة"
+                  subtitle="العهدة لا تنتقل إلا لللفات التي تؤكد جهتك استلامها فعليًا."
+                  facts={[
+                    { label: "تحتاج إجراء", value: partnerAttention.incomingActionCount.toLocaleString("en-US") },
+                  ]}
+                  status={<StatusBadge tone="warning">استلام مطلوب</StatusBadge>}
+                  actions={<Link href="/operations/transfers?direction=incoming&scope=active" className="button button-primary">فتح الوارد</Link>}
+                />
+              ) : null}
+
+              {profile.role === "agent" ? partnerAttention.approvalReadyCenters.slice(0, 3).map((center) => (
+                <RecordItem
+                  key={`approval-${center.id}`}
+                  kicker={<span dir="ltr">{center.code}</span>}
+                  title={center.name}
+                  subtitle="مركز نشط اكتمل تسجيل موقعه وأصبح جاهزًا لمراجعة اعتماد الشبكة."
+                  facts={[
+                    { label: "الموقع", value: <>{center.city} · <span dir="ltr">{center.country_code}</span></> },
+                    { label: "تم تسجيل الموقع", value: center.location_captured_at ? <LocalDateTime value={center.location_captured_at} /> : "غير متاح" },
+                  ]}
+                  status={<StatusBadge tone="warning">مراجعة اعتماد</StatusBadge>}
+                  actions={<Link href={`/operations/centers/${center.id}/approval`} className="button button-primary">مراجعة الاعتماد</Link>}
+                />
+              )) : null}
+
+              {profile.role === "agent" ? partnerAttention.locationPendingCenters.slice(0, 3).map((center) => (
+                <RecordItem
+                  key={`setup-${center.id}`}
+                  kicker={<span dir="ltr">{center.code}</span>}
+                  title={center.name}
+                  subtitle="المركز نشط وغير معتمد، لكن الاعتماد متوقف حتى يسجل المركز موقعه الجغرافي الحالي."
+                  facts={[
+                    { label: "الموقع", value: <>{center.city} · <span dir="ltr">{center.country_code}</span></> },
+                    { label: "الموقع الجغرافي", value: "غير مسجل" },
+                  ]}
+                  status={<StatusBadge tone="neutral">إعداد غير مكتمل</StatusBadge>}
+                  actions={<Link href={`/operations/centers/${center.id}/approval`} className="button button-ghost">فتح حالة الاعتماد</Link>}
+                />
+              )) : null}
+            </RecordList>
+          ) : (
+            <EmptyState
+              eyebrow="العمل الحالي"
+              title="لا توجد أعمال تحتاج تدخلك الآن"
+              description={profile.role === "agent"
+                ? "لا توجد تحويلات واردة تحتاج استلامًا ولا مراكز نشطة في نطاقك تنتظر خطوة اعتماد أو استكمال موقع حاليًا."
+                : "لا توجد تحويلات واردة تحتاج استلامًا حاليًا. تظل المراكز والعهدة والمنتجات متاحة من أدوات الموزع أدناه."}
+              action={<Link href="/operations/transfers?direction=incoming&scope=active" className="button button-primary">مراجعة التحويلات</Link>}
+            />
+          )}
+        </section>
+      ) : null}
+
       {profile.role === "center" ? (
         <section className={styles.moduleSection} aria-labelledby="center-modules-title">
           <div className={styles.sectionHeader}>
@@ -186,6 +318,24 @@ export default async function OperationsPage() {
             <p>استخدمها لبدء إجراء جديد أو مراجعة حالة لا تظهر كعمل عاجل. تظل كل الوجهات الصحيحة لدورك متاحة هنا وفي التنقل.</p>
           </div>
           <div className="ui-module-grid" aria-label="أدوات ومراجع المركز">
+            {modules.map((module) => (
+              <ModuleCard
+                key={module.id}
+                href={module.href}
+                title={module.title}
+                description={module.description}
+                icon={module.icon}
+              />
+            ))}
+          </div>
+        </section>
+      ) : isPartner ? (
+        <section className={styles.moduleSection} aria-labelledby="partner-modules-title">
+          <div className={styles.sectionHeader}>
+            <h2 id="partner-modules-title">{profile.role === "agent" ? "أدوات ومراجع شبكة الوكيل" : "أدوات ومراجع الموزع"}</h2>
+            <p>استخدمها لإدارة الشبكة والعهدة أو الرجوع إلى معلومات لا تمثل عملًا عاجلًا الآن. كل الوجهات المسموحة لدورك تظل من خريطة S03R نفسها.</p>
+          </div>
+          <div className="ui-module-grid" aria-label={profile.role === "agent" ? "أدوات ومراجع شبكة الوكيل" : "أدوات ومراجع الموزع"}>
             {modules.map((module) => (
               <ModuleCard
                 key={module.id}
