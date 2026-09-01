@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BusinessDate } from "@/components/ui/business-date";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PrintButton } from "@/components/ui/print-button";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { brandConfig } from "@/lib/brand-config";
@@ -11,19 +13,6 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 type PrintProductionOrderPageProps = {
   params: Promise<{ id: string }>;
 };
-
-function cairoDateTime(value: string | null) {
-  if (!value) return "—";
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Africa/Cairo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(value));
-}
 
 export default async function PrintProductionOrderPage({ params }: PrintProductionOrderPageProps) {
   await requireAdminProfile();
@@ -91,7 +80,7 @@ export default async function PrintProductionOrderPage({ params }: PrintProducti
             <strong>أمر إنتاج مُبطل — غير صالح للاستخدام التشغيلي</strong>
             <p>{order.void_reason}</p>
             <small>
-              أبطله: {voidedByName ?? "—"} · <span dir="ltr">{cairoDateTime(order.voided_at)} Cairo</span>
+              أبطله: {voidedByName ?? "—"} · <LocalDateTime value={order.voided_at} />
             </small>
           </section>
         ) : null}
@@ -105,7 +94,7 @@ export default async function PrintProductionOrderPage({ params }: PrintProducti
           <div className={styles.fact}><dt>SKU وقت الإنتاج</dt><dd dir="ltr">{order.product_code_snapshot}</dd></div>
           <div className={styles.fact}><dt>اسم المنتج وقت الإنتاج</dt><dd>{order.product_name_snapshot}</dd></div>
           <div className={styles.fact}><dt>الإصدار / الموديل</dt><dd>{order.product_version_snapshot ?? "—"}</dd></div>
-          <div className={styles.fact}><dt>تاريخ الإنتاج</dt><dd dir="ltr">{order.production_date}</dd></div>
+          <div className={styles.fact}><dt>تاريخ الإنتاج</dt><dd><BusinessDate value={order.production_date} /></dd></div>
           <div className={styles.fact}><dt>إجمالي اللفات</dt><dd dir="ltr">{order.total_rolls.toLocaleString("en-US")}</dd></div>
           <div className={styles.fact}><dt>عدد الـLots</dt><dd dir="ltr">{lots.length.toLocaleString("en-US")}</dd></div>
           <div className={styles.fact}><dt>المقاس الاسمي</dt><dd dir="ltr">{`${order.width_mm_snapshot} mm × ${order.length_m_snapshot} m`}</dd></div>
@@ -152,7 +141,7 @@ export default async function PrintProductionOrderPage({ params }: PrintProducti
         ) : null}
 
         <footer className={styles.footer}>
-          تم إنشاء هذا الأمر آليًا داخل منصة {brandConfig.name} بتاريخ <span dir="ltr">{cairoDateTime(order.created_at)} Cairo</span>. مواصفات المنتج أعلاه هي النسخة التاريخية المثبتة وقت التوليد، وهويات اللفات محفوظة في سجل اللفات المرتبط بالأمر.
+          تم إنشاء هذا الأمر آليًا داخل منصة {brandConfig.name} بتاريخ <LocalDateTime value={order.created_at} />. مواصفات المنتج أعلاه هي النسخة التاريخية المثبتة وقت التوليد، وهويات اللفات محفوظة في سجل اللفات المرتبط بالأمر.
         </footer>
       </article>
     </main>
