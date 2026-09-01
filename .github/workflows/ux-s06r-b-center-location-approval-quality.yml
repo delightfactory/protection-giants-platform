@@ -13,6 +13,7 @@ name: UX S06R B Center Location Approval Quality
       - "scripts/verify-ux-s06r-a-center-admin-density.mjs"
       - "scripts/verify-ux-s06r-b-center-location-approval.mjs"
       - "scripts/verify-platform-role-reachability-ui.mjs"
+      - "scripts/verify-platform-datetime-presentation.mjs"
       - ".github/workflows/ux-s06r-b-center-location-approval-quality.yml"
 
 permissions:
@@ -45,6 +46,9 @@ jobs:
 
       - name: Verify S03R role reachability contracts
         run: node scripts/verify-platform-role-reachability-ui.mjs
+
+      - name: Verify operational timestamp presentation contracts
+        run: node scripts/verify-platform-datetime-presentation.mjs
 
       - name: TypeScript typecheck
         run: npm run typecheck
