@@ -1,0 +1,53 @@
+name: PUB 01 B Warranty Recovery Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/(public)/warranty/**"
+      - "app/(public)/w/[publicCode]/not-found.tsx"
+      - "scripts/verify-pub-01-a-public-recovery.mjs"
+      - "scripts/verify-pub-01-b-warranty-recovery.mjs"
+      - "scripts/verify-cube-n-public-warranty-ui.mjs"
+      - ".github/workflows/pub-01-b-warranty-recovery-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  warranty-recovery-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify PUB-01-B Warranty recovery contract
+        run: node scripts/verify-pub-01-b-warranty-recovery.mjs
+
+      - name: Verify PUB-01-A public recovery regression
+        run: node scripts/verify-pub-01-a-public-recovery.mjs
+
+      - name: Verify Cube N public Warranty UI/privacy contract
+        run: node scripts/verify-cube-n-public-warranty-ui.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
