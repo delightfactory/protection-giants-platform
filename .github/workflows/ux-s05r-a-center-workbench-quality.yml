@@ -1,0 +1,59 @@
+name: UX S05R A Center Workbench Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/operations/page.tsx"
+      - "app/operations/page.module.css"
+      - "lib/navigation/operations-navigation.ts"
+      - "lib/transfers/receipt.server.ts"
+      - "scripts/verify-ux-s05r-a-center-workbench.mjs"
+      - "scripts/verify-platform-role-reachability-ui.mjs"
+      - "scripts/verify-cube-q-claim-center-inspection-ui.mjs"
+      - "scripts/verify-cube-r-claim-center-fulfillment-ui.mjs"
+      - ".github/workflows/ux-s05r-a-center-workbench-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  center-workbench-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify UX-S05R-A Center workbench contracts
+        run: node scripts/verify-ux-s05r-a-center-workbench.mjs
+
+      - name: Verify S03R role reachability contracts
+        run: node scripts/verify-platform-role-reachability-ui.mjs
+
+      - name: Verify Cube Q Center inspection contracts
+        run: node scripts/verify-cube-q-claim-center-inspection-ui.mjs
+
+      - name: Verify Cube R Center fulfillment contracts
+        run: node scripts/verify-cube-r-claim-center-fulfillment-ui.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
