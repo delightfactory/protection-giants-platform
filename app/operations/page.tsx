@@ -12,6 +12,28 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getTransferAttentionCounts } from "@/lib/transfers/receipt.server";
 import styles from "./page.module.css";
 
+type AdminClaimAttention = {
+  claim_id: string;
+  claim_number: string;
+  product_name: string;
+  status: string;
+  submitted_at: string;
+  inspection_status: string | null;
+};
+
+type AdminResolutionAttention = {
+  resolution_id: string;
+  claim_number: string;
+  product_name: string;
+  authorized_at: string;
+};
+
+type AdminAttention = {
+  submittedClaims: AdminClaimAttention[];
+  reviewClaims: AdminClaimAttention[];
+  unassignedResolutions: AdminResolutionAttention[];
+};
+
 type CenterAttention = {
   incomingActionCount: number;
   inspections: Array<{
@@ -54,11 +76,58 @@ export default async function OperationsPage() {
   const profile = await requireOperationalProfile();
   const modules = getHomeDestinations(profile.role);
 
+  let adminAttention: AdminAttention | null = null;
   let centerApprovalStatus: string | null = null;
   let centerAttention: CenterAttention | null = null;
   let partnerAttention: PartnerAttention | null = null;
 
-  if (profile.role === "center") {
+  if (profile.role === "admin") {
+    const supabase = await createSupabaseServerClient();
+    const [submittedResult, reviewResult, resolutionsResult] = await Promise.all([
+      supabase.rpc("list_admin_warranty_claims", {
+        p_limit: 4,
+        p_offset: 0,
+        p_scope: "open",
+        p_status: "submitted",
+      }),
+      supabase.rpc("list_admin_warranty_claims", {
+        p_limit: 4,
+        p_offset: 0,
+        p_scope: "open",
+        p_status: "under_review",
+      }),
+      supabase.rpc("list_admin_warranty_claim_resolutions", {
+        p_limit: 4,
+        p_offset: 0,
+        p_scope: "open",
+        p_status: "authorized",
+      }),
+    ]);
+
+    if (submittedResult.error) throw submittedResult.error;
+    if (reviewResult.error) throw reviewResult.error;
+    if (resolutionsResult.error) throw resolutionsResult.error;
+
+    const mapClaim = (claim: NonNullable<typeof submittedResult.data>[number]): AdminClaimAttention => ({
+      claim_id: claim.claim_id,
+      claim_number: claim.claim_number,
+      product_name: claim.product_name,
+      status: claim.status,
+      submitted_at: claim.submitted_at,
+      inspection_status: claim.inspection_status,
+    });
+
+    adminAttention = {
+      submittedClaims: (submittedResult.data ?? []).map(mapClaim),
+      reviewClaims: (reviewResult.data ?? []).map(mapClaim),
+      unassignedResolutions: (resolutionsResult.data ?? []).map((resolution) => ({
+        resolution_id: resolution.resolution_id,
+        claim_number: resolution.claim_number,
+        product_name: resolution.product_name,
+        authorized_at: resolution.authorized_at,
+      })),
+    };
+  } else if (profile.role === "center") {
     const supabase = await createSupabaseServerClient();
     const [centerResult, transferAttention, inspectionsResult, resolutionTasksResult] = await Promise.all([
       supabase
@@ -143,6 +212,11 @@ export default async function OperationsPage() {
     };
   }
 
+  const adminHasAttention = Boolean(adminAttention && (
+    adminAttention.submittedClaims.length > 0
+    || adminAttention.reviewClaims.length > 0
+    || adminAttention.unassignedResolutions.length > 0
+  ));
   const centerHasAttention = Boolean(centerAttention && (
     centerAttention.incomingActionCount > 0
     || centerAttention.inspections.length > 0
@@ -161,7 +235,7 @@ export default async function OperationsPage() {
         eyebrow="بوابة التشغيل"
         title={<>مرحبًا، <span className="ui-heading-accent">{profile.display_name}</span></>}
         description={profile.role === "admin"
-          ? "الأعمال الإدارية والتشغيلية المتاحة حاليًا في المنصة، مرتبة من نفس خريطة الوصول المستخدمة في التنقل."
+          ? "ابدأ بالقرارات والإسنادات التي تنتظر الشركة الآن، ثم استخدم أدوات الإدارة والمراجع لباقي الأعمال."
           : profile.role === "center"
             ? "ابدأ بما يحتاج تدخلك الآن، ثم استخدم أدوات المركز والمراجع لباقي الأعمال."
             : profile.role === "agent"
@@ -180,6 +254,73 @@ export default async function OperationsPage() {
         <FeedbackBanner tone="info">
           مركزك مسجل داخل المنصة لكنه غير معتمد ضمن الشبكة حاليًا. عدم الاعتماد لا يمنع تلقائيًا استلام اللفات أو فتحها أو تفعيل الضمان؛ لكل عملية شروطها المستقلة.
         </FeedbackBanner>
+      ) : null}
+
+      {profile.role === "admin" && adminAttention ? (
+        <section className={styles.section} aria-labelledby="admin-attention-title">
+          <div className={styles.sectionHeader}>
+            <h2 id="admin-attention-title">يحتاج قرار الشركة الآن</h2>
+            <p>هذه حالات من قوائم المطالبات والتنفيذ المعتمدة نفسها. لا نعرض هنا ما ينتظر المركز، ولا نحول السجل التشغيلي إلى مؤشرات تحليلية.</p>
+          </div>
+
+          {adminHasAttention ? (
+            <RecordList label="القرارات والإسنادات الحالية التي تنتظر الشركة">
+              {adminAttention.submittedClaims.slice(0, 3).map((claim) => (
+                <RecordItem
+                  key={`submitted-${claim.claim_id}`}
+                  kicker={<span dir="ltr">{claim.claim_number}</span>}
+                  title={claim.product_name}
+                  subtitle="مطالبة جديدة تنتظر بدء مراجعة الشركة"
+                  facts={[
+                    { label: "الحالة", value: "جديدة" },
+                    { label: "تاريخ التقديم", value: <LocalDateTime value={claim.submitted_at} /> },
+                  ]}
+                  status={<StatusBadge tone="accent">بدء مراجعة</StatusBadge>}
+                  actions={<Link href={`/operations/claims/${claim.claim_id}/review`} className="button button-primary">بدء المراجعة</Link>}
+                />
+              ))}
+
+              {adminAttention.reviewClaims.slice(0, 3).map((claim) => (
+                <RecordItem
+                  key={`review-${claim.claim_id}`}
+                  kicker={<span dir="ltr">{claim.claim_number}</span>}
+                  title={claim.product_name}
+                  subtitle={claim.inspection_status === "submitted"
+                    ? "عاد الفحص الرسمي للشركة وتنتظر المطالبة استكمال المراجعة والقرار"
+                    : "المطالبة لدى الشركة وتنتظر استكمال المراجعة"}
+                  facts={[
+                    { label: "الفحص", value: claim.inspection_status === "submitted" ? "تم الفحص" : "لا يوجد فحص معلّق" },
+                    { label: "تاريخ التقديم", value: <LocalDateTime value={claim.submitted_at} /> },
+                  ]}
+                  status={<StatusBadge tone="warning">قرار الشركة</StatusBadge>}
+                  actions={<Link href={`/operations/claims/${claim.claim_id}/review`} className="button button-primary">استكمال المراجعة</Link>}
+                />
+              ))}
+
+              {adminAttention.unassignedResolutions.slice(0, 3).map((resolution) => (
+                <RecordItem
+                  key={`resolution-${resolution.resolution_id}`}
+                  kicker={<span dir="ltr">{resolution.claim_number}</span>}
+                  title={resolution.product_name}
+                  subtitle="تم قبول المطالبة وأصبح التنفيذ بانتظار تحديد المعالجة ومركز التنفيذ"
+                  facts={[
+                    { label: "الحالة", value: "بانتظار الإسناد" },
+                    { label: "تم اعتماد التنفيذ", value: <LocalDateTime value={resolution.authorized_at} /> },
+                  ]}
+                  status={<StatusBadge tone="warning">إسناد مطلوب</StatusBadge>}
+                  actions={<Link href={`/operations/claim-resolutions/${resolution.resolution_id}`} className="button button-primary">إسناد التنفيذ</Link>}
+                />
+              ))}
+            </RecordList>
+          ) : (
+            <EmptyState
+              eyebrow="قرارات الشركة"
+              title="لا توجد قرارات أو إسنادات تنتظر الشركة الآن"
+              description="المطالبات التي تنتظر فحص مركز أو مهام التنفيذ التي تم إسنادها لا تظهر هنا كعمل على الإدارة. تظل السجلات الكاملة متاحة من الأدوات أدناه."
+              action={<Link href="/operations/claims" className="button button-primary">مراجعة سجل المطالبات</Link>}
+            />
+          )}
+        </section>
       ) : null}
 
       {profile.role === "center" && centerAttention ? (
@@ -311,7 +452,25 @@ export default async function OperationsPage() {
         </section>
       ) : null}
 
-      {profile.role === "center" ? (
+      {profile.role === "admin" ? (
+        <section className={styles.moduleSection} aria-labelledby="admin-modules-title">
+          <div className={styles.sectionHeader}>
+            <h2 id="admin-modules-title">أدوات الإدارة والمراجع</h2>
+            <p>استخدمها للوصول إلى التشغيل الكامل والسجلات والإعدادات التي لا تمثل قرارًا عاجلًا الآن. كل الوجهات تظل من خريطة S03R نفسها.</p>
+          </div>
+          <div className="ui-module-grid" aria-label="أدوات الإدارة والمراجع">
+            {modules.map((module) => (
+              <ModuleCard
+                key={module.id}
+                href={module.href}
+                title={module.title}
+                description={module.description}
+                icon={module.icon}
+              />
+            ))}
+          </div>
+        </section>
+      ) : profile.role === "center" ? (
         <section className={styles.moduleSection} aria-labelledby="center-modules-title">
           <div className={styles.sectionHeader}>
             <h2 id="center-modules-title">أدوات ومراجع المركز</h2>
