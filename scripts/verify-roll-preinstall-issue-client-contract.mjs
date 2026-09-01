@@ -97,8 +97,10 @@ assert(recoveryActions.includes('"issue_pending"'), "Recovery candidate type mus
 assert(recoveryFlow.includes('candidate.eligibility === "issue_pending"'), "Recovery UI must explain the pending-issue hold before confirmation.");
 assert(recoveryFlow.includes('"PG_ROLL_RECOVERY_ISSUE_PENDING"'), "Recovery retry path must re-resolve when a pending issue wins the race.");
 
-assert(openingFlow.includes('href="/operations/rolls/issues/new"'), "Opening success must connect the Center to the live pre-install issue path.");
-assert(openingFlow.includes("إرسال البلاغ يوقف التفعيل"), "Opening success must explain the activation hold caused by issue submission.");
+assert(openingFlow.includes('/operations/rolls/issues/new?roll=${encodedSerial}${taskSuffix}'),
+  "Opening success must connect the Center to the live pre-install issue path while preserving exact Roll/task context.");
+assert(openingFlow.includes("البلاغ يوقف التفعيل حتى قرار الشركة"),
+  "Opening success must explain the activation hold caused by issue submission.");
 
 assert(decisionPanel.includes('"cleared_for_use"'), "Admin decision UI must expose cleared_for_use.");
 assert(decisionPanel.includes('"return_required"'), "Admin decision UI must expose return_required.");
