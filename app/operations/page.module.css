@@ -26,3 +26,14 @@
   gap: 0.85rem;
   margin-top: 1.6rem;
 }
+
+@media (max-width: 640px) {
+  .section,
+  .moduleSection {
+    margin-top: 1rem;
+  }
+
+  .sectionHeader p {
+    line-height: 1.6;
+  }
+}
