@@ -217,6 +217,9 @@ export function RollPreinstallIssueFlow({
 
   if (completedIssueId && candidate) {
     const taskHref = taskId ? `/operations/claim-resolution-tasks/${taskId}` : null;
+    const issueHref = taskId
+      ? `/operations/rolls/issues/${completedIssueId}?task=${encodeURIComponent(taskId)}`
+      : `/operations/rolls/issues/${completedIssueId}`;
 
     return (
       <div className={styles.flow}>
@@ -239,7 +242,7 @@ export function RollPreinstallIssueFlow({
             <code>{candidate.serialNumber}</code>
           </div>
           <div className={styles.actions}>
-            <Link href={`/operations/rolls/issues/${completedIssueId}`} className="button button-primary">فتح البلاغ</Link>
+            <Link href={issueHref} className="button button-primary">فتح البلاغ</Link>
             {taskHref ? (
               <Link href={taskHref} className="button button-secondary">العودة إلى مهمة التنفيذ</Link>
             ) : (
