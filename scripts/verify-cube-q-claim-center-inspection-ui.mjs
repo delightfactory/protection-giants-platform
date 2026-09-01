@@ -18,6 +18,10 @@ const navigationRegistry = read("lib/navigation/operations-navigation.ts");
 
 assert(queue.includes('profile.role !== "center"'), "Inspection queue must be Center-only at the route boundary.");
 assert(queue.includes('list_center_pending_claim_inspections'), "Inspection queue must use the bounded Center task RPC.");
+assert(queue.includes("لا توجد خطوة أخرى على هذا الفحص من المركز الآن"),
+  "Submitted inspection must leave the Center in an explicit wait-for-company state.");
+assert(queue.includes("إذا تم قبول المطالبة وإسناد تنفيذ لمركزك فستظهر كمهمة مستقلة ضمن مهام التنفيذ"),
+  "Inspection completion guidance must explain how any later Center responsibility re-enters the workflow.");
 assert(detail.includes('profile.role !== "center"'), "Inspection detail must be Center-only at the route boundary.");
 assert(detail.includes('get_center_claim_inspection_detail'), "Inspection detail must use the bounded assigned-Center detail RPC.");
 assert(detail.includes('list_warranty_claim_evidence_for_role'), "Inspection detail must use role-bounded Claim evidence metadata.");
