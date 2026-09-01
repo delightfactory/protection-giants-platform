@@ -1,0 +1,50 @@
+name: UX S03R Role Navigation Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "lib/navigation/operations-navigation.ts"
+      - "components/operations-nav-links.tsx"
+      - "components/operations-nav-links.module.css"
+      - "app/operations/page.tsx"
+      - "app/operations/more/**"
+      - "app/operations/operations.css"
+      - "docs/ux-s03r-role-navigation-reachability.md"
+      - "scripts/verify-ux-s03r-role-navigation.mjs"
+      - ".github/workflows/ux-s03r-role-navigation-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  role-navigation-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify UX-S03R role navigation contracts
+        run: node scripts/verify-ux-s03r-role-navigation.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'

@@ -14,6 +14,7 @@ const listPage = read("app/operations/rolls/issues/page.tsx");
 const detailPage = read("app/operations/rolls/issues/[id]/page.tsx");
 const detailCss = read("app/operations/rolls/issues/[id]/page.module.css");
 const operationsPage = read("app/operations/page.tsx");
+const navigationRegistry = read("lib/navigation/operations-navigation.ts");
 const recoveryActions = read("app/operations/rolls/recovery/actions.ts");
 const recoveryFlow = read("components/rolls/opened-roll-recovery-flow.tsx");
 const openingFlow = read("components/rolls/roll-opening-flow.tsx");
@@ -77,9 +78,19 @@ assert(detailPage.includes("<LocalDateTime value={issue.opened_at}") && detailPa
 assert(localDateTime.includes("useEffect") && localDateTime.includes("Intl.DateTimeFormat"),
   "LocalDateTime must defer formatting to the browser/device instead of the hosting server timezone.");
 
-const moduleUsages = operationsPage.match(/^  issueModule,$/gm) ?? [];
-assert(moduleUsages.length === 2, "Issue module must be exposed exactly to Admin and Center module lists.");
-assert(operationsPage.includes("const agentModules") && operationsPage.includes("const dealerModules"), "Role module boundaries must remain explicit.");
+const issueDestinationStart = navigationRegistry.indexOf('id: "issues"');
+const issueDestinationEnd = navigationRegistry.indexOf("\n  },", issueDestinationStart);
+assert(issueDestinationStart >= 0 && issueDestinationEnd > issueDestinationStart,
+  "Issue destination must remain registered in the shared role navigation registry.");
+const issueDestination = navigationRegistry.slice(issueDestinationStart, issueDestinationEnd);
+assert(issueDestination.includes('href: "/operations/rolls/issues"'),
+  "Issue destination must keep the canonical pre-install Issue route.");
+assert(/roles:\s*\[\s*"admin"\s*,\s*"center"\s*\]/.test(issueDestination),
+  "Issue module must be exposed exactly to Admin and Center in the shared navigation registry.");
+assert(!issueDestination.includes('"agent"') && !issueDestination.includes('"dealer"'),
+  "Issue module must remain unavailable to Agent and Dealer navigation.");
+assert(operationsPage.includes("getHomeDestinations(profile.role)"),
+  "Role Home must consume the shared navigation registry instead of duplicating Issue role lists.");
 
 assert(recoveryActions.includes('"PG_ROLL_RECOVERY_ISSUE_PENDING"'), "Recovery action must expose the pending-issue domain error.");
 assert(recoveryActions.includes('"issue_pending"'), "Recovery candidate type must include issue_pending.");

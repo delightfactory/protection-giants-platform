@@ -10,7 +10,9 @@ function assert(condition, message) {
 
 const productsPage = read("app/operations/products/page.tsx");
 const operationsPage = read("app/operations/page.tsx");
+const morePage = read("app/operations/more/page.tsx");
 const navLinks = read("components/operations-nav-links.tsx");
+const navigationRegistry = read("lib/navigation/operations-navigation.ts");
 const operationsLayout = read("app/operations/layout.tsx");
 const mobileShell = read("app/operations/mobile-shell-hardening.css");
 
@@ -27,21 +29,23 @@ assert(productsPage.includes("actions={isAdmin ? ("),
 assert(productsPage.includes("العرض فقط؛ إدارة المنتجات متاحة للشركة"),
   "Non-Admin product presentation must clearly communicate read-only behavior.");
 
-for (const roleBlock of ["agentModules", "dealerModules", "centerModules"]) {
-  const start = operationsPage.indexOf(`const ${roleBlock}`);
-  assert(start >= 0, `Missing ${roleBlock}.`);
-  const end = operationsPage.indexOf("];", start);
-  const block = operationsPage.slice(start, end + 2);
-  assert(block.includes('/operations/products'), `${roleBlock} must retain the reachable Products module.`);
-}
-
-for (const roleBlock of ["agentMobileItems", "dealerMobileItems", "centerMobileItems"]) {
-  const start = navLinks.indexOf(`const ${roleBlock}`);
-  assert(start >= 0, `Missing ${roleBlock}.`);
-  const end = navLinks.indexOf("];", start);
-  const block = navLinks.slice(start, end + 2);
-  assert(block.includes('/operations/products'), `${roleBlock} must retain Products navigation.`);
-}
+const productsDestinationStart = navigationRegistry.indexOf('id: "products"');
+const productsDestinationEnd = navigationRegistry.indexOf("\n  },", productsDestinationStart);
+assert(productsDestinationStart >= 0 && productsDestinationEnd > productsDestinationStart,
+  "Products destination must remain registered in the shared role navigation registry.");
+const productsDestination = navigationRegistry.slice(productsDestinationStart, productsDestinationEnd);
+assert(productsDestination.includes('href: "/operations/products"'),
+  "Products destination must keep the canonical operational route.");
+assert(productsDestination.includes("roles: allRoles"),
+  "Products must remain discoverable to every operational role.");
+assert(operationsPage.includes("getHomeDestinations(profile.role)"),
+  "Role Home must derive Products reachability from the shared registry.");
+assert(navLinks.includes("getMobileNavItems(role)"),
+  "Mobile primary navigation must derive from the shared registry.");
+assert(morePage.includes("getMoreDestinations(profile.role)"),
+  "Lower-frequency mobile capabilities such as Products must remain reachable through the controlled Operations destination.");
+assert(navigationRegistry.includes('{ id: "more", href: "/operations/more", label: "العمليات"'),
+  "Mobile navigation must retain the controlled Operations fallback instead of dropping lower-frequency capabilities.");
 
 assert(operationsLayout.includes('import "./mobile-shell-hardening.css";'),
   "Operations layout must load the mobile fixed-navigation content reservation override.");

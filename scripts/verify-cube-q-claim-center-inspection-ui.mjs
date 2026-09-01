@@ -14,6 +14,7 @@ const actions = read("app/operations/claim-inspections/actions.ts");
 const form = read("components/claims/center-claim-inspection-form.tsx");
 const nav = read("components/operations-nav-links.tsx");
 const operations = read("app/operations/page.tsx");
+const navigationRegistry = read("lib/navigation/operations-navigation.ts");
 
 assert(queue.includes('profile.role !== "center"'), "Inspection queue must be Center-only at the route boundary.");
 assert(queue.includes('list_center_pending_claim_inspections'), "Inspection queue must use the bounded Center task RPC.");
@@ -51,16 +52,22 @@ assert(form.includes('راجعت الملاحظة والصور'), "Immutable ins
 assert(form.includes('المركز يقدم الدليل والملاحظة ولا يقرر قبول أو رفض المطالبة'),
   "Center UI must clearly preserve Admin-only adjudication authority.");
 
-const centerMobileStart = nav.indexOf("const centerMobileItems");
-const centerMobileEnd = nav.indexOf("];", centerMobileStart);
-const centerMobile = nav.slice(centerMobileStart, centerMobileEnd + 2);
-assert(centerMobile.includes('/operations/claim-inspections'), "Center mobile navigation must expose assigned Claim inspections.");
-assert(nav.includes('pathname.startsWith("/operations/claim-inspections/")'),
-  "Mobile task view must hide the fixed navigation while an inspection is being performed.");
-
-const centerModulesStart = operations.indexOf("const centerModules");
-const centerModulesEnd = operations.indexOf("];", centerModulesStart);
-const centerModules = operations.slice(centerModulesStart, centerModulesEnd + 2);
-assert(centerModules.includes("inspectionModule"), "Center operations landing page must expose the inspection module.");
+const inspectionDestinationStart = navigationRegistry.indexOf('id: "claim-inspections"');
+const inspectionDestinationEnd = navigationRegistry.indexOf("\n  },", inspectionDestinationStart);
+assert(inspectionDestinationStart >= 0 && inspectionDestinationEnd > inspectionDestinationStart,
+  "Center Claim inspection destination must remain registered in the shared navigation registry.");
+const inspectionDestination = navigationRegistry.slice(inspectionDestinationStart, inspectionDestinationEnd);
+assert(inspectionDestination.includes('href: "/operations/claim-inspections"'),
+  "Center navigation must expose assigned Claim inspections.");
+assert(/roles:\s*\[\s*"center"\s*\]/.test(inspectionDestination),
+  "Claim inspection navigation must remain Center-only.");
+assert(/mobilePrimaryRoles:\s*\[\s*"center"\s*\]/.test(inspectionDestination),
+  "Center mobile navigation must keep assigned Claim inspections in the primary set.");
+assert(nav.includes("isOperationsTaskRoute(pathname)"),
+  "Mobile task view must use explicit route classification while an inspection is being performed.");
+assert(navigationRegistry.includes('/^\\/operations\\/claim-inspections\\/[^/]+$/'),
+  "Inspection detail must remain explicitly classified as a mobile task route.");
+assert(operations.includes("getHomeDestinations(profile.role)"),
+  "Center operations landing page must expose inspection work through the shared registry.");
 
 console.log("Cube Q Center inspection UI/security contracts verified.");

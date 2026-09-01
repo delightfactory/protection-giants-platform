@@ -13,6 +13,7 @@ function includes(source, fragment, message) {
 }
 
 const operations = read("app/operations/page.tsx");
+const navigationRegistry = read("lib/navigation/operations-navigation.ts");
 const activatePage = read("app/operations/warranties/activate/page.tsx");
 const registry = read("app/operations/warranties/page.tsx");
 const detail = read("app/operations/warranties/[id]/page.tsx");
@@ -20,9 +21,17 @@ const actions = read("app/operations/warranties/actions.ts");
 const flow = read("components/warranties/warranty-activation-flow.tsx");
 const flowCss = read("components/warranties/warranty-activation-flow.module.css");
 
-includes(operations, 'href: "/operations/warranties"', "Center operations landing must expose the Warranty module.");
-const centerModuleBlock = operations.slice(operations.indexOf("const centerModules"), operations.indexOf("function modulesForRole"));
-includes(centerModuleBlock, "warrantyModule", "Warranty module must be reachable from Center operations.");
+const warrantyDestinationStart = navigationRegistry.indexOf('id: "warranties"');
+const warrantyDestinationEnd = navigationRegistry.indexOf("\n  },", warrantyDestinationStart);
+assert(warrantyDestinationStart >= 0 && warrantyDestinationEnd > warrantyDestinationStart,
+  "Warranty destination must remain registered in the shared role navigation registry.");
+const warrantyDestination = navigationRegistry.slice(warrantyDestinationStart, warrantyDestinationEnd);
+includes(warrantyDestination, 'href: "/operations/warranties"', "Center operations must expose the Warranty module through the shared registry.");
+assert(/roles:\s*\[\s*"admin"\s*,\s*"center"\s*\]/.test(warrantyDestination),
+  "Warranty module must remain reachable exactly to Admin and Center roles.");
+assert(!warrantyDestination.includes('"agent"') && !warrantyDestination.includes('"dealer"'),
+  "Warranty navigation must remain unavailable to Agent and Dealer roles.");
+includes(operations, "getHomeDestinations(profile.role)", "Center operations landing must consume the shared navigation registry.");
 
 includes(activatePage, 'profile.role !== "center"', "Warranty activation route must remain Center-only.");
 includes(activatePage, 'redirect("/access-denied")', "Warranty activation route must fail closed for non-Center roles.");

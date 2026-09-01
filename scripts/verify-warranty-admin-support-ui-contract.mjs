@@ -13,6 +13,7 @@ function includes(source, fragment, message) {
 }
 
 const operations = read("app/operations/page.tsx");
+const navigationRegistry = read("lib/navigation/operations-navigation.ts");
 const registry = read("app/operations/warranties/page.tsx");
 const detail = read("app/operations/warranties/[id]/page.tsx");
 const supportActions = read("app/operations/warranties/support-actions.ts");
@@ -20,8 +21,15 @@ const support = read("components/warranties/admin-warranty-support.tsx");
 const supportCss = read("components/warranties/admin-warranty-support.module.css");
 const auditTimeline = read("components/warranties/warranty-audit-timeline.tsx");
 
-const adminModuleBlock = operations.slice(operations.indexOf("const adminModules"), operations.indexOf("const agentModules"));
-includes(adminModuleBlock, "warrantyModule", "Admin operations landing must expose the Warranty module.");
+const warrantyDestinationStart = navigationRegistry.indexOf('id: "warranties"');
+const warrantyDestinationEnd = navigationRegistry.indexOf("\n  },", warrantyDestinationStart);
+assert(warrantyDestinationStart >= 0 && warrantyDestinationEnd > warrantyDestinationStart,
+  "Warranty destination must remain registered in the shared role navigation registry.");
+const warrantyDestination = navigationRegistry.slice(warrantyDestinationStart, warrantyDestinationEnd);
+includes(warrantyDestination, 'href: "/operations/warranties"', "Admin operations must expose the Warranty module through the shared registry.");
+assert(/roles:\s*\[\s*"admin"\s*,\s*"center"\s*\]/.test(warrantyDestination),
+  "Warranty module must remain reachable exactly to Admin and Center roles.");
+includes(operations, "getHomeDestinations(profile.role)", "Admin operations landing must consume the shared navigation registry.");
 
 for (const [label, source] of [["registry", registry], ["detail", detail]]) {
   includes(source, 'profile.role !== "center" && profile.role !== "admin"', `${label} must remain limited to Admin/Center internal readers.`);

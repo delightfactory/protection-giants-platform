@@ -60,7 +60,14 @@
 .operations-user-copy > span,
 .operations-mobile-user > span { margin-top: 2px; color: var(--text-tertiary); font-size: 9px; font-weight: 550; }
 
-.operations-nav { display: grid; gap: 2px; }
+.operations-nav {
+  display: grid;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-inline-end: 2px;
+  scrollbar-width: thin;
+}
 .operations-nav-link {
   position: relative;
   display: flex;

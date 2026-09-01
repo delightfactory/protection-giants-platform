@@ -9,12 +9,14 @@ const detailPath = "app/operations/claim-resolution-tasks/[id]/page.tsx";
 const formPath = "components/claims/center-claim-resolution-completion-form.tsx";
 const homePath = "app/operations/page.tsx";
 const navPath = "components/operations-nav-links.tsx";
+const navigationRegistryPath = "lib/navigation/operations-navigation.ts";
 
 const queue = fs.readFileSync(queuePath, "utf8");
 const detail = fs.readFileSync(detailPath, "utf8");
 const form = fs.readFileSync(formPath, "utf8");
 const home = fs.readFileSync(homePath, "utf8");
 const nav = fs.readFileSync(navPath, "utf8");
+const navigationRegistry = fs.readFileSync(navigationRegistryPath, "utf8");
 
 for (const [label, source] of [["queue", queue], ["detail", detail]]) {
   assert(source.includes("requireOperationalProfile()"), `${label} must require an operational Profile.`);
@@ -104,13 +106,23 @@ assert(form.includes("scan !== expectedRollSerial"),
 assert(form.includes('router.push("/operations/claim-resolution-tasks?notice=completed")'),
   "Successful completion must return the Center to its bounded task queue.");
 
-assert(home.includes('href: "/operations/claim-resolution-tasks"')
-  && home.includes('title: "تنفيذ مطالبات الضمان"')
-  && home.includes("centerResolutionModule"),
-  "Center home must expose a discoverable fulfillment module.");
-assert(nav.includes('{ href: "/operations/claim-resolution-tasks", label: "التنفيذ"'),
+const fulfillmentDestinationStart = navigationRegistry.indexOf('id: "claim-resolution-tasks"');
+const fulfillmentDestinationEnd = navigationRegistry.indexOf("\n  },", fulfillmentDestinationStart);
+assert(fulfillmentDestinationStart >= 0 && fulfillmentDestinationEnd > fulfillmentDestinationStart,
+  "Center fulfillment destination must remain registered in the shared navigation registry.");
+const fulfillmentDestination = navigationRegistry.slice(fulfillmentDestinationStart, fulfillmentDestinationEnd);
+assert(fulfillmentDestination.includes('href: "/operations/claim-resolution-tasks"')
+  && fulfillmentDestination.includes('label: "التنفيذ"'),
   "Center navigation must expose the fulfillment queue.");
-assert(nav.includes('pathname.startsWith("/operations/claim-resolution-tasks/")'),
-  "Mobile navigation must stay out of the focused fulfillment detail task.");
+assert(/roles:\s*\[\s*"center"\s*\]/.test(fulfillmentDestination),
+  "Center fulfillment navigation must remain Center-only.");
+assert(/mobilePrimaryRoles:\s*\[\s*"center"\s*\]/.test(fulfillmentDestination),
+  "Center mobile navigation must keep fulfillment work in the primary set.");
+assert(nav.includes("isOperationsTaskRoute(pathname)"),
+  "Mobile navigation must use explicit task classification for focused fulfillment detail.");
+assert(navigationRegistry.includes('/^\\/operations\\/claim-resolution-tasks\\/[^/]+$/'),
+  "Center fulfillment detail must remain explicitly classified as a mobile task route.");
+assert(home.includes("getHomeDestinations(profile.role)"),
+  "Center home must expose fulfillment work through the shared navigation registry.");
 
 console.log("Cube R Center Fulfillment UI contract PASS: Center-only bounded queue/detail, private signed evidence reads, local review before qualified deferred upload, exact allocated-Roll guidance through J/K, server-only evidence/completion mutations, idempotent retry, and no PII/Admin/global-inventory authority.");

@@ -9,12 +9,14 @@ const detailPath = "app/operations/claim-resolutions/[id]/page.tsx";
 const actionsPath = "components/claims/admin-claim-resolution-actions.tsx";
 const localReviewPath = "components/ui/local-evidence-review.tsx";
 const homePath = "app/operations/page.tsx";
+const navigationRegistryPath = "lib/navigation/operations-navigation.ts";
 
 const queue = fs.readFileSync(queuePath, "utf8");
 const detail = fs.readFileSync(detailPath, "utf8");
 const actions = fs.readFileSync(actionsPath, "utf8");
 const localReview = fs.readFileSync(localReviewPath, "utf8");
 const home = fs.readFileSync(homePath, "utf8");
+const navigationRegistry = fs.readFileSync(navigationRegistryPath, "utf8");
 
 for (const [label, source] of [["queue", queue], ["detail", detail]]) {
   assert(source.includes("requireOperationalProfile()"), `${label} must require an operational Profile.`);
@@ -120,9 +122,19 @@ assert(
 assert(actions.includes("expectedRollSerial && scan !== expectedRollSerial"),
   "Replacement recovery UI must fail obvious wrong-Roll scans before authoritative server revalidation.");
 
-assert(home.includes('href: "/operations/claim-resolutions"')
-  && home.includes('title: "تنفيذ مطالبات الضمان"')
-  && home.includes("resolutionModule"),
-  "Admin home must expose a discoverable Resolution execution module.");
+const resolutionDestinationStart = navigationRegistry.indexOf('id: "claim-resolutions"');
+const resolutionDestinationEnd = navigationRegistry.indexOf("\n  },", resolutionDestinationStart);
+assert(resolutionDestinationStart >= 0 && resolutionDestinationEnd > resolutionDestinationStart,
+  "Admin Resolution destination must remain registered in the shared navigation registry.");
+const resolutionDestination = navigationRegistry.slice(resolutionDestinationStart, resolutionDestinationEnd);
+assert(resolutionDestination.includes('href: "/operations/claim-resolutions"')
+  && resolutionDestination.includes('title: "تنفيذ مطالبات الضمان"'),
+  "Admin navigation must expose the canonical Resolution execution destination.");
+assert(/roles:\s*\[\s*"admin"\s*\]/.test(resolutionDestination),
+  "Admin Resolution navigation must remain Admin-only.");
+assert(/mobilePrimaryRoles:\s*\[\s*"admin"\s*\]/.test(resolutionDestination),
+  "Admin mobile navigation must keep Resolution execution in the primary set.");
+assert(home.includes("getHomeDestinations(profile.role)"),
+  "Admin home must expose Resolution execution through the shared navigation registry.");
 
 console.log("Cube R Admin Resolution UI contract PASS: Admin-only bounded reads, authoritative server mutations, candidate-only material selection, idempotent retries, PD-079/recovery guards, pre-upload evidence review, and discoverable queue/detail navigation.");
