@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
@@ -26,16 +26,27 @@ type LotDraft = {
 type ProductionOrderFormProps = {
   requestId: string;
   products: ProductOption[];
-  defaultProductionDate: string;
 };
 
-export function ProductionOrderForm({ requestId, products, defaultProductionDate }: ProductionOrderFormProps) {
+function viewerToday(): string {
+  const now = new Date();
+  const year = String(now.getFullYear()).padStart(4, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function ProductionOrderForm({ requestId, products }: ProductionOrderFormProps) {
   const [selectedProductId, setSelectedProductId] = useState("");
-  const [productionDate, setProductionDate] = useState(defaultProductionDate);
+  const [productionDate, setProductionDate] = useState("");
   const [lots, setLots] = useState<LotDraft[]>([
     { id: 1, quantity: "", sourceReference: "" },
   ]);
   const nextLotId = useRef(2);
+
+  useEffect(() => {
+    setProductionDate(viewerToday());
+  }, []);
 
   const selectedProduct = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
