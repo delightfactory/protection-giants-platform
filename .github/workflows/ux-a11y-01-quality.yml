@@ -12,6 +12,7 @@ on:
       - components/transfers/transfer-receipt-flow.tsx
       - components/transfers/unresolved-resolution-panel.tsx
       - scripts/verify-ux-a11y-01-accessible-dialog.mjs
+      - scripts/verify-transfer-receipt-interactions.test.mjs
       - .github/workflows/ux-a11y-01-quality.yml
 
 permissions:
