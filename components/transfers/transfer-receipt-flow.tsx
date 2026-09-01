@@ -32,6 +32,11 @@ type SelectionDetail = Pick<TransferItem, "roll_id" | "serial_number" | "lot_id"
 type LotSelectionConfirmation = {
   lot: ReceiptLotExpansion;
 };
+type ReceiptOutcome = {
+  receivedCount: number;
+  remainingCount: number;
+  completedTransfer: boolean;
+};
 
 export function TransferReceiptFlow({
   detail,
@@ -57,6 +62,7 @@ export function TransferReceiptFlow({
   const [loading, setLoading] = useState(false);
   const [lotConfirmation, setLotConfirmation] = useState<LotSelectionConfirmation | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [receiptOutcome, setReceiptOutcome] = useState<ReceiptOutcome | null>(null);
   const [isSubmitting, startTransition] = useTransition();
   const selectionRef = useRef(selected);
   selectionRef.current = selected;
@@ -325,6 +331,12 @@ export function TransferReceiptFlow({
           return;
         }
 
+        const remainingCount = Math.max(0, detail.pending_count - rollIds.length);
+        setReceiptOutcome({
+          receivedCount: rollIds.length,
+          remainingCount,
+          completedTransfer: remainingCount === 0,
+        });
         clearTransferActionRequest("receive", detail.transfer_id);
         sessionStorage.removeItem(receiptDraftStorageKey(detail.transfer_id));
         setConfirmOpen(false);
@@ -335,6 +347,24 @@ export function TransferReceiptFlow({
         setFeedback({ tone: "error", text: "انقطع الاتصال أثناء تأكيد الاستلام. اختيارك محفوظ؛ أعد المحاولة بنفس البيانات للتحقق بأمان." });
       }
     });
+  }
+
+  function continueRemainingReceipt() {
+    const emptySelection = new Set<string>();
+    selectionRef.current = emptySelection;
+    setSelected(emptySelection);
+    setSelectionDetails(new Map());
+    setManualSerial("");
+    setRows([]);
+    setSearch("");
+    setPage(0);
+    setHasNext(false);
+    setLotConfirmation(null);
+    setFeedback(null);
+    setReceiptOutcome(null);
+    setMode("scan");
+    setStage("verify");
+    router.refresh();
   }
 
   const selectedByLot = useMemo(() => {
@@ -349,15 +379,29 @@ export function TransferReceiptFlow({
   }, [selectionDetails]);
 
   if (stage === "success") {
+    const outcome = receiptOutcome ?? {
+      receivedCount: selectedCount,
+      remainingCount: afterReceiptRemaining,
+      completedTransfer: finalReceipt,
+    };
     return (
       <div className={styles.flow}>
-        <section className={styles.success}>
+        <section className={styles.success} aria-live="polite">
           <div className={styles.successMark}>✓</div>
-          <h2>تم تأكيد استلام اللفات</h2>
+          <h2>{outcome.completedTransfer ? "تم استلام التحويل بالكامل" : "تم تأكيد الاستلام الجزئي"}</h2>
           <p>
-            انتقلت العهدة المؤكدة لـ{selectedCount} لفة إلى جهتك. افتح تفاصيل التحويل للاطلاع على الحالة الحالية واللفات المتبقية بعد تحديثها.
+            {outcome.completedTransfer
+              ? `انتقلت العهدة المؤكدة لآخر ${outcome.receivedCount} لفة إلى جهتك وأصبح التحويل مستلمًا بالكامل. لا تفتح أي رول لمجرد الاستلام؛ عند بدء تركيب فعلي افتح الرول الذي ستستخدمه أولًا.`
+              : `انتقلت العهدة المؤكدة لـ${outcome.receivedCount} لفة إلى جهتك، وبقي ${outcome.remainingCount} لفة معلقًا في نفس التحويل. اللفات المتبقية لا تدخل عهدتك قبل تأكيد استلامها فعليًا.`}
           </p>
-          <Link className="button button-primary" href={`/operations/transfers/${detail.transfer_id}`}>فتح تفاصيل التحويل</Link>
+          <div className={styles.scanActions}>
+            {outcome.completedTransfer ? (
+              <Link className="button button-primary" href="/operations/rolls/open">فتح رول عند بدء التركيب</Link>
+            ) : (
+              <button type="button" className="button button-primary" onClick={continueRemainingReceipt}>استكمال استلام الباقي</button>
+            )}
+            <Link className="button button-secondary" href={`/operations/transfers/${detail.transfer_id}`}>فتح تفاصيل التحويل</Link>
+          </div>
         </section>
       </div>
     );
