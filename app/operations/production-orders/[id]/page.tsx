@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { voidProductionOrder } from "@/app/operations/production-orders/actions";
+import { BusinessDate } from "@/components/ui/business-date";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { RecordItem, RecordList } from "@/components/ui/record-list";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -20,19 +22,6 @@ const errorMessages: Record<string, string> = {
   "void-invalid": "اكتب سببًا واضحًا للإبطال من 5 إلى 500 حرف.",
   "void-failed": "تعذر إبطال أمر الإنتاج. لم تتغير بيانات الأمر أو هويات اللفات.",
 };
-
-function cairoDateTime(value: string | null) {
-  if (!value) return "—";
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Africa/Cairo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(value));
-}
 
 export default async function ProductionOrderDetailPage({ params, searchParams }: ProductionOrderDetailPageProps) {
   await requireAdminProfile();
@@ -125,7 +114,7 @@ export default async function ProductionOrderDetailPage({ params, searchParams }
           </div>
           <dl>
             <div><dt>أبطله</dt><dd>{voidedByName ?? "—"}</dd></div>
-            <div><dt>وقت الإبطال</dt><dd dir="ltr">{cairoDateTime(order.voided_at)} Cairo</dd></div>
+            <div><dt>وقت الإبطال</dt><dd><LocalDateTime value={order.voided_at} /></dd></div>
           </dl>
         </section>
       ) : null}
@@ -144,7 +133,7 @@ export default async function ProductionOrderDetailPage({ params, searchParams }
 
         <dl className="production-order-facts">
           <div><dt>SKU وقت الإنتاج</dt><dd dir="ltr">{order.product_code_snapshot}</dd></div>
-          <div><dt>تاريخ الإنتاج</dt><dd dir="ltr">{order.production_date}</dd></div>
+          <div><dt>تاريخ الإنتاج</dt><dd><BusinessDate value={order.production_date} /></dd></div>
           <div><dt>عدد اللفات</dt><dd dir="ltr">{order.total_rolls.toLocaleString("en-US")}</dd></div>
           <div><dt>عدد الـLots</dt><dd dir="ltr">{lots.length.toLocaleString("en-US")}</dd></div>
           <div><dt>الإصدار / الموديل</dt><dd>{order.product_version_snapshot ?? "—"}</dd></div>
@@ -154,7 +143,7 @@ export default async function ProductionOrderDetailPage({ params, searchParams }
           <div><dt>بلد المنشأ</dt><dd>{order.origin_country_snapshot}</dd></div>
           <div><dt>مرجع المصدر</dt><dd dir="ltr">{order.source_reference ?? "—"}</dd></div>
           <div><dt>أنشأه</dt><dd>{creator?.display_name ?? "—"}</dd></div>
-          <div><dt>وقت الإنشاء</dt><dd dir="ltr">{cairoDateTime(order.created_at)} Cairo</dd></div>
+          <div><dt>وقت الإنشاء</dt><dd><LocalDateTime value={order.created_at} /></dd></div>
         </dl>
 
         {order.notes ? <p className="production-order-notes">{order.notes}</p> : null}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BusinessDate } from "@/components/ui/business-date";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterActions, FilterBar, FilterField, FilterGrid } from "@/components/ui/filter-bar";
 import { PageHeader } from "@/components/ui/page-header";
@@ -128,7 +129,7 @@ export default async function ProductionOrdersPage({ searchParams }: ProductionO
                   title={order.product_name_snapshot}
                   subtitle={<span dir="ltr">{order.product_code_snapshot}</span>}
                   facts={[
-                    { label: "تاريخ الإنتاج", value: order.production_date, dir: "ltr" },
+                    { label: "تاريخ الإنتاج", value: <BusinessDate value={order.production_date} /> },
                     { label: "عدد اللفات", value: order.total_rolls.toLocaleString("en-US"), dir: "ltr" },
                     { label: "مرجع المصدر", value: order.source_reference ?? "—", dir: order.source_reference ? "ltr" : "rtl" },
                   ]}

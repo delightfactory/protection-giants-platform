@@ -27,6 +27,7 @@ import {
   normalizeInternationalPhone,
 } from "@/lib/warranty/international-phone";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import {
   LocalEvidenceReview,
   type LocalEvidenceReviewItem,
@@ -45,14 +46,6 @@ type Props = {
   publicProductName: string | null;
   publicState: string | null;
 };
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("ar-EG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Africa/Cairo",
-  }).format(new Date(value));
-}
 
 function remedyLabel(remedy: WarrantyClaimRemedyKind): string {
   return remedy === "replacement_roll_reinstall" ? "استبدال وإعادة تركيب" : "إعادة تنفيذ الخدمة";
@@ -124,14 +117,14 @@ function ClaimSummaryCard({ claim, historical = false }: { claim: CustomerClaimS
         <span className={styles.statusChip}>{customerClaimStatusLabel(claim)}</span>
       </div>
       <dl className={styles.claimFacts}>
-        <div><dt>تاريخ الإرسال</dt><dd>{formatDate(claim.submittedAt)}</dd></div>
+        <div><dt>تاريخ الإرسال</dt><dd><LocalDateTime value={claim.submittedAt} /></dd></div>
         <div><dt>نوع المشكلة</dt><dd>{WARRANTY_CLAIM_CATEGORY_LABELS[claim.category] ?? "أخرى"}</dd></div>
         <div><dt>المنطقة المتأثرة</dt><dd>{claim.affectedArea}</dd></div>
         <div><dt>الصور المستلمة</dt><dd>{claim.evidenceCount}</dd></div>
-        {claim.decidedAt ? <div><dt>آخر قرار</dt><dd>{formatDate(claim.decidedAt)}</dd></div> : null}
+        {claim.decidedAt ? <div><dt>آخر قرار</dt><dd><LocalDateTime value={claim.decidedAt} /></dd></div> : null}
         {claim.remedyKind ? <div><dt>إجراء الخدمة</dt><dd>{remedyLabel(claim.remedyKind)}</dd></div> : null}
         {showPerformingCenter ? <div><dt>مركز التنفيذ</dt><dd>{claim.performingCenterName}</dd></div> : null}
-        {claim.resolutionCompletedAt ? <div><dt>تاريخ الإكمال</dt><dd>{formatDate(claim.resolutionCompletedAt)}</dd></div> : null}
+        {claim.resolutionCompletedAt ? <div><dt>تاريخ الإكمال</dt><dd><LocalDateTime value={claim.resolutionCompletedAt} /></dd></div> : null}
       </dl>
       <p className={styles.customerDescription}>{claim.description}</p>
       {claim.customerDecisionMessage ? (
@@ -155,7 +148,7 @@ function ServiceHistoryCard({ service }: { service: CustomerWarrantyServiceEntry
       </div>
       <dl className={styles.claimFacts}>
         <div><dt>الخدمة المنفذة</dt><dd>{remedyLabel(service.remedyKind)}</dd></div>
-        <div><dt>تاريخ الإكمال</dt><dd>{formatDate(service.completedAt)}</dd></div>
+        <div><dt>تاريخ الإكمال</dt><dd><LocalDateTime value={service.completedAt} /></dd></div>
         {service.performingCenterName ? <div><dt>مركز التنفيذ</dt><dd>{service.performingCenterName}</dd></div> : null}
       </dl>
       {service.customerDecisionMessage ? (
@@ -456,7 +449,7 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
 
       <div className={styles.warrantyStrip}>
         <span>رقم الضمان</span><strong dir="ltr">{context.warrantyNumber}</strong>
-        <span>نهاية التغطية</span><strong>{formatDate(context.coverageExpiresAt)}</strong>
+        <span>نهاية التغطية</span><strong><LocalDateTime value={context.coverageExpiresAt} /></strong>
       </div>
 
       {context.currentOpenClaim ? (

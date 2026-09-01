@@ -1,0 +1,52 @@
+name: INTL 02 Time Contract Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "components/ui/local-date-time.tsx"
+      - "components/ui/business-date.tsx"
+      - "components/production-order-form.tsx"
+      - "app/(public)/w/[publicCode]/**"
+      - "app/operations/warranties/**"
+      - "app/operations/claims/**"
+      - "app/operations/claim-resolutions/**"
+      - "app/operations/production-orders/**"
+      - "app/print/**"
+      - "scripts/verify-intl-02-time-contract.mjs"
+      - ".github/workflows/intl-02-time-contract-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  time-contract-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify INTL-02 time contracts
+        run: node scripts/verify-intl-02-time-contract.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'

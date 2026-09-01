@@ -21,17 +21,6 @@ const errorMessages: Record<string, string> = {
   failed: "تعذر تأكيد نتيجة إنشاء أمر الإنتاج. يمكنك إعادة المحاولة بأمان؛ النظام لن يكرر نفس الطلب إذا كان قد تم إنشاؤه بالفعل.",
 };
 
-function cairoToday() {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Africa/Cairo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const values = new Map(parts.map((part) => [part.type, part.value]));
-  return `${values.get("year")}-${values.get("month")}-${values.get("day")}`;
-}
-
 export default async function ProductionOrderCreatePage({ searchParams }: ProductionOrderCreatePageProps) {
   const profile = await requireAdminProfile();
   const { error, request } = await searchParams;
@@ -97,7 +86,6 @@ export default async function ProductionOrderCreatePage({ searchParams }: Produc
               lengthM: product.length_m,
               thicknessMil: product.thickness_mil,
             }))}
-            defaultProductionDate={cairoToday()}
           />
         </FormPanel>
       )}
