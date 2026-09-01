@@ -80,7 +80,7 @@ export default async function ClaimInspectionDetailPage({ params }: PageProps) {
         eyebrow="فحص مطالبة ضمان"
         title={inspection.claim_number}
         description="راجع المشكلة والأدلة المتاحة وسياق المنتج والسيارة، ثم سجّل الملاحظة الفنية لمركزك. بيانات اتصال العميل وقرار الشركة غير معروضين في هذه المهمة."
-        meta={`طلب الفحص: ${new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" }).format(new Date(inspection.requested_at))}`}
+        meta={<span>طلب الفحص: <LocalDateTime value={inspection.requested_at} /></span>}
         actions={<TaskBackLink href="/operations/claim-inspections" label="العودة إلى الفحوصات" />}
       />
 

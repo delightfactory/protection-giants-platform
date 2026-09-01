@@ -20,6 +20,7 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 
 type IssueDetailPageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ task?: string }>;
 };
 
 function formatSize(bytes: number) {
@@ -38,12 +39,16 @@ function eventLabel(kind: string) {
   }
 }
 
-export default async function RollPreinstallIssueDetailPage({ params }: IssueDetailPageProps) {
+export default async function RollPreinstallIssueDetailPage({ params, searchParams }: IssueDetailPageProps) {
   const profile = await requireOperationalProfile();
   if (profile.role !== "admin" && profile.role !== "center") redirect("/access-denied");
 
   const issueId = (await params).id;
   if (!uuidPattern.test(issueId)) notFound();
+
+  const requestedTaskId = (await searchParams).task ?? "";
+  const taskId = profile.role === "center" && uuidPattern.test(requestedTaskId) ? requestedTaskId : null;
+  const taskHref = taskId ? `/operations/claim-resolution-tasks/${taskId}` : null;
 
   const supabase = await createSupabaseServerClient();
   const { data: detailRows, error: detailError } = await supabase.rpc("get_roll_preinstall_issue_detail", {
@@ -91,7 +96,7 @@ export default async function RollPreinstallIssueDetailPage({ params }: IssueDet
         title="تفاصيل البلاغ"
         description="هذا السجل يحفظ البلاغ والقرار والأدلة كما حدثت، ولا يغيّر عهدة الرول أو حدث الفتح."
         meta={`الرول: ${issue.serial_number}`}
-        actions={<TaskBackLink href="/operations/rolls/issues" label="العودة إلى البلاغات" />}
+        actions={<TaskBackLink href={taskHref ?? "/operations/rolls/issues"} label={taskHref ? "العودة إلى مهمة التنفيذ" : "العودة إلى البلاغات"} />}
       />
 
       <div className={styles.layout}>
@@ -180,6 +185,11 @@ export default async function RollPreinstallIssueDetailPage({ params }: IssueDet
                 <strong>البلاغ قيد مراجعة الشركة</strong>
                 <p>تفعيل الضمان على هذا الرول متوقف مؤقتًا. لا تستخدم الرول ولا تسلمه كحالة نهائية حتى يصدر قرار الشركة؛ وإذا تقرر الإرجاع يتم تسجيل الاسترداد عند الاستلام المادي.</p>
               </div>
+              {taskHref ? (
+                <div className={styles.actions}>
+                  <Link href={taskHref} className="button button-secondary">العودة إلى مهمة التنفيذ</Link>
+                </div>
+              ) : null}
             </section>
           )
         ) : (
@@ -188,15 +198,31 @@ export default async function RollPreinstallIssueDetailPage({ params }: IssueDet
               <strong>{rollPreinstallIssueStatusLabel(issue.status)}</strong>
               {issue.resolution_reason ? <p>{issue.resolution_reason}</p> : null}
               {issue.status === "cleared_for_use" ? (
-                <p>هذا البلاغ لم يعد يمنع التفعيل، مع بقاء أي شروط تشغيلية أخرى واجبة التحقق قبل تفعيل الضمان.</p>
+                <p>هذا البلاغ لم يعد يمنع استخدام الرول، مع بقاء أي شروط تشغيلية أخرى واجبة التحقق قبل الخطوة التالية.</p>
               ) : null}
               {issue.status === "return_required" ? (
-                <p>الرول يظل محظورًا من التفعيل. قرار الإرجاع لا ينقل العهدة؛ يتم تسجيل استرداد الرول فقط عند الاستلام المادي.</p>
+                <p>لا تستخدم الرول. انتظر تنسيق الشركة لاسترداده؛ قرار الإرجاع لا ينقل العهدة، ويتم تسجيل الاسترداد فقط عند الاستلام المادي.</p>
               ) : null}
               {issue.status === "reported_in_error" ? (
-                <p>تم رفع إيقاف التفعيل المؤقت الخاص بهذا البلاغ باعتباره تصحيحًا إداريًا، مع بقاء البلاغ والأدلة محفوظة في التاريخ.</p>
+                <p>تم رفع الإيقاف المؤقت الخاص بهذا البلاغ باعتباره تصحيحًا إداريًا، مع بقاء البلاغ والأدلة محفوظة في التاريخ.</p>
               ) : null}
             </div>
+            {!isAdmin && (issue.status === "cleared_for_use" || issue.status === "reported_in_error") ? (
+              <div className={styles.actions}>
+                {taskHref ? (
+                  <Link href={taskHref} className="button button-primary">العودة إلى مهمة التنفيذ</Link>
+                ) : (
+                  <Link href={`/operations/warranties/activate?roll=${encodeURIComponent(issue.serial_number)}`} className="button button-primary">
+                    متابعة تفعيل الضمان على هذا الرول
+                  </Link>
+                )}
+              </div>
+            ) : null}
+            {!isAdmin && issue.status === "return_required" && taskHref ? (
+              <div className={styles.actions}>
+                <Link href={taskHref} className="button button-secondary">العودة إلى مهمة التنفيذ</Link>
+              </div>
+            ) : null}
             {isAdmin && issue.status === "return_required" ? (
               <div className={styles.actions}>
                 <Link href="/operations/rolls/recovery" className="button button-primary">فتح مسار الاسترداد عند الاستلام</Link>

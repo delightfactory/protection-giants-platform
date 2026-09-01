@@ -49,8 +49,16 @@ function formatSize(bytes: number) {
     : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function RollPreinstallIssueFlow({ publicSiteOrigin }: { publicSiteOrigin: string }) {
-  const [serialInput, setSerialInput] = useState("");
+export function RollPreinstallIssueFlow({
+  publicSiteOrigin,
+  initialSerial = "",
+  taskId = null,
+}: {
+  publicSiteOrigin: string;
+  initialSerial?: string;
+  taskId?: string | null;
+}) {
+  const [serialInput, setSerialInput] = useState(() => normalizeRollSerial(initialSerial) ?? "");
   const [candidate, setCandidate] = useState<RollPreinstallIssueCandidate | null>(null);
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -208,6 +216,11 @@ export function RollPreinstallIssueFlow({ publicSiteOrigin }: { publicSiteOrigin
   }
 
   if (completedIssueId && candidate) {
+    const taskHref = taskId ? `/operations/claim-resolution-tasks/${taskId}` : null;
+    const issueHref = taskId
+      ? `/operations/rolls/issues/${completedIssueId}?task=${encodeURIComponent(taskId)}`
+      : `/operations/rolls/issues/${completedIssueId}`;
+
     return (
       <div className={styles.flow}>
         <section className={styles.successCard} aria-live="polite">
@@ -217,8 +230,10 @@ export function RollPreinstallIssueFlow({ publicSiteOrigin }: { publicSiteOrigin
             <p>حالة البلاغ الآن: <strong>قيد مراجعة الشركة</strong>.</p>
           </div>
           <div className={styles.holdNotice}>
-            <strong>تفعيل الضمان متوقف مؤقتًا</strong>
-            <p>من لحظة تسجيل البلاغ لا يمكن تفعيل ضمان على هذا الرول حتى تحسم الشركة الحالة.</p>
+            <strong>{taskHref ? "مهمة الاستبدال متوقفة مؤقتًا" : "تفعيل الضمان متوقف مؤقتًا"}</strong>
+            <p>{taskHref
+              ? "لا تكمل استخدام الرول أو إغلاق المهمة حتى تحسم الشركة البلاغ."
+              : "من لحظة تسجيل البلاغ لا يمكن تفعيل ضمان على هذا الرول حتى تحسم الشركة الحالة."}</p>
           </div>
           <div className={styles.identity}>
             <strong>{candidate.productName}</strong>
@@ -227,8 +242,12 @@ export function RollPreinstallIssueFlow({ publicSiteOrigin }: { publicSiteOrigin
             <code>{candidate.serialNumber}</code>
           </div>
           <div className={styles.actions}>
-            <Link href={`/operations/rolls/issues/${completedIssueId}`} className="button button-primary">فتح البلاغ</Link>
-            <Link href="/operations/rolls/issues" className="button button-ghost">كل البلاغات</Link>
+            <Link href={issueHref} className="button button-primary">فتح البلاغ</Link>
+            {taskHref ? (
+              <Link href={taskHref} className="button button-secondary">العودة إلى مهمة التنفيذ</Link>
+            ) : (
+              <Link href="/operations/rolls/issues" className="button button-ghost">كل البلاغات</Link>
+            )}
           </div>
         </section>
       </div>

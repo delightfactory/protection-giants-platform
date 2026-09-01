@@ -44,11 +44,15 @@ function formatDate(value: string | null): string {
 export function RollOpeningFlow({
   publicSiteOrigin,
   centerName,
+  initialSerial = "",
+  taskId = null,
 }: {
   publicSiteOrigin: string;
   centerName: string;
+  initialSerial?: string;
+  taskId?: string | null;
 }) {
-  const [serialInput, setSerialInput] = useState("");
+  const [serialInput, setSerialInput] = useState(() => normalizeRollSerial(initialSerial) ?? "");
   const [candidate, setCandidate] = useState<RollOpeningCandidate | null>(null);
   const [feedback, setFeedback] = useState<{ tone: "error" | "warning" | "success"; text: string } | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -175,6 +179,11 @@ export function RollOpeningFlow({
   }
 
   if (success) {
+    const encodedSerial = encodeURIComponent(success.serialNumber);
+    const taskSuffix = taskId ? `&task=${encodeURIComponent(taskId)}` : "";
+    const issueHref = `/operations/rolls/issues/new?roll=${encodedSerial}${taskSuffix}`;
+    const taskHref = taskId ? `/operations/claim-resolution-tasks/${taskId}` : null;
+
     return (
       <div className={styles.flow}>
         <section className={styles.successCard} aria-live="polite">
@@ -194,12 +203,19 @@ export function RollOpeningFlow({
             </div>
           </div>
           <div className={styles.nextNote}>
-            <strong>قبل التركيب</strong>
-            <p>إذا ظهر عيب مادي أو تصنيعي في هذا الرول قبل تفعيل ضمان العميل، أرسل بلاغ ما قبل التركيب. إرسال البلاغ يوقف التفعيل حتى قرار الشركة، بينما حدث الفتح والعهدة يظلان مستقلين.</p>
+            <strong>{taskHref ? "الخطوة التالية في مهمة الاستبدال" : "الخطوة التالية قبل تسليم السيارة"}</strong>
+            <p>{taskHref
+              ? "ارجع إلى نفس مهمة التنفيذ بعد فتح الرول. إذا ظهر عيب قبل التركيب، سجّل البلاغ على هذا الرول نفسه؛ البلاغ يوقف استخدامه في المهمة حتى قرار الشركة."
+              : "إذا كان الرول سليمًا وتم التركيب للعميل، انتقل لتفعيل الضمان على نفس الرول. وإذا ظهر عيب قبل التفعيل، سجّل بلاغ ما قبل التركيب أولًا؛ البلاغ يوقف التفعيل حتى قرار الشركة."}</p>
           </div>
           <div className={styles.actions}>
-            <Link href="/operations/rolls/issues/new" className="button button-primary">إرسال بلاغ ما قبل التركيب</Link>
-            <button type="button" className="button button-secondary" onClick={startAnother}>فتح رول آخر</button>
+            {taskHref ? (
+              <Link href={taskHref} className="button button-primary">العودة إلى مهمة التنفيذ</Link>
+            ) : (
+              <Link href={`/operations/warranties/activate?roll=${encodedSerial}`} className="button button-primary">تفعيل ضمان عميل على هذا الرول</Link>
+            )}
+            <Link href={issueHref} className="button button-secondary">تسجيل مشكلة قبل التركيب</Link>
+            <button type="button" className="button button-ghost" onClick={startAnother}>فتح رول آخر</button>
           </div>
         </section>
       </div>

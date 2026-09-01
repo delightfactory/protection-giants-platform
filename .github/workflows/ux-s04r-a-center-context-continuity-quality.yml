@@ -1,0 +1,54 @@
+name: UX S04R A Center Context Continuity Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/operations/rolls/open/page.tsx"
+      - "components/rolls/roll-opening-flow.tsx"
+      - "app/operations/rolls/issues/new/page.tsx"
+      - "components/rolls/roll-preinstall-issue-flow.tsx"
+      - "app/operations/rolls/issues/[id]/page.tsx"
+      - "app/operations/warranties/activate/page.tsx"
+      - "app/operations/claim-inspections/[id]/page.tsx"
+      - "app/operations/claim-resolution-tasks/[id]/page.tsx"
+      - "scripts/verify-ux-s04r-a-center-context-continuity.mjs"
+      - ".github/workflows/ux-s04r-a-center-context-continuity-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  center-context-continuity-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify UX-S04R-A Center context continuity contracts
+        run: node scripts/verify-ux-s04r-a-center-context-continuity.mjs
+
+      - name: Verify INTL-02 time regression on Center tasks
+        run: node scripts/verify-intl-02-time-contract.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
