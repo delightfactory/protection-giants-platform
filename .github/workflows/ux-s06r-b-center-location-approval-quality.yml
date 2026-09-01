@@ -1,0 +1,60 @@
+name: UX S06R B Center Location Approval Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/operations/centers/[id]/center-detail.module.css"
+      - "app/operations/centers/[id]/location/page.tsx"
+      - "app/operations/centers/[id]/location/actions.ts"
+      - "app/operations/centers/[id]/approval/page.tsx"
+      - "app/operations/centers/[id]/approval/actions.ts"
+      - "scripts/verify-ux-s06r-a-center-admin-density.mjs"
+      - "scripts/verify-ux-s06r-b-center-location-approval.mjs"
+      - "scripts/verify-platform-role-reachability-ui.mjs"
+      - "scripts/verify-platform-datetime-presentation.mjs"
+      - ".github/workflows/ux-s06r-b-center-location-approval-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  center-location-approval-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify UX-S06R-B Center location and approval presentation
+        run: node scripts/verify-ux-s06r-b-center-location-approval.mjs
+
+      - name: Verify UX-S06R-A Center edit hierarchy regression
+        run: node scripts/verify-ux-s06r-a-center-admin-density.mjs
+
+      - name: Verify S03R role reachability contracts
+        run: node scripts/verify-platform-role-reachability-ui.mjs
+
+      - name: Verify operational timestamp presentation contracts
+        run: node scripts/verify-platform-datetime-presentation.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'

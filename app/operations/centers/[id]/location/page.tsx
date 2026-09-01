@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import styles from "../center-detail.module.css";
 import { correctCenterLocation } from "./actions";
 
 type CenterLocationAdminPageProps = {
@@ -17,10 +18,6 @@ type CenterLocationAdminPageProps = {
 };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function formatDate(value: string) {
-  return <LocalDateTime value={value} />;
-}
 
 function formatCoordinate(value: number) {
   return value.toFixed(6);
@@ -71,9 +68,9 @@ export default async function CenterLocationAdminPage({ params, searchParams }: 
       <PageHeader
         eyebrow="إدارة موقع المركز"
         title={center.name}
-        description="راجع الموقع الجغرافي الحالي وسجل التغييرات، أو نفّذ تصحيحًا إداريًا موثقًا عند الحاجة."
+        description="راجع الموقع الحالي أولًا، ثم استخدم التصحيح الإداري فقط عند وجود إحداثيات معروفة تحتاج تصحيحًا موثقًا."
         meta={<><span dir="ltr">{center.code}</span> · {center.city} · <span dir="ltr">{center.country_code}</span></>}
-        actions={<TaskBackLink href="/operations/centers" label="العودة للمراكز" />}
+        actions={<TaskBackLink href={`/operations/centers/${center.id}/edit`} label="العودة لإدارة المركز" />}
       />
 
       {pageError === "invalid" ? (
@@ -86,23 +83,25 @@ export default async function CenterLocationAdminPage({ params, searchParams }: 
         <FeedbackBanner tone="success">تم حفظ التصحيح وإضافة حدث جديد إلى سجل الموقع.</FeedbackBanner>
       ) : null}
 
-      <div className="user-settings-stack">
+      <div className={styles.pageStack}>
         <FormPanel>
           <FormSection
             title="الموقع الحالي"
-            description="هذه هي القراءة الحالية المستخدمة كمرجع تشغيلي للمركز."
+            description="هذه هي القراءة الحالية المستخدمة كمرجع تشغيلي للمركز قبل أي تغيير."
           >
             {hasCurrentLocation ? (
-              <div className="user-role-note">
-                <strong><span dir="ltr">{formatCoordinate(center.latitude!)}, {formatCoordinate(center.longitude!)}</span></strong>
+              <div className={styles.stateNote}>
+                <div className={styles.stateHeader}>
+                  <strong className={styles.coordinate}>{formatCoordinate(center.latitude!)}, {formatCoordinate(center.longitude!)}</strong>
+                  <StatusBadge tone={center.status === "active" ? "success" : "neutral"}>
+                    {center.status === "active" ? "المركز نشط" : "المركز موقوف"}
+                  </StatusBadge>
+                </div>
                 <p>
                   المصدر: {center.location_source === "center_device" ? "التقاط من جهاز المركز" : "تصحيح إداري"}
                   {center.location_accuracy_m !== null ? ` · الدقة ${Math.round(center.location_accuracy_m * 10) / 10} م` : ""}
                 </p>
-                <p>آخر تحديث: <span dir="ltr">{formatDate(center.location_captured_at!)}</span></p>
-                <StatusBadge tone={center.status === "active" ? "success" : "neutral"}>
-                  {center.status === "active" ? "المركز نشط" : "المركز موقوف"}
-                </StatusBadge>
+                <p>آخر تحديث: <LocalDateTime value={center.location_captured_at!} /></p>
               </div>
             ) : (
               <FeedbackBanner tone="warning">لم يتم تسجيل موقع جغرافي لهذا المركز حتى الآن.</FeedbackBanner>
@@ -170,9 +169,9 @@ export default async function CenterLocationAdminPage({ params, searchParams }: 
                   <RecordItem
                     key={event.id}
                     kicker={event.source === "center_device" ? "التقاط من المركز" : "تصحيح إداري"}
-                    title={<span dir="ltr">{formatCoordinate(event.latitude)}, {formatCoordinate(event.longitude)}</span>}
+                    title={<span className={styles.coordinate}>{formatCoordinate(event.latitude)}, {formatCoordinate(event.longitude)}</span>}
                     facts={[
-                      { label: "الوقت", value: <span dir="ltr">{formatDate(event.captured_at)}</span> },
+                      { label: "الوقت", value: <LocalDateTime value={event.captured_at} /> },
                       { label: "الدقة", value: event.accuracy_m === null ? "غير مطبقة" : `${Math.round(event.accuracy_m * 10) / 10} م` },
                       { label: "بواسطة", value: event.actor_profile_id ? actorNames.get(event.actor_profile_id) ?? "حساب سابق" : "حساب سابق" },
                     ]}

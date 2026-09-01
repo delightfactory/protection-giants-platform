@@ -56,15 +56,12 @@ assert(rollsRegistry.includes("formatCustodyDate(custody?.confirmed_at)"),
   "Roll custody confirmation timestamp must use the shared local presenter.");
 assert(rollsRegistry.includes("formatCustodyDate(opening.opened_at)"),
   "Roll opening timestamp must use the shared local presenter.");
-assert(centerLocationAdmin.includes('return <LocalDateTime value={value} />;'),
-  "Admin Center location current/history timestamps must use LocalDateTime.");
-assert(centerLocationAdmin.includes("formatDate(center.location_captured_at!)") && centerLocationAdmin.includes("formatDate(event.captured_at)"),
-  "Admin Center location current and history timestamps must use the shared local presenter.");
-assert(centerApproval.includes('return <LocalDateTime value={value} />;'),
-  "Center approval timestamps must use LocalDateTime.");
-assert(centerApproval.includes("formatDate(center.approved_at)")
-  && centerApproval.includes("formatDate(center.location_captured_at!)")
-  && centerApproval.includes("formatDate(event.occurred_at)"),
-  "Center approval current/location/history timestamps must use the shared local presenter.");
+assert(centerLocationAdmin.includes('<LocalDateTime value={center.location_captured_at!} />')
+  && centerLocationAdmin.includes('<LocalDateTime value={event.captured_at} />'),
+  "Admin Center location current/history timestamps must use LocalDateTime directly.");
+assert(centerApproval.includes('<LocalDateTime value={center.approved_at} />')
+  && centerApproval.includes('<LocalDateTime value={center.location_captured_at!} />')
+  && centerApproval.includes('<LocalDateTime value={event.occurred_at} />'),
+  "Center approval current/location/history timestamps must use LocalDateTime directly.");
 
-console.log("Operational timestamp presentation contract verified through UX-S02C.");
+console.log("Operational timestamp presentation contract verified through UX-S06R-B.");
