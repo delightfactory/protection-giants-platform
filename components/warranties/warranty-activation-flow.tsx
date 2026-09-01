@@ -375,6 +375,10 @@ export function WarrantyActivationFlow({
             <div><dt>نهاية التغطية</dt><dd><LocalDateTime value={success.coverageExpiresAt} /></dd></div>
           </dl>
 
+          <FeedbackBanner tone="success">
+            اكتملت مهمة التركيب والتفعيل لهذا الرول. لا توجد خطوة تشغيلية أخرى عليه من المركز الآن؛ افتح تفاصيل الضمان فقط إذا أردت مراجعة البيانات المثبتة، وأي مطالبة مستقبلية تبدأ من الضمان نفسه لا من مسار ما قبل التركيب.
+          </FeedbackBanner>
+
           <div className={styles.actions}>
             <Link href={`/operations/warranties/${success.warrantyId}`} className="button button-primary">فتح تفاصيل الضمان</Link>
             <button type="button" className="button button-secondary" onClick={startAnother}>تفعيل ضمان آخر</button>

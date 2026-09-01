@@ -53,6 +53,9 @@ includes(flow, "PG_WARRANTY_REQUEST_CONFLICT", "Request-conflict behavior must b
 includes(flow, 'result.warranty.recordState !== "issued"', "Any historical non-issued retry must not be presented as successful issuance.");
 includes(flow, "هذه المحاولة تشير إلى تفعيل تاريخي تم إلغاؤه كخطأ", "Historical voided retry must surface an explicit safe next step.");
 includes(flow, "LocalDateTime", "Warranty timestamps must use the shared local-time presentation component.");
+includes(flow, "اكتملت مهمة التركيب والتفعيل لهذا الرول", "Successful activation must explicitly close the Center installation journey.");
+includes(flow, "لا توجد خطوة تشغيلية أخرى عليه من المركز الآن", "Successful activation must not imply an additional Center workflow step.");
+includes(flow, "أي مطالبة مستقبلية تبدأ من الضمان نفسه لا من مسار ما قبل التركيب", "Post-activation guidance must keep pre-install issues separate from future Warranty Claims.");
 
 for (const field of [
   "customerName",

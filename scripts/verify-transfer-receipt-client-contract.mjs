@@ -72,6 +72,17 @@ for (const [label, url] of structuralSources) {
   assert.doesNotMatch(source, /supabase\.rpc\s+as\s+unknown/, `${label} must call generated RPC definitions directly.`);
 }
 
+const receiptFlowSource = readFileSync(new URL("../components/transfers/transfer-receipt-flow.tsx", import.meta.url), "utf8");
+assert.match(receiptFlowSource, /type ReceiptOutcome = \{/, "Receipt success must preserve an explicit local outcome snapshot.");
+assert.ok(
+  receiptFlowSource.indexOf("setReceiptOutcome({") < receiptFlowSource.indexOf("router.refresh();"),
+  "Receipt outcome must be captured before refreshing server data so partial/full success semantics cannot drift.",
+);
+assert.match(receiptFlowSource, /استكمال استلام الباقي/, "Partial receipt must continue the same Transfer journey instead of dropping to a generic screen.");
+assert.match(receiptFlowSource, /href="\/operations\/rolls\/open"/, "Completed receipt must expose the existing Roll Opening path as the next physical action.");
+assert.match(receiptFlowSource, /لا تفتح أي رول لمجرد الاستلام/, "Receipt success must not imply that custody receipt itself authorizes or requires physical opening.");
+assert.match(receiptFlowSource, /اللفات المتبقية لا تدخل عهدتك قبل تأكيد استلامها فعليًا/, "Partial receipt must preserve explicit custody semantics for remaining Rolls.");
+
 const receiptDomainSource = readFileSync(new URL("../lib/transfers/receipt.ts", import.meta.url), "utf8");
 assert.match(
   receiptDomainSource,

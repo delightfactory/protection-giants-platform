@@ -58,7 +58,9 @@ export default async function ClaimInspectionsPage({ searchParams }: PageProps) 
       />
 
       {params.notice === "submitted" ? (
-        <FeedbackBanner tone="success">تم إرسال نتيجة الفحص وإعادتها إلى الشركة لاستكمال مراجعة المطالبة.</FeedbackBanner>
+        <FeedbackBanner tone="success">
+          تم إرسال نتيجة الفحص إلى الشركة. لا توجد خطوة أخرى على هذا الفحص من المركز الآن؛ انتظر قرار الشركة. إذا تم قبول المطالبة وإسناد تنفيذ لمركزك فستظهر كمهمة مستقلة ضمن مهام التنفيذ.
+        </FeedbackBanner>
       ) : null}
 
       {inspections.length === 0 ? (

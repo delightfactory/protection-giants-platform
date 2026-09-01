@@ -1,0 +1,63 @@
+name: UX S04R B Center Next Actions Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "components/transfers/transfer-receipt-flow.tsx"
+      - "components/warranties/warranty-activation-flow.tsx"
+      - "app/operations/claim-inspections/page.tsx"
+      - "app/operations/claim-resolution-tasks/page.tsx"
+      - "scripts/verify-transfer-receipt-client-contract.mjs"
+      - "scripts/verify-warranty-center-ui-contract.mjs"
+      - "scripts/verify-cube-q-claim-center-inspection-ui.mjs"
+      - "scripts/verify-cube-r-claim-center-fulfillment-ui.mjs"
+      - "scripts/verify-ux-s04r-b-center-next-actions.mjs"
+      - ".github/workflows/ux-s04r-b-center-next-actions-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  center-next-actions-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify UX-S04R-B Center next-action contracts
+        run: node scripts/verify-ux-s04r-b-center-next-actions.mjs
+
+      - name: Verify Transfer receipt contracts
+        run: node --experimental-strip-types scripts/verify-transfer-receipt-client-contract.mjs
+
+      - name: Verify Warranty Center Activation contracts
+        run: node scripts/verify-warranty-center-ui-contract.mjs
+
+      - name: Verify Cube Q Center inspection contracts
+        run: node scripts/verify-cube-q-claim-center-inspection-ui.mjs
+
+      - name: Verify Cube R Center fulfillment contracts
+        run: node scripts/verify-cube-r-claim-center-fulfillment-ui.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
