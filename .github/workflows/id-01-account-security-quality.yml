@@ -1,0 +1,64 @@
+name: ID 01 Account Security Quality
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - app/operations/account/**
+      - app/operations/users/**
+      - components/operations-nav.tsx
+      - components/ui/confirm-submit-button.tsx
+      - lib/users/operational-user-input.ts
+      - scripts/verify-id-01-account-security-contract.mjs
+      - package.json
+      - package-lock.json
+      - supabase/migrations/**
+      - .github/workflows/id-01-account-security-quality.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify frozen ID-01 scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          changed="$(git diff --name-only "$base_sha"...HEAD)"
+          if printf '%s\n' "$changed" | grep -Eq '^(supabase/migrations/|package\.json$|package-lock\.json$)'; then
+            echo "ID-01 must not add database migrations or dependency changes."
+            printf '%s\n' "$changed"
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify account security contracts
+        run: node scripts/verify-id-01-account-security-contract.mjs
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- package-lock.json tsconfig.json next-env.d.ts

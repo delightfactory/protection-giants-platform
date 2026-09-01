@@ -208,17 +208,16 @@ export default async function OperationsUsersPage({ searchParams }: UsersPagePro
                         <input type="hidden" name="user_id" value={profile.id} />
                         <input type="hidden" name="return_to" value="list" />
                         <input type="hidden" name="target_status" value={isActive ? "suspended" : "active"} />
-                        {isActive ? (
-                          <ConfirmSubmitButton
-                            title="إيقاف الحساب؟"
-                            description="سيتم منع تسجيل الدخول وإيقاف الملف التشغيلي لهذا الحساب حتى إعادة تفعيله."
-                            confirmLabel="تأكيد الإيقاف"
-                          >
-                            إيقاف
-                          </ConfirmSubmitButton>
-                        ) : (
-                          <button type="submit" className="button button-primary">إعادة التفعيل</button>
-                        )}
+                        <ConfirmSubmitButton
+                          title={isActive ? "إيقاف الحساب؟" : "إعادة تفعيل الحساب؟"}
+                          description={isActive
+                            ? "سيتم منع تسجيل الدخول وإيقاف الملف التشغيلي لهذا الحساب حتى إعادة تفعيله."
+                            : "سيتم السماح بتسجيل الدخول وإعادة تنشيط الملف التشغيلي لهذا الحساب."}
+                          confirmLabel={isActive ? "تأكيد الإيقاف" : "تأكيد إعادة التفعيل"}
+                          tone={isActive ? "danger" : "primary"}
+                        >
+                          {isActive ? "إيقاف" : "إعادة التفعيل"}
+                        </ConfirmSubmitButton>
                       </form>
                     )}
                   </>
