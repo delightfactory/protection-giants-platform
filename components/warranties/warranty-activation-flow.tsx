@@ -12,6 +12,10 @@ import { QrScannerSheet, type ScannerDecodeOutcome } from "@/components/transfer
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { LocalDateTime } from "@/components/ui/local-date-time";
 import { normalizeRollSerial, parseRollQrPayload } from "@/lib/rolls/roll-qr";
+import {
+  INTERNATIONAL_PHONE_GUIDANCE_AR,
+  normalizeInternationalPhone,
+} from "@/lib/warranty/international-phone";
 import styles from "./warranty-activation-flow.module.css";
 
 const errorMessages: Record<string, string> = {
@@ -30,7 +34,7 @@ const errorMessages: Record<string, string> = {
   PG_WARRANTY_RETURN_REQUIRED: "هذا الرول عليه قرار إرجاع سابق، لذلك لا يمكن استخدامه لتفعيل ضمان عميل.",
   PG_WARRANTY_ALREADY_ACTIVATED: "تم تفعيل ضمان فعّال لهذا الرول بالفعل.",
   PG_WARRANTY_POLICY_INCOMPLETE: "سياسة الضمان على المنتج غير مكتملة. يلزم أن تستكمل الإدارة المدة والتغطية وتعليمات العناية.",
-  PG_WARRANTY_CUSTOMER_INVALID: "راجع اسم العميل ورقم الهاتف والبريد الإلكتروني قبل المتابعة.",
+  PG_WARRANTY_CUSTOMER_INVALID: `راجع بيانات العميل. ${INTERNATIONAL_PHONE_GUIDANCE_AR}`,
   PG_WARRANTY_VEHICLE_INVALID: "راجع بيانات السيارة وVIN/رقم الشاسيه قبل المتابعة.",
   PG_WARRANTY_CANDIDATE_INVALID: "تعذر التحقق من بيانات الرول الآن. أعد المحاولة.",
   PG_WARRANTY_CONFIRMATION_FAILED: "تم إرسال التفعيل لكن تعذر تحميل التأكيد. أعد نفس المحاولة دون تغيير البيانات حتى يسترجع النظام النتيجة بأمان.",
@@ -84,8 +88,8 @@ function validateDetails(form: FormState): string | null {
   if (form.customerName.trim().length < 2 || form.customerName.trim().length > 160) {
     return "اكتب اسم العميل بشكل واضح قبل المتابعة.";
   }
-  if (form.customerPhone.trim().length < 5 || form.customerPhone.trim().length > 32) {
-    return "راجع رقم هاتف العميل قبل المتابعة.";
+  if (!normalizeInternationalPhone(form.customerPhone)) {
+    return INTERNATIONAL_PHONE_GUIDANCE_AR;
   }
   if (form.customerEmail.trim() && (form.customerEmail.trim().length < 3 || form.customerEmail.trim().length > 254)) {
     return "راجع البريد الإلكتروني للعميل أو اتركه فارغًا.";
@@ -256,6 +260,14 @@ export function WarrantyActivationFlow({
       setFeedback({ tone: "error", text: error });
       return;
     }
+
+    const normalizedPhone = normalizeInternationalPhone(form.customerPhone);
+    if (!normalizedPhone) {
+      setFeedback({ tone: "error", text: INTERNATIONAL_PHONE_GUIDANCE_AR });
+      return;
+    }
+
+    setForm((current) => ({ ...current, customerPhone: normalizedPhone }));
     setFeedback(null);
     setStage("review");
   }
@@ -269,6 +281,13 @@ export function WarrantyActivationFlow({
       return;
     }
 
+    const normalizedPhone = normalizeInternationalPhone(form.customerPhone);
+    if (!normalizedPhone) {
+      setStage("details");
+      setFeedback({ tone: "error", text: INTERNATIONAL_PHONE_GUIDANCE_AR });
+      return;
+    }
+
     if (!requestIdRef.current) requestIdRef.current = crypto.randomUUID();
     const requestId = requestIdRef.current;
 
@@ -279,7 +298,7 @@ export function WarrantyActivationFlow({
             requestId,
             serialNumber: candidate.serialNumber,
             customerName: form.customerName,
-            customerPhone: form.customerPhone,
+            customerPhone: normalizedPhone,
             customerEmail: form.customerEmail,
             vehicleMake: form.vehicleMake,
             vehicleModel: form.vehicleModel,
@@ -461,6 +480,7 @@ export function WarrantyActivationFlow({
             <div className={styles.cardHeading}>
               <h2>بيانات العميل والسيارة</h2>
               <p>لا يتم إنشاء حساب للعميل ولا طلب OTP أو صور أو فاتورة. أدخل فقط البيانات اللازمة لهوية الضمان.</p>
+              <p>{INTERNATIONAL_PHONE_GUIDANCE_AR}</p>
             </div>
 
             <form className={styles.detailsForm} onSubmit={moveToReview}>
@@ -468,7 +488,7 @@ export function WarrantyActivationFlow({
                 <legend>العميل</legend>
                 <div className={styles.fieldsGrid}>
                   <label><span>الاسم الكامل *</span><input className="input" autoComplete="name" maxLength={160} value={form.customerName} onChange={(event) => setForm({ ...form, customerName: event.target.value })} /></label>
-                  <label><span>رقم الهاتف *</span><input className="input" dir="ltr" inputMode="tel" autoComplete="tel" maxLength={32} value={form.customerPhone} onChange={(event) => setForm({ ...form, customerPhone: event.target.value })} /></label>
+                  <label><span>رقم الهاتف الدولي *</span><input className="input" dir="ltr" type="tel" inputMode="tel" autoComplete="tel" maxLength={32} placeholder="+20 10 1234 5678" title={INTERNATIONAL_PHONE_GUIDANCE_AR} value={form.customerPhone} onChange={(event) => setForm({ ...form, customerPhone: event.target.value })} /></label>
                   <label className={styles.fullField}><span>البريد الإلكتروني — اختياري</span><input className="input" dir="ltr" type="email" autoComplete="email" maxLength={254} value={form.customerEmail} onChange={(event) => setForm({ ...form, customerEmail: event.target.value })} /></label>
                 </div>
               </fieldset>
@@ -509,7 +529,7 @@ export function WarrantyActivationFlow({
             <div><dt>الرول</dt><dd dir="ltr">{candidate.serialNumber}</dd></div>
             <div><dt>مدة الضمان</dt><dd>{candidate.warrantyMonths ? `${candidate.warrantyMonths} شهر` : "—"}</dd></div>
             <div><dt>العميل</dt><dd>{form.customerName.trim()}</dd></div>
-            <div><dt>الهاتف</dt><dd dir="ltr">{form.customerPhone.trim()}</dd></div>
+            <div><dt>الهاتف</dt><dd dir="ltr">{normalizeInternationalPhone(form.customerPhone) ?? form.customerPhone.trim()}</dd></div>
             <div><dt>السيارة</dt><dd>{form.vehicleMake.trim()} {form.vehicleModel.trim()}</dd></div>
             <div><dt>VIN / الشاسيه</dt><dd dir="ltr">{form.vehicleVin}</dd></div>
           </dl>
