@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { sendRollTransfer, type SendTransferActionResult } from "@/app/operations/transfers/new/actions";
+import { AccessibleDialog } from "@/components/ui/accessible-dialog";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -170,27 +171,6 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
   const [success, setSuccess] = useState<SuccessState | null>(null);
 
   const selectedCount = selectedIds.size;
-  const decisionOpen = Boolean(pendingLot || recipientChangePending || clearSelectionPending);
-
-  useEffect(() => {
-    if (!decisionOpen) return;
-
-    const previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      setPendingLot(null);
-      setRecipientChangePending(false);
-      setClearSelectionPending(false);
-    }
-
-    window.addEventListener("keydown", handleEscape);
-    return () => {
-      document.body.style.overflow = previousBodyOverflow;
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [decisionOpen]);
 
   const verifyRecipient = useCallback(async (rawValue: string): Promise<boolean> => {
     const normalized = normalizeTransferId(rawValue);
@@ -848,9 +828,16 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
         onDecode={handleScannerDecode}
       />
 
-      {pendingLot ? (
-        <div className={styles.decisionBackdrop} role="presentation">
-          <section className={styles.decisionSheet} role="dialog" aria-modal="true" aria-labelledby="partial-lot-title">
+      <AccessibleDialog
+        open={Boolean(pendingLot)}
+        onClose={() => setPendingLot(null)}
+        titleId="partial-lot-title"
+        descriptionId="partial-lot-description"
+        placement="responsive"
+        closeOnBackdrop={false}
+      >
+        {pendingLot ? (
+          <section className={styles.decisionSheet}>
             <p className={styles.stepLabel}>Lot جزئي</p>
             <h2 id="partial-lot-title">ليست كل لفات الـLot متاحة</h2>
             <code>{pendingLot.lot_number}</code>
@@ -861,48 +848,62 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
               <div><strong>{pendingLot.opened_count.toLocaleString("en-US")}</strong><span>مفتوحة</span></div>
               <div><strong>{pendingLot.elsewhere_count.toLocaleString("en-US")}</strong><span>لدى جهات أخرى</span></div>
             </div>
-            <p>سيتم اختيار اللفات المتاحة فقط. اللفات المفتوحة والمحجوزة واللفات الموجودة لدى جهات أخرى لن تدخل هذا التحويل.</p>
+            <p id="partial-lot-description">سيتم اختيار اللفات المتاحة فقط. اللفات المفتوحة والمحجوزة واللفات الموجودة لدى جهات أخرى لن تدخل هذا التحويل.</p>
             <div className={styles.decisionActions}>
               <button type="button" className="button button-primary" onClick={() => applyExpandedLot(pendingLot)}>اختيار {pendingLot.available_count.toLocaleString("en-US")} لفة المتاحة</button>
-              <button type="button" className="button button-ghost" onClick={() => setPendingLot(null)}>إلغاء</button>
+              <button type="button" className="button button-ghost" onClick={() => setPendingLot(null)} data-dialog-initial-focus>إلغاء</button>
             </div>
           </section>
-        </div>
-      ) : null}
+        ) : null}
+      </AccessibleDialog>
 
-      {recipientChangePending ? (
-        <div className={styles.decisionBackdrop} role="presentation">
-          <section className={styles.decisionSheet} role="dialog" aria-modal="true" aria-labelledby="change-recipient-title">
+      <AccessibleDialog
+        open={recipientChangePending}
+        onClose={() => setRecipientChangePending(false)}
+        titleId="change-recipient-title"
+        descriptionId="change-recipient-description"
+        placement="responsive"
+        closeOnBackdrop={false}
+      >
+        {recipientChangePending ? (
+          <section className={styles.decisionSheet}>
             <p className={styles.stepLabel}>تغيير وجهة التحويل</p>
             <h2 id="change-recipient-title">تغيير المستلم مع وجود لفات محددة؟</h2>
-            <p>لأن الوجهة تغيرت، لن نحتفظ باختيار جاهز للإرسال إلى مستلم آخر بشكل صامت. سيتم مسح اللفات الحالية ثم تعود لتحديد المستلم.</p>
+            <p id="change-recipient-description">لأن الوجهة تغيرت، لن نحتفظ باختيار جاهز للإرسال إلى مستلم آخر بشكل صامت. سيتم مسح اللفات الحالية ثم تعود لتحديد المستلم.</p>
             <div className={styles.decisionActions}>
               <button type="button" className="button button-primary" onClick={() => {
                 clearSelection();
                 resetRecipient();
               }}>تغيير المستلم ومسح الاختيار</button>
-              <button type="button" className="button button-ghost" onClick={() => setRecipientChangePending(false)}>الاحتفاظ بالمستلم</button>
+              <button type="button" className="button button-ghost" onClick={() => setRecipientChangePending(false)} data-dialog-initial-focus>الاحتفاظ بالمستلم</button>
             </div>
           </section>
-        </div>
-      ) : null}
+        ) : null}
+      </AccessibleDialog>
 
-      {clearSelectionPending ? (
-        <div className={styles.decisionBackdrop} role="presentation">
-          <section className={styles.decisionSheet} role="dialog" aria-modal="true" aria-labelledby="clear-selection-title">
+      <AccessibleDialog
+        open={clearSelectionPending}
+        onClose={() => setClearSelectionPending(false)}
+        titleId="clear-selection-title"
+        descriptionId="clear-selection-description"
+        placement="responsive"
+        closeOnBackdrop={false}
+      >
+        {clearSelectionPending ? (
+          <section className={styles.decisionSheet}>
             <p className={styles.stepLabel}>الاختيار الحالي</p>
             <h2 id="clear-selection-title">مسح كل اللفات المحددة؟</h2>
-            <p>سيتم إلغاء الاختيار الحالي فقط. لن يتم إنشاء أو إلغاء أي تحويل في قاعدة البيانات.</p>
+            <p id="clear-selection-description">سيتم إلغاء الاختيار الحالي فقط. لن يتم إنشاء أو إلغاء أي تحويل في قاعدة البيانات.</p>
             <div className={styles.decisionActions}>
               <button type="button" className="button button-primary" onClick={() => {
                 clearSelection();
                 setClearSelectionPending(false);
               }}>مسح {selectedCount.toLocaleString("en-US")} لفة</button>
-              <button type="button" className="button button-ghost" onClick={() => setClearSelectionPending(false)}>الاحتفاظ بالاختيار</button>
+              <button type="button" className="button button-ghost" onClick={() => setClearSelectionPending(false)} data-dialog-initial-focus>الاحتفاظ بالاختيار</button>
             </div>
           </section>
-        </div>
-      ) : null}
+        ) : null}
+      </AccessibleDialog>
     </div>
   );
 }

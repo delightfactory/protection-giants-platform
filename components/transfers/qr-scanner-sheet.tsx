@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AccessibleDialog } from "@/components/ui/accessible-dialog";
 import styles from "./transfer-send-flow.module.css";
 
 export type ScannerDecodeOutcome = {
@@ -82,18 +83,11 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
     if (!open) return;
 
     let cancelled = false;
-    const previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     setCameraState("starting");
     setCameraError(null);
     setFlashAvailable(false);
     setFlashOn(false);
     setFeedback(null);
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onCloseRef.current();
-    }
-    window.addEventListener("keydown", handleEscape);
 
     async function handlePayload(payload: string) {
       const trimmed = payload.trim();
@@ -165,8 +159,6 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
       scannerRef.current?.stop();
       scannerRef.current?.destroy();
       scannerRef.current = null;
-      document.body.style.overflow = previousBodyOverflow;
-      window.removeEventListener("keydown", handleEscape);
     };
   }, [open]);
 
@@ -210,16 +202,20 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
   if (!open) return null;
 
   return (
-    <div className={styles.scannerBackdrop} role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
-    }}>
-      <section className={styles.scannerSheet} role="dialog" aria-modal="true" aria-labelledby="scanner-title">
+    <AccessibleDialog
+      open={open}
+      onClose={onClose}
+      titleId="scanner-title"
+      descriptionId="scanner-instruction"
+      placement="responsive"
+    >
+      <section className={styles.scannerSheet}>
         <header className={styles.scannerHeader}>
           <div>
             <p>المسح بالكاميرا</p>
             <h2 id="scanner-title">{title}</h2>
           </div>
-          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="إغلاق الماسح">×</button>
+          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="إغلاق الماسح" data-dialog-initial-focus>×</button>
         </header>
 
         <div className={styles.cameraFrame} data-state={cameraState}>
@@ -233,7 +229,7 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
           ) : null}
         </div>
 
-        <p className={styles.scannerInstruction}>{instruction}</p>
+        <p id="scanner-instruction" className={styles.scannerInstruction}>{instruction}</p>
 
         {feedback ? (
           <div className={styles.scannerFeedback} data-tone={feedback.tone} role="status">{feedback.text}</div>
@@ -261,6 +257,6 @@ export function QrScannerSheet({ open, title, instruction, onClose, onDecode }: 
           <button type="button" className="button button-ghost" onClick={onClose}>إدخال يدوي</button>
         </div>
       </section>
-    </div>
+    </AccessibleDialog>
   );
 }
