@@ -65,8 +65,17 @@ async function audit(page, label, mobile) {
   assert(geometry.scrollWidth <= geometry.viewportWidth + 1, `${label}: horizontal overflow.`);
   assert(geometry.undersized.length === 0, `${label}: undersized mobile targets ${JSON.stringify(geometry.undersized)}`);
   const axe = await new AxeBuilder({ page }).analyze();
-  assert(axe.violations.length === 0, `${label}: axe violations ${axe.violations.map((v) => v.id).join(", ")}`);
-  return { geometry, axe: axe.violations };
+  const axeDetails = axe.violations.map((violation) => ({
+    id: violation.id,
+    impact: violation.impact,
+    nodes: violation.nodes.map((node) => ({
+      target: node.target,
+      html: node.html,
+      failureSummary: node.failureSummary,
+    })),
+  }));
+  assert(axeDetails.length === 0, `${label}: axe violations ${JSON.stringify(axeDetails)}`);
+  return { geometry, axe: axeDetails };
 }
 
 fs.mkdirSync(artifactDir, { recursive: true });
