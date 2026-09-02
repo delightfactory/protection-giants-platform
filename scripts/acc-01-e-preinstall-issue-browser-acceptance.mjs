@@ -217,7 +217,7 @@ try {
       await page.getByLabel("أو أدخل سيريال الرول").waitFor();
       await page.getByRole("button", { name: "تحقق من الرول" }).click();
 
-      await page.getByRole("heading", { name: "ACC 01 D Roll Opening Acceptance PPF", level: 2 }).waitFor({ timeout: 30000 });
+      await page.getByText("ACC 01 D Roll Opening Acceptance PPF", { exact: true }).waitFor({ timeout: 30000 });
       await page.getByText("إرسال البلاغ يوقف تفعيل الضمان على هذا الرول فورًا، بدون انتظار تأكيد من الشركة، إلى أن يتم حسم البلاغ.", { exact: true }).waitFor();
       await page.getByText(scenario.serialNumber, { exact: true }).waitFor();
 
