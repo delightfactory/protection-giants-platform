@@ -8,6 +8,14 @@ html {
 
 [dir="ltr"] { unicode-bidi: isolate; }
 
+.ui-empty-title {
+  display: block;
+  font-size: 17px;
+  font-weight: 750;
+}
+h1.ui-empty-title,
+h2.ui-empty-title { margin: 0; }
+
 .ui-task-back { white-space: nowrap; }
 .ui-task-back svg { flex: 0 0 auto; }
 
