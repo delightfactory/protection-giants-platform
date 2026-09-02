@@ -75,10 +75,13 @@ assert(!/\.insert\(|\.update\(|\.delete\(/.test(detail),
   "Resolution read detail must not gain direct mutation authority.");
 
 for (const authorityMarker of [
-  "assignAdminWarrantyClaimResolution",
-  "reassignAdminWarrantyClaimResolution",
-  "allocateAdminWarrantyClaimResolutionReplacementRoll",
-  "releaseAdminWarrantyClaimResolutionReplacementRoll",
+  "assignWarrantyClaimResolution",
+  "reassignWarrantyClaimResolution",
+  "changeWarrantyClaimResolutionRemedy",
+  "reserveWarrantyClaimResolutionRoll",
+  "releaseWarrantyClaimResolutionRoll",
+  "completeWarrantyClaimResolutionByAdminRecovery",
+  "cancelAssignedResolutionForCustomerWithdrawal",
 ]) {
   assert(actions.includes(authorityMarker),
     `Qualified mutations must remain in AdminClaimResolutionActions/server-action boundary: ${authorityMarker}.`);
