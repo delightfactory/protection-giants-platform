@@ -24,6 +24,7 @@ permissions:
 env:
   NEXT_TELEMETRY_DISABLED: "1"
   ACC_BASE_URL: "http://127.0.0.1:3000"
+  NEXT_PUBLIC_SITE_URL: "http://127.0.0.1:3000"
   ACC_ARTIFACT_DIR: "artifacts/acc-01-a"
   ACC_B_ARTIFACT_DIR: "artifacts/acc-01-b"
   ACC_C_ARTIFACT_DIR: "artifacts/acc-01-c"
