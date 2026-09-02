@@ -67,6 +67,11 @@ html {
     min-height: 44px;
   }
 
+  .ui-icon-button {
+    width: 44px;
+    min-width: 44px;
+  }
+
   .ui-form-field input,
   .ui-form-field select,
   .ui-form-field textarea,
@@ -76,6 +81,11 @@ html {
   .ui-filter-field input,
   .ui-filter-field select {
     font-size: 16px;
+  }
+
+  .ui-filter-field input,
+  .ui-filter-field select {
+    min-height: 44px;
   }
 
   .ui-task-back {
