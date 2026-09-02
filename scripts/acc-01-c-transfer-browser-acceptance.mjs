@@ -148,11 +148,11 @@ try {
       assert(transfer.status === "pending", `${label}: transfer not pending after send.`);
       assert(transfer.sender_party_id === fixture.sender.partyId && transfer.recipient_party_id === fixture.recipient.partyId, `${label}: sender/recipient mismatch.`);
       const pendingItem = oneSql(`
-        select item_status::text as item_status
-          from public.roll_transfer_items
+        select status::text as status
+          from public.roll_transfer_item_states
          where transfer_id = ${sqlUuid(transfer.id)} and roll_id = ${sqlUuid(scenario.rollId)}
       `, `${label} item after send`);
-      assert(pendingItem.item_status === "pending", `${label}: item not pending after send.`);
+      assert(pendingItem.status === "pending", `${label}: item not pending after send.`);
       assert(reservationCount(transfer.id, scenario.rollId) === 1, `${label}: reservation missing after send.`);
       assert(custodyParty(scenario.rollId) === fixture.sender.partyId, `${label}: custody moved before receipt.`);
 
@@ -184,11 +184,11 @@ try {
       `, `${label} transfer after receipt`);
       assert(receivedTransfer.status === "received", `${label}: transfer not received after full receipt.`);
       const receivedItem = oneSql(`
-        select item_status::text as item_status
-          from public.roll_transfer_items
+        select status::text as status
+          from public.roll_transfer_item_states
          where transfer_id = ${sqlUuid(transfer.id)} and roll_id = ${sqlUuid(scenario.rollId)}
       `, `${label} item after receipt`);
-      assert(receivedItem.item_status === "received", `${label}: item not received after receipt.`);
+      assert(receivedItem.status === "received", `${label}: item not received after receipt.`);
       assert(reservationCount(transfer.id, scenario.rollId) === 0, `${label}: reservation remained after receipt.`);
       assert(custodyParty(scenario.rollId) === fixture.recipient.partyId, `${label}: custody did not move to recipient.`);
       assert(runtimeErrors.length === 0, `${label}: runtime errors ${JSON.stringify(runtimeErrors)}`);
