@@ -8,7 +8,11 @@
     min-height: 44px;
   }
 
-  .operations-mobile-brand {
+  .operations-mobile-identity {
+    min-height: 44px;
+  }
+
+  .operations-mobile-header .ui-brand-lockup.operations-mobile-brand {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -66,7 +70,13 @@
 @media (max-width: 340px) {
   .operations-mobile-header { gap: 6px; padding-inline: 8px; }
   .operations-mobile-user { max-width: 104px; }
-  .operations-mobile-user > span { display: none; }
+  .operations-mobile-user > span {
+    display: block;
+    overflow: hidden;
+    font-size: 7.5px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
   .operations-mobile-nav .operations-nav-link { font-size: 8.6px; }
 }
 
