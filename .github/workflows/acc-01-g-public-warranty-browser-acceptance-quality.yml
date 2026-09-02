@@ -141,7 +141,10 @@ jobs:
         run: node scripts/acc-01-f-warranty-activation-browser-acceptance.mjs
 
       - name: Run ACC-01-G anonymous Public Warranty privacy browser acceptance
-        run: node scripts/acc-01-g-public-warranty-browser-acceptance.mjs
+        run: |
+          ACC_G_ACTIVE_ROLL_SERIAL="$(node -e "const f=require('./artifacts/acc-01-f/fixture.json'); process.stdout.write(f.positive.serialNumber)")" \
+          ACC_G_PENDING_ISSUE_ROLL_SERIAL="$(node -e "const f=require('./artifacts/acc-01-f/fixture.json'); process.stdout.write(f.blocked.serialNumber)")" \
+          node scripts/acc-01-g-public-warranty-browser-acceptance.mjs
 
       - name: Upload rendered ACC-01 acceptance evidence
         if: always()
