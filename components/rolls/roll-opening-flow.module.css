@@ -62,6 +62,7 @@
 
 .manualRow input {
   min-width: 0;
+  min-height: 44px;
 }
 
 .candidateCard,
