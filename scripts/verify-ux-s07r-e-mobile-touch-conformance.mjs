@@ -21,6 +21,8 @@ assert(mobileStandard.includes("44x44 CSS pixels"),
   "Mobile standard must retain the 44x44 CSS pixel minimum touch target contract.");
 assert(designSystem.includes("Touch targets لا تقل عن 44px"),
   "Design System must retain the 44px mobile target minimum.");
+assert(designSystem.includes("Supporting/meta text: 9–12px"),
+  "Design System must retain the 9–12px supporting/meta typography contract.");
 assert(designSystem.includes("prefers-reduced-motion"),
   "Design System must retain the reduced-motion contract.");
 
@@ -59,17 +61,18 @@ assert(/\.ui-filter-field input,\s*\n\s*\.ui-filter-field select\s*\{[\s\S]*?min
 assert(/\.ui-filter-field input,\s*\n\s*\.ui-filter-field select\s*\{[\s\S]*?font-size:\s*16px;[\s\S]*?\}/.test(interaction),
   "Mobile filter inputs/selects must retain 16px text to avoid browser zoom behavior.");
 
-for (const marker of [
-  ".operations-mobile-signout",
-  "width: 44px;",
-  ".operations-mobile-brand",
-  "min-width: 44px;",
-  ".operations-mobile-nav .operations-nav-link",
-  "min-height: 54px;",
-]) {
-  assert(operationsInteraction.includes(marker),
-    `Operations mobile shell must retain qualified touch geometry marker: ${marker}`);
-}
+assert(/\.operations-mobile-signout\s*\{[\s\S]*?width:\s*44px;[\s\S]*?height:\s*44px;[\s\S]*?min-width:\s*44px;[\s\S]*?min-height:\s*44px;[\s\S]*?\}/.test(operationsInteraction),
+  "Operations mobile sign-out target must remain an explicit 44x44 control.");
+assert(/\.operations-mobile-identity\s*\{[\s\S]*?min-height:\s*44px;[\s\S]*?\}/.test(operationsInteraction),
+  "Operations mobile account identity link must retain a 44px minimum touch height.");
+assert(/\.operations-mobile-header \.ui-brand-lockup\.operations-mobile-brand\s*\{[\s\S]*?min-width:\s*44px;[\s\S]*?min-height:\s*44px;[\s\S]*?\}/.test(operationsInteraction),
+  "Operations compact mobile brand must use a specificity-safe 44x44 touch contract that wins over the shared compact BrandLockup rule.");
+assert(/\.operations-mobile-nav \.operations-nav-link\s*\{[\s\S]*?min-height:\s*54px;[\s\S]*?\}/.test(operationsInteraction),
+  "Operations mobile primary navigation must retain the qualified 54px target height.");
+assert(!/\.operations-mobile-user\s*>\s*span\s*\{\s*display:\s*none;\s*\}/.test(operationsInteraction),
+  "Narrow mobile headers must not hide the visible operational role context.");
+assert(/@media \(max-width:\s*340px\)[\s\S]*?\.operations-mobile-user\s*>\s*span\s*\{[\s\S]*?display:\s*block;[\s\S]*?font-size:\s*9px;[\s\S]*?\}/.test(operationsInteraction),
+  "320px mobile headers must keep a visible role line at the Design System supporting/meta minimum rather than shrinking or hiding it.");
 
 assert(statusBadge.includes('type StatusTone = "success" | "neutral" | "warning" | "danger" | "accent"'),
   "Shared StatusBadge semantic tones must remain centralized.");
@@ -101,4 +104,4 @@ assert(operationsError.includes("إعادة المحاولة"),
 assert(operationsNotFound.includes("<EmptyState"),
   "Operations not-found route must keep a product-safe state.");
 
-console.log("UX-S07R-E mobile touch/visual conformance PASS: 44px shared mobile targets, reduced motion, RTL/LTR handling, shared status/evidence states, and product-safe error surfaces are preserved.");
+console.log("UX-S07R-E mobile touch/visual conformance PASS: 44px shared and operations-header mobile targets, Design System-compliant visible narrow role context, reduced motion, RTL/LTR handling, shared status/evidence states, and product-safe error surfaces are preserved.");
