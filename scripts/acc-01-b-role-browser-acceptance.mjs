@@ -182,6 +182,7 @@ try {
       try {
         await login(page, actor.email);
         assert(new URL(page.url()).pathname === "/operations", `${label}: login did not land on Operations Home.`);
+        await page.getByRole("heading", { level: 1 }).waitFor({ state: "visible" });
         const homeText = await page.locator("body").innerText();
         assert(homeText.includes(actor.roleLabel), `${label}: role label ${actor.roleLabel} is not visible on Operations Home.`);
 
@@ -228,6 +229,7 @@ try {
           );
           await moreLink.click();
           await page.waitForURL((url) => url.pathname === "/operations/more");
+          await page.getByRole("heading", { name: "العمليات", level: 1 }).waitFor({ state: "visible" });
           const moreText = await page.locator("body").innerText();
           assert(moreText.includes(actor.moreRequired),
             `${label}: More does not expose required destination ${actor.moreRequired}.`);
