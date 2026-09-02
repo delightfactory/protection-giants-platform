@@ -95,14 +95,14 @@ const errorMessages: Record<string, string> = {
   PG_CLAIM_RESOLUTION_REMEDY_UNCHANGED: "اختر أسلوب معالجة مختلفًا عن الحالي.",
   PG_CLAIM_RESOLUTION_MATERIAL_ACTIVE: "يوجد تخصيص مادة نشط. حرّر اللفة غير المستخدمة أولًا قبل تغيير المركز أو أسلوب المعالجة.",
   PG_CLAIM_ROLL_RESERVE_REQUEST_INVALID: "تعذر تجهيز محاولة حجز اللفة. حدّث الصفحة ثم حاول مرة أخرى.",
-  PG_CLAIM_ROLL_RESERVE_STATE_INVALID: "لم تعد الـResolution تسمح بحجز لفة استبدال الآن.",
+  PG_CLAIM_ROLL_RESERVE_STATE_INVALID: "لم تعد المعالجة تسمح بحجز لفة استبدال الآن.",
   PG_CLAIM_ROLL_ALREADY_ALLOCATED: "يوجد بالفعل تخصيص مادة نشط لهذه المعالجة.",
   PG_CLAIM_REPLACEMENT_ROLL_NOT_FOUND: "اللفة المختارة لم تعد متاحة.",
   PG_CLAIM_ROLL_NOT_PERFORMING_CENTER: "اللفة لم تعد في عهدة مركز التنفيذ الحالي.",
   PG_CLAIM_ROLL_TRANSFER_RESERVED: "اللفة محجوزة في تحويل تشغيلي آخر.",
   PG_CLAIM_ROLL_ALREADY_OPENED: "اللفة فُتحت بالفعل ولا تصلح كمرشح حجز جديد لهذه الخطوة.",
   PG_CLAIM_ROLL_WARRANTY_EXISTS: "اللفة مرتبطة بضمان عميل ولا يمكن استخدامها كاستبدال.",
-  PG_CLAIM_ROLL_RETURN_REQUIRED: "اللفة محظورة بسبب قرار جودة Return Required.",
+  PG_CLAIM_ROLL_RETURN_REQUIRED: "اللفة محظورة بسبب قرار جودة بإرجاعها وعدم استخدامها.",
   PG_CLAIM_ROLL_PREVIOUSLY_CONSUMED: "اللفة استُهلكت سابقًا في معالجة مطالبة.",
   PG_CLAIM_ROLL_PRODUCT_INELIGIBLE: "اللفة لم تعد متوافقة مع سياسة الاستبدال الحالية.",
   PG_CLAIM_ROLL_RELEASE_REQUEST_INVALID: "تعذر تجهيز تحرير اللفة.",
@@ -117,8 +117,8 @@ const errorMessages: Record<string, string> = {
   PG_CLAIM_RESOLUTION_ACTION_REQUEST_CONFLICT: "رقم المحاولة نفسه استُخدم بمدخلات مختلفة. راجع الحالة وابدأ محاولة جديدة.",
   PG_CLAIM_RESOLUTION_NOT_FOUND: "لم يعد سجل التنفيذ متاحًا.",
   PG_CLAIM_WARRANTY_INVALID: "سجل الضمان المرتبط لم يعد صالحًا لهذا الإجراء.",
-  PG_CLAIM_ADMIN_REQUIRED: "هذا الإجراء متاح لحساب Admin نشط فقط.",
-  PG_WARRANTY_ADMIN_REQUIRED: "هذا الإجراء متاح لحساب Admin نشط فقط.",
+  PG_CLAIM_ADMIN_REQUIRED: "هذا الإجراء متاح لحساب إداري نشط فقط.",
+  PG_WARRANTY_ADMIN_REQUIRED: "هذا الإجراء متاح لحساب إداري نشط فقط.",
   PG_CLAIM_FORBIDDEN: "لا تملك صلاحية تنفيذ هذا الإجراء.",
   PG_CLAIM_RESOLUTION_ADMIN_ACTION_FAILED: "تعذر إكمال الإجراء الآن. حدّث الصفحة ثم حاول مرة أخرى.",
   PG_CLAIM_RESOLUTION_WITHDRAWAL_FAILED: "تعذر إغلاق التنفيذ الآن. حدّث الصفحة ثم حاول مرة أخرى.",
@@ -290,7 +290,7 @@ export function AdminClaimResolutionActions({
     return (
       <section className={styles.card}>
         <div className={styles.heading}>
-          <div><span className={styles.eyebrow}>Resolution terminal state</span><h2>لا توجد إجراءات تشغيلية متبقية</h2></div>
+          <div><span className={styles.eyebrow}>حالة نهائية</span><h2>لا توجد إجراءات تشغيلية متبقية</h2></div>
         </div>
         <p className={styles.note}>السجل نهائي. راجع حقائق الإكمال أو الإغلاق وسجل المطالبة بدل محاولة تعديل الحالة.</p>
       </section>
@@ -307,7 +307,7 @@ export function AdminClaimResolutionActions({
             <div><span className={styles.eyebrow}>الخطوة الأولى</span><h2>إسناد المعالجة إلى مركز تنفيذ</h2></div>
           </div>
           {centers.length === 0 ? (
-            <FeedbackBanner tone="warning">لا يوجد مركز نشط لديه مستخدم Center نشط يمكن إسناد المهمة إليه الآن.</FeedbackBanner>
+            <FeedbackBanner tone="warning">لا يوجد مركز نشط لديه مستخدم مركز نشط يمكن إسناد المهمة إليه الآن.</FeedbackBanner>
           ) : (
             <form className={styles.form} onSubmit={submitAssign}>
               <label className={styles.field}>
@@ -398,7 +398,7 @@ export function AdminClaimResolutionActions({
               </div>
               {allocationStatus === "reserved" && allocationId ? (
                 <form className={styles.form} onSubmit={submitRelease}>
-                  <p>اللفة المحجوزة: <strong dir="ltr">{replacementRollSerial ?? "غير متاح"}</strong>. التحرير لا يلغي Opening أو تاريخ الجودة إن وُجدا.</p>
+                  <p>اللفة المحجوزة: <strong dir="ltr">{replacementRollSerial ?? "غير متاح"}</strong>. التحرير لا يلغي حقيقة فتح اللفة أو تاريخ الجودة إن وُجدا.</p>
                   <label className={styles.field}>
                     <span>سبب تحرير اللفة</span>
                     <textarea minLength={5} maxLength={500} required value={releaseReason} disabled={isPending} onChange={(event) => {
@@ -409,7 +409,7 @@ export function AdminClaimResolutionActions({
                   <div className={styles.actions}>
                     <ConfirmSubmitButton
                       title="تحرير لفة الاستبدال؟"
-                      description="سيبقى سجل التخصيص محفوظًا، ولن ينقل النظام اللفة أو يتراجع عن أي Opening/Quality fact."
+                      description="سيبقى سجل التخصيص محفوظًا، ولن ينقل النظام اللفة أو يتراجع عن حقيقة فتح مسجلة أو سجل جودة قائم."
                       confirmLabel="تأكيد التحرير"
                       disabled={isPending || releaseReason.trim().length < 5}
                     >تحرير اللفة</ConfirmSubmitButton>
@@ -418,7 +418,7 @@ export function AdminClaimResolutionActions({
               ) : allocationStatus === "consumed" ? (
                 <FeedbackBanner tone="info">تم استهلاك لفة الاستبدال فعليًا لهذه المعالجة ولا يمكن تحريرها أو استبدالها.</FeedbackBanner>
               ) : rollCandidates.length === 0 ? (
-                <FeedbackBanner tone="info">لا توجد حاليًا لفة مؤهلة غير مفتوحة في عهدة مركز التنفيذ. استخدم مسار Transfer العادي عند الحاجة؛ هذه الصفحة لا تنشئ تحويلًا تلقائيًا.</FeedbackBanner>
+                <FeedbackBanner tone="info">لا توجد حاليًا لفة مؤهلة غير مفتوحة في عهدة مركز التنفيذ. استخدم مسار التحويل المعتاد عند الحاجة؛ هذه الصفحة لا تنشئ تحويلًا تلقائيًا.</FeedbackBanner>
               ) : (
                 <form className={styles.form} onSubmit={submitReserve}>
                   <label className={styles.field}>
@@ -434,7 +434,7 @@ export function AdminClaimResolutionActions({
                       ))}
                     </select>
                   </label>
-                  <p>القائمة استشارية ومحصورة في عهدة مركز التنفيذ؛ الحجز يعيد التحقق من كل الشروط والسياسة تحت locks.</p>
+                  <p>القائمة استشارية ومحصورة في عهدة مركز التنفيذ؛ تعيد السلطة النهائية التحقق من كل الشروط والسياسة قبل تثبيت الحجز.</p>
                   <div className={styles.actions}><button type="submit" className="button button-primary" disabled={isPending}>حجز اللفة</button></div>
                 </form>
               )}
@@ -443,7 +443,7 @@ export function AdminClaimResolutionActions({
 
           <section className={styles.card}>
             <div className={styles.heading}>
-              <div><span className={styles.eyebrow}>PD-079</span><h2>إغلاق التنفيذ بناءً على رغبة العميل</h2></div>
+              <div><span className={styles.eyebrow}>إغلاق بطلب العميل</span><h2>إغلاق التنفيذ بناءً على رغبة العميل</h2></div>
             </div>
             {allocationStatus === "reserved" ? (
               <FeedbackBanner tone="warning">لا يمكن إغلاق التنفيذ الآن. حرّر لفة الاستبدال المحجوزة صراحة أولًا.</FeedbackBanner>
@@ -526,23 +526,23 @@ function AdminRecoveryCompletionPanel({
 
   function recoveryError(code: string) {
     const messages: Record<string, string> = {
-      PG_CLAIM_RESOLUTION_ADMIN_RECOVERY_NOT_ALLOWED: "عاد مسار الإكمال الطبيعي للمركز متاحًا أو لم تعد شروط Admin recovery قائمة. حدّث الصفحة.",
+      PG_CLAIM_RESOLUTION_ADMIN_RECOVERY_NOT_ALLOWED: "عاد مسار الإكمال الطبيعي للمركز متاحًا أو لم تعد شروط الإكمال الاستثنائي بواسطة الإدارة قائمة. حدّث الصفحة.",
       PG_CLAIM_RESOLUTION_EVIDENCE_SIZE_INVALID: "كل صورة يجب أن تكون أكبر من صفر وألا تتجاوز 8 MiB.",
       PG_CLAIM_RESOLUTION_EVIDENCE_TYPE_INVALID: "المسموح صور JPEG أو PNG أو WebP حقيقية فقط.",
       PG_CLAIM_RESOLUTION_EVIDENCE_UPLOAD_FAILED: "تعذر رفع صورة الإكمال.",
       PG_CLAIM_RESOLUTION_EVIDENCE_UPLOAD_AMBIGUOUS: "تعذر تأكيد نتيجة رفع الصورة. أزل أو استبدل هذا العنصر قبل محاولة الإكمال.",
       PG_CLAIM_RESOLUTION_EVIDENCE_REMOVE_FAILED: "تعذر حذف صورة الإكمال المرفوعة.",
       PG_CLAIM_RESOLUTION_COMPLETION_NOTE_INVALID: "ملاحظة الإكمال مطلوبة من 10 إلى 2000 حرف.",
-      PG_CLAIM_RESOLUTION_ADMIN_RECOVERY_REASON_INVALID: "سبب استخدام Admin recovery مطلوب من 5 إلى 500 حرف.",
+      PG_CLAIM_RESOLUTION_ADMIN_RECOVERY_REASON_INVALID: "سبب استخدام الإكمال الاستثنائي بواسطة الإدارة مطلوب من 5 إلى 500 حرف.",
       PG_CLAIM_RESOLUTION_REPLACEMENT_SCAN_INVALID: "أدخل الرقم الفعلي للفة الاستبدال المستخدمة.",
       PG_CLAIM_RESOLUTION_REPLACEMENT_SCAN_MISMATCH: "رقم اللفة المدخل لا يطابق اللفة المحجوزة لهذه المعالجة.",
-      PG_CLAIM_CONSUMPTION_OPENING_INVALID: "لفة الاستبدال لم تسجل Opening صالحًا بعد.",
+      PG_CLAIM_CONSUMPTION_OPENING_INVALID: "لفة الاستبدال لم تسجل فتحًا صالحًا بعد.",
       PG_CLAIM_CONSUMPTION_QUALITY_PENDING: "يوجد بلاغ جودة ما قبل التركيب ما زال قيد المراجعة.",
-      PG_CLAIM_CONSUMPTION_QUALITY_RETURN_REQUIRED: "اللفة محظورة بقرار Return Required ولا يجوز إكمال المعالجة بها.",
+      PG_CLAIM_CONSUMPTION_QUALITY_RETURN_REQUIRED: "اللفة محظورة بقرار جودة بإرجاعها وعدم استخدامها، ولا يجوز إكمال المعالجة بها.",
       PG_CLAIM_RESOLUTION_ACTION_REQUEST_CONFLICT: "رقم محاولة الإكمال استُخدم بمدخلات مختلفة. راجع الحالة وابدأ محاولة جديدة.",
-      PG_CLAIM_RESOLUTION_ADMIN_RECOVERY_FAILED: "تعذر إكمال Admin recovery الآن. حدّث الصفحة ثم أعد المحاولة.",
+      PG_CLAIM_RESOLUTION_ADMIN_RECOVERY_FAILED: "تعذر الإكمال الاستثنائي بواسطة الإدارة الآن. حدّث الصفحة ثم أعد المحاولة.",
     };
-    return messages[code] ?? "تعذر إكمال Admin recovery الآن. حدّث الصفحة ثم أعد المحاولة.";
+    return messages[code] ?? "تعذر الإكمال الاستثنائي بواسطة الإدارة الآن. حدّث الصفحة ثم أعد المحاولة.";
   }
 
   function validateFile(file: File): string | null {
@@ -660,7 +660,7 @@ function AdminRecoveryCompletionPanel({
         continue;
       }
       if (item.status === "error" && item.evidence) {
-        setFeedback({ tone: "warning", text: "أزل أو استبدل أي صورة تعذر تأكيد حالتها قبل إعادة محاولة Admin recovery." });
+        setFeedback({ tone: "warning", text: "أزل أو استبدل أي صورة تعذر تأكيد حالتها قبل إعادة محاولة الإكمال الاستثنائي بواسطة الإدارة." });
         return null;
       }
 
@@ -683,7 +683,7 @@ function AdminRecoveryCompletionPanel({
           ? { ...candidate, status: "retained", evidence: result.evidence, error: undefined }
           : candidate));
       } catch {
-        const message = "انقطع تأكيد رفع الصورة. راجع حالة الملف ثم أعد تأكيد Admin recovery بنفس البيانات.";
+        const message = "انقطع تأكيد رفع الصورة. راجع حالة الملف ثم أعد تأكيد الإكمال الاستثنائي بنفس البيانات.";
         setUploads((current) => current.map((candidate) => candidate.id === item.id
           ? { ...candidate, status: "error", error: message }
           : candidate));
@@ -709,10 +709,10 @@ function AdminRecoveryCompletionPanel({
       return setFeedback({ tone: "error", text: recoveryError("PG_CLAIM_RESOLUTION_ADMIN_RECOVERY_REASON_INVALID") });
     }
     if (uploads.length < 1) {
-      return setFeedback({ tone: "error", text: "أرفق صورة إكمال واحدة على الأقل قبل Admin recovery." });
+      return setFeedback({ tone: "error", text: "أرفق صورة إكمال واحدة على الأقل قبل الإكمال الاستثنائي بواسطة الإدارة." });
     }
     if (hasAmbiguousEvidence) {
-      return setFeedback({ tone: "warning", text: "أزل أو استبدل أي صورة تعذر تأكيد حالتها قبل Admin recovery." });
+      return setFeedback({ tone: "warning", text: "أزل أو استبدل أي صورة تعذر تأكيد حالتها قبل الإكمال الاستثنائي بواسطة الإدارة." });
     }
     if (isReplacement && (!scan || (expectedRollSerial && scan !== expectedRollSerial))) {
       return setFeedback({ tone: "error", text: recoveryError("PG_CLAIM_RESOLUTION_REPLACEMENT_SCAN_MISMATCH") });
@@ -741,7 +741,7 @@ function AdminRecoveryCompletionPanel({
             return;
           }
           resetRequest();
-          setFeedback({ tone: "success", text: "تم تسجيل الإكمال عبر مسار Admin recovery الاستثنائي." });
+          setFeedback({ tone: "success", text: "تم تسجيل الإكمال عبر المسار الاستثنائي بواسطة الإدارة." });
           router.refresh();
         } catch {
           setFeedback({ tone: "error", text: "انقطع تأكيد الإكمال. أعد المحاولة دون تغيير المدخلات؛ سيستخدم النظام رقم المحاولة نفسه والأدلة المرفوعة نفسها بأمان." });
@@ -755,10 +755,10 @@ function AdminRecoveryCompletionPanel({
       <div className={styles.heading}>
         <div>
           <span className={styles.eyebrow}>استثناء مقيد</span>
-          <h2>Admin recovery بعد فقد قدرة المركز</h2>
+          <h2>الإكمال الاستثنائي بواسطة الإدارة بعد فقد قدرة المركز</h2>
         </div>
       </div>
-      <FeedbackBanner tone="warning">استخدم هذا المسار فقط عندما يكون العمل الحقيقي قد تم ويمكن إثباته، بينما المركز المسند أصبح موقوفًا أو بلا مستخدم Center نشط. إذا عاد المسار الطبيعي متاحًا سترفض السلطة النهائية الإجراء.</FeedbackBanner>
+      <FeedbackBanner tone="warning">استخدم هذا المسار فقط عندما يكون العمل الحقيقي قد تم ويمكن إثباته، بينما المركز المسند أصبح موقوفًا أو بلا مستخدم مركز نشط. إذا عاد المسار الطبيعي متاحًا سترفض السلطة النهائية الإجراء.</FeedbackBanner>
       {feedback ? <FeedbackBanner tone={feedback.tone}>{feedback.text}</FeedbackBanner> : null}
 
       <div className={styles.form}>
@@ -785,7 +785,7 @@ function AdminRecoveryCompletionPanel({
 
       <form className={styles.form} onSubmit={submitRecovery}>
         <label className={styles.field}>
-          <span>سبب استخدام Admin recovery</span>
+          <span>سبب استخدام الإكمال الاستثنائي بواسطة الإدارة</span>
           <textarea minLength={5} maxLength={500} required value={recoveryReason} disabled={busy} onChange={(event) => {
             payloadChanged();
             setRecoveryReason(event.target.value);
@@ -804,16 +804,16 @@ function AdminRecoveryCompletionPanel({
             <input dir="ltr" required value={replacementRollSerial} disabled={busy} onChange={(event) => {
               payloadChanged();
               setReplacementRollSerial(event.target.value);
-            }} placeholder={expectedRollSerial ?? "Scan / serial"} />
+            }} placeholder={expectedRollSerial ?? "الرقم التسلسلي"} />
           </label>
         ) : null}
         <div className={styles.actions}>
           <ConfirmSubmitButton
-            title={`تسجيل Admin recovery مع ${uploads.length.toLocaleString("en-US")} صورة؟`}
-            description="بعد هذا التأكيد فقط سيبدأ رفع الصور المختارة، ثم سيُغلق الـResolution والمطالبة ويُسجل actor_kind=admin_recovery إذا نجحت السلطة النهائية."
-            confirmLabel="تأكيد Admin recovery"
+            title={`تسجيل الإكمال الاستثنائي بواسطة الإدارة مع ${uploads.length.toLocaleString("en-US")} صورة؟`}
+            description="بعد هذا التأكيد فقط سيبدأ رفع الصور المختارة، ثم ستُغلق المعالجة والمطالبة وتُسجل جهة الإكمال هي الإدارة عبر المسار الاستثنائي إذا نجحت السلطة النهائية."
+            confirmLabel="تأكيد الإكمال الاستثنائي"
             disabled={busy || hasAmbiguousEvidence || uploads.length < 1 || completionNote.trim().length < 10 || recoveryReason.trim().length < 5}
-          >{isPending ? "جاري الإكمال…" : "إكمال عبر Admin recovery"}</ConfirmSubmitButton>
+          >{isPending ? "جاري الإكمال…" : "إكمال استثنائي بواسطة الإدارة"}</ConfirmSubmitButton>
         </div>
       </form>
     </section>
