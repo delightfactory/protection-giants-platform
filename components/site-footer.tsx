@@ -5,7 +5,7 @@ export function SiteFooter() {
     <footer className="site-footer">
       <div className="container footer-inner">
         <BrandLockup />
-        <span>منصة المنتجات والضمانات ومراكز التركيب المعتمدة</span>
+        <span>منصة المنتجات والضمانات وشبكة مراكز التركيب</span>
       </div>
     </footer>
   );

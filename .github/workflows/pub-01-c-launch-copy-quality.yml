@@ -1,0 +1,53 @@
+name: PUB 01 C Launch Copy Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/(public)/page.tsx"
+      - "app/(public)/products/**"
+      - "app/(public)/centers/**"
+      - "app/login/**"
+      - "components/site-footer.tsx"
+      - "lib/brand-config.ts"
+      - "scripts/verify-pub-01-c-launch-copy.mjs"
+      - ".github/workflows/pub-01-c-launch-copy-quality.yml"
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  launch-copy-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify PUB-01-C launch copy and static content contract
+        run: node scripts/verify-pub-01-c-launch-copy.mjs
+
+      - name: Verify PUB-01-B Warranty recovery regression
+        run: node scripts/verify-pub-01-b-warranty-recovery.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ":(exclude)package-lock.json"

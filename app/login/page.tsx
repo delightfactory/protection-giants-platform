@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <div className="auth-heading">
           <span className="eyebrow">بوابة التشغيل</span>
           <h1 id="login-title">تسجيل الدخول</h1>
-          <p>دخول آمن لمستخدمي الشركة والوكلاء ومراكز التركيب المعتمدة.</p>
+          <p>دخول آمن لمستخدمي الشركة والوكلاء ومشغلي مراكز التركيب.</p>
         </div>
 
         {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}

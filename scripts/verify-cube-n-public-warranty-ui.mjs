@@ -114,9 +114,12 @@ assert(!/href\s*=\s*["']https?:/i.test(page), "Bearer Warranty page must not add
 assert(!/<form\b/i.test(page), "Public Warranty bearer page must not add a manual lookup form.");
 assert(!/<input\b/i.test(page), "Public Warranty bearer page must not add identifier search inputs.");
 
-includes(notFound, "تعذر العثور على ضمان بهذا الرابط", "Unknown/malformed links need one generic Arabic invalid-link state.");
+includes(notFound, "تعذر فتح الضمان من هذا الرابط", "Unknown/malformed links need one generic Arabic invalid-link state.");
 assert(!notFound.includes("publicCode"), "Invalid-link UI must never echo the submitted bearer code.");
-assert(!/<form\b/i.test(notFound), "Invalid-link state must not offer enumerable identifier search.");
+assert(!/<form\b/i.test(notFound) && !/<input\b/i.test(notFound), "Invalid-link state must not offer enumerable identifier search.");
+includes(notFound, 'href="/warranty"', "Invalid Warranty links need a same-origin recovery path back to QR guidance.");
+includes(notFound, 'href="/centers"', "Invalid Warranty links need a same-origin Center-directory support path.");
+assert(!/href\s*=\s*["']https?:/i.test(notFound), "Invalid-link recovery must not leak bearer context to external destinations.");
 
 includes(landing, "امسح رمز QR الخاص بالضمان", "Warranty landing must guide customers to the official QR path.");
 includes(landing, "نسخة السيارة أو شهادة الضمان أو الفاتورة", "Warranty landing must reference the three approved future customer copies.");
