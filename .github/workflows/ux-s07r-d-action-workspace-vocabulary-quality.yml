@@ -1,0 +1,58 @@
+name: UX S07R D Action Workspace Vocabulary Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "components/claims/admin-claim-resolution-actions.tsx"
+      - "scripts/verify-ux-s07r-d-action-workspace-vocabulary.mjs"
+      - "scripts/verify-ux-s07r-c-resolution-detail-vocabulary.mjs"
+      - ".github/workflows/ux-s07r-d-action-workspace-vocabulary-quality.yml"
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  action-workspace-vocabulary-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify UX-S07R-D action workspace vocabulary contract
+        run: node scripts/verify-ux-s07r-d-action-workspace-vocabulary.mjs
+
+      - name: Verify UX-S07R-C Resolution detail regression
+        run: node scripts/verify-ux-s07r-c-resolution-detail-vocabulary.mjs
+
+      - name: Verify UX-S07R-B Claim detail vocabulary regression
+        run: node scripts/verify-ux-s07r-b-claim-detail-vocabulary.mjs
+
+      - name: Verify UX-S07R-A shared vocabulary regression
+        run: node scripts/verify-ux-s07r-a-shared-vocabulary.mjs
+
+      - name: Verify Cube R Admin Resolution UI regression
+        run: node scripts/verify-cube-r-claim-admin-resolution-ui.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
