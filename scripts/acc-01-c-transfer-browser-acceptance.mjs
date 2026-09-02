@@ -1,26 +1,50 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
 
 const baseUrl = process.env.ACC_BASE_URL?.trim() || "http://127.0.0.1:3000";
-const apiUrl = process.env.API_URL;
-const serviceRoleKey = process.env.SERVICE_ROLE_KEY;
 const artifactDir = process.env.ACC_C_ARTIFACT_DIR?.trim() || "artifacts/acc-01-c";
 const password = "Agent-Network-Foundation-2026!";
 
-if (!apiUrl || !serviceRoleKey) throw new Error("API_URL and SERVICE_ROLE_KEY are required.");
 const fixture = JSON.parse(fs.readFileSync(path.join(artifactDir, "fixture.json"), "utf8"));
 
 function assert(condition, message) { if (!condition) throw new Error(message); }
-async function readJson(response) { const text = await response.text(); if (!text) return null; try { return JSON.parse(text); } catch { return text; } }
-async function serviceRest(resource) {
-  const response = await fetch(`${apiUrl}/rest/v1/${resource}`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` } });
-  return { response, body: await readJson(response) };
+function dbContainerName() {
+  const names = execFileSync("docker", ["ps", "--format", "{{.Names}}"], { encoding: "utf8" })
+    .split("\n")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const name = names.find((value) => value.startsWith("supabase_db_"));
+  assert(name, "Supabase database container was not found for ACC-01-C.");
+  return name;
 }
-function one(result, label) {
-  assert(result.response.ok && Array.isArray(result.body) && result.body.length === 1, `${label}: ${result.response.status} ${JSON.stringify(result.body)}`);
-  return result.body[0];
+function querySql(sql) {
+  return execFileSync(
+    "docker",
+    ["exec", "-i", dbContainerName(), "psql", "-At", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "postgres", "-c", sql],
+    { encoding: "utf8" },
+  ).trim();
+}
+function sqlUuid(value) {
+  assert(/^[0-9a-f-]{36}$/i.test(value), `Unsafe UUID fixture value: ${value}`);
+  return `'${value}'::uuid`;
+}
+function sqlText(value) {
+  return `'${String(value).replaceAll("'", "''")}'`;
+}
+function oneSql(sql, label) {
+  const raw = querySql(`select row_to_json(q)::text from (${sql}) q;`);
+  const rows = raw ? raw.split("\n").filter(Boolean) : [];
+  assert(rows.length === 1, `${label}: expected one row, received ${rows.length}.`);
+  return JSON.parse(rows[0]);
+}
+function reservationCount(transferId, rollId) {
+  return Number(querySql(`select count(*) from public.roll_transfer_reservations where transfer_id = ${sqlUuid(transferId)} and roll_id = ${sqlUuid(rollId)};`));
+}
+function custodyParty(rollId) {
+  return querySql(`select custodian_party_id::text from public.roll_custody_current where roll_id = ${sqlUuid(rollId)};`);
 }
 async function login(page, email) {
   await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
@@ -115,15 +139,22 @@ try {
       const transferNumber = (await senderPage.locator("code").filter({ hasText: /^PG-T-/ }).first().innerText()).trim();
       await senderPage.screenshot({ path: path.join(artifactDir, `${label}-send-success.png`), fullPage: true });
 
-      const transfer = one(await serviceRest(`roll_transfers?transfer_number=eq.${encodeURIComponent(transferNumber)}&select=id,status,sender_party_id,recipient_party_id,roll_count`), `${label} transfer after send`);
+      const transfer = oneSql(`
+        select id::text as id, status::text as status, sender_party_id::text as sender_party_id,
+               recipient_party_id::text as recipient_party_id, roll_count
+          from public.roll_transfers
+         where transfer_number = ${sqlText(transferNumber)}
+      `, `${label} transfer after send`);
       assert(transfer.status === "pending", `${label}: transfer not pending after send.`);
       assert(transfer.sender_party_id === fixture.sender.partyId && transfer.recipient_party_id === fixture.recipient.partyId, `${label}: sender/recipient mismatch.`);
-      const pendingItem = one(await serviceRest(`roll_transfer_items?transfer_id=eq.${transfer.id}&roll_id=eq.${scenario.rollId}&select=item_status`), `${label} item after send`);
+      const pendingItem = oneSql(`
+        select item_status::text as item_status
+          from public.roll_transfer_items
+         where transfer_id = ${sqlUuid(transfer.id)} and roll_id = ${sqlUuid(scenario.rollId)}
+      `, `${label} item after send`);
       assert(pendingItem.item_status === "pending", `${label}: item not pending after send.`);
-      const reservation = one(await serviceRest(`roll_transfer_reservations?transfer_id=eq.${transfer.id}&roll_id=eq.${scenario.rollId}&select=roll_id`), `${label} reservation after send`);
-      assert(reservation.roll_id === scenario.rollId, `${label}: reservation missing after send.`);
-      const preReceiptCustody = one(await serviceRest(`roll_custody_current?roll_id=eq.${scenario.rollId}&select=custodian_party_id`), `${label} custody after send`);
-      assert(preReceiptCustody.custodian_party_id === fixture.sender.partyId, `${label}: custody moved before receipt.`);
+      assert(reservationCount(transfer.id, scenario.rollId) === 1, `${label}: reservation missing after send.`);
+      assert(custodyParty(scenario.rollId) === fixture.sender.partyId, `${label}: custody moved before receipt.`);
 
       recipientContext = await browser.newContext({ viewport: { width: scenario.width, height: scenario.height }, locale: "ar-EG" });
       recipientPage = await recipientContext.newPage();
@@ -146,14 +177,20 @@ try {
       await recipientPage.getByRole("heading", { name: "تم استلام التحويل بالكامل", level: 2 }).waitFor({ timeout: 30000 });
       await recipientPage.screenshot({ path: path.join(artifactDir, `${label}-receive-success.png`), fullPage: true });
 
-      const receivedTransfer = one(await serviceRest(`roll_transfers?id=eq.${transfer.id}&select=id,status`), `${label} transfer after receipt`);
+      const receivedTransfer = oneSql(`
+        select id::text as id, status::text as status
+          from public.roll_transfers
+         where id = ${sqlUuid(transfer.id)}
+      `, `${label} transfer after receipt`);
       assert(receivedTransfer.status === "received", `${label}: transfer not received after full receipt.`);
-      const receivedItem = one(await serviceRest(`roll_transfer_items?transfer_id=eq.${transfer.id}&roll_id=eq.${scenario.rollId}&select=item_status`), `${label} item after receipt`);
+      const receivedItem = oneSql(`
+        select item_status::text as item_status
+          from public.roll_transfer_items
+         where transfer_id = ${sqlUuid(transfer.id)} and roll_id = ${sqlUuid(scenario.rollId)}
+      `, `${label} item after receipt`);
       assert(receivedItem.item_status === "received", `${label}: item not received after receipt.`);
-      const reservations = await serviceRest(`roll_transfer_reservations?transfer_id=eq.${transfer.id}&roll_id=eq.${scenario.rollId}&select=roll_id`);
-      assert(reservations.response.ok && Array.isArray(reservations.body) && reservations.body.length === 0, `${label}: reservation remained after receipt.`);
-      const postReceiptCustody = one(await serviceRest(`roll_custody_current?roll_id=eq.${scenario.rollId}&select=custodian_party_id`), `${label} custody after receipt`);
-      assert(postReceiptCustody.custodian_party_id === fixture.recipient.partyId, `${label}: custody did not move to recipient.`);
+      assert(reservationCount(transfer.id, scenario.rollId) === 0, `${label}: reservation remained after receipt.`);
+      assert(custodyParty(scenario.rollId) === fixture.recipient.partyId, `${label}: custody did not move to recipient.`);
       assert(runtimeErrors.length === 0, `${label}: runtime errors ${JSON.stringify(runtimeErrors)}`);
       assert(failedResponses.length === 0, `${label}: unexpected HTTP failures ${JSON.stringify(failedResponses)}`);
 
