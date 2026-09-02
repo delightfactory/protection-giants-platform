@@ -519,7 +519,7 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
 
   return (
     <div className={styles.flow}>
-      <div className={styles.progress} aria-label="تقدم إرسال التحويل">
+      <div className={styles.progress} role="group" aria-label="تقدم إرسال التحويل">
         <span data-current={stage === "recipient" ? "true" : "false"} data-done={stage !== "recipient" ? "true" : "false"}><span>المستلم</span></span>
         <i />
         <span data-current={stage === "select" ? "true" : "false"} data-done={stage === "review" ? "true" : "false"}><span>اللفات</span></span>
