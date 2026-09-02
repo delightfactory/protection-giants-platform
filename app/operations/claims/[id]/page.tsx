@@ -6,6 +6,13 @@ import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import {
+  actorKindLabel,
+  claimStatusLabel,
+  inspectionStatusLabel,
+  resolutionStatusLabel,
+  warrantyRecordStateLabel,
+} from "@/lib/claims/ui-labels";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -19,13 +26,13 @@ type ClaimDetailPageProps = {
 };
 
 function claimStatus(status: string) {
-  if (status === "submitted") return <StatusBadge tone="accent">جديدة</StatusBadge>;
-  if (status === "under_review") return <StatusBadge tone="warning">قيد المراجعة</StatusBadge>;
-  if (status === "awaiting_inspection") return <StatusBadge tone="warning">مطلوب فحص</StatusBadge>;
-  if (status === "approved") return <StatusBadge tone="success">مقبولة</StatusBadge>;
-  if (status === "rejected") return <StatusBadge tone="danger">مرفوضة</StatusBadge>;
-  if (status === "cancelled") return <StatusBadge tone="neutral">ملغاة</StatusBadge>;
-  return <StatusBadge>غير معروفة</StatusBadge>;
+  if (status === "submitted") return <StatusBadge tone="accent">{claimStatusLabel(status)}</StatusBadge>;
+  if (status === "under_review") return <StatusBadge tone="warning">{claimStatusLabel(status)}</StatusBadge>;
+  if (status === "awaiting_inspection") return <StatusBadge tone="warning">{claimStatusLabel(status)}</StatusBadge>;
+  if (status === "approved") return <StatusBadge tone="success">{claimStatusLabel(status)}</StatusBadge>;
+  if (status === "rejected") return <StatusBadge tone="danger">{claimStatusLabel(status)}</StatusBadge>;
+  if (status === "cancelled") return <StatusBadge tone="neutral">{claimStatusLabel(status)}</StatusBadge>;
+  return <StatusBadge>{claimStatusLabel(status)}</StatusBadge>;
 }
 
 function categoryLabel(category: string) {
@@ -39,7 +46,7 @@ function categoryLabel(category: string) {
     bubbling: "فقاعات",
     other: "أخرى",
   };
-  return labels[category] ?? category;
+  return labels[category] ?? "غير مصنف";
 }
 
 function eventLabel(kind: string) {
@@ -55,13 +62,21 @@ function eventLabel(kind: string) {
     approval_cancelled_before_execution: "إلغاء قبول قبل التنفيذ",
     decision_reopened_for_correction: "إعادة فتح القرار للتصحيح",
   };
-  return labels[kind] ?? kind;
+  return labels[kind] ?? "حدث مسجل";
 }
 
 function inspectionStatus(status: string | null) {
-  if (status === "requested") return <StatusBadge tone="warning">بانتظار الفحص</StatusBadge>;
-  if (status === "submitted") return <StatusBadge tone="success">تم الفحص</StatusBadge>;
-  return <StatusBadge tone="neutral">لا يوجد فحص رسمي</StatusBadge>;
+  if (status === "requested") return <StatusBadge tone="warning">{inspectionStatusLabel(status)}</StatusBadge>;
+  if (status === "submitted") return <StatusBadge tone="success">{inspectionStatusLabel(status)}</StatusBadge>;
+  return <StatusBadge tone="neutral">{inspectionStatusLabel(status)}</StatusBadge>;
+}
+
+function resolutionStatus(status: string | null) {
+  if (status === "authorized") return <StatusBadge tone="accent">{resolutionStatusLabel(status)}</StatusBadge>;
+  if (status === "assigned") return <StatusBadge tone="warning">{resolutionStatusLabel(status)}</StatusBadge>;
+  if (status === "completed") return <StatusBadge tone="success">{resolutionStatusLabel(status)}</StatusBadge>;
+  if (status === "cancelled") return <StatusBadge tone="neutral">{resolutionStatusLabel(status)}</StatusBadge>;
+  return <StatusBadge>{resolutionStatusLabel(status)}</StatusBadge>;
 }
 
 function formatBytes(size: number) {
@@ -145,7 +160,7 @@ export default async function ClaimDetailPage({ params }: ClaimDetailPageProps) 
 
       <div className={styles.stack}>
         {claim.claim_status === "approved" ? (
-          <FeedbackBanner tone="success">تم قبول المطالبة، وما زالت مفتوحة حتى تنفيذ المعالجة في Cube R.</FeedbackBanner>
+          <FeedbackBanner tone="success">تم قبول المطالبة، وتظل مفتوحة حتى اكتمال المعالجة المسندة وتنفيذها.</FeedbackBanner>
         ) : claim.closed_at ? (
           <FeedbackBanner tone="info">هذه المطالبة مغلقة حاليًا، ويظل سجلها ومرفقاتها وأحداثها محفوظة للتدقيق.</FeedbackBanner>
         ) : null}
@@ -197,15 +212,15 @@ export default async function ClaimDetailPage({ params }: ClaimDetailPageProps) 
         <section className={styles.card} aria-label="سياق الضمان المثبت">
           <div className={styles.header}>
             <div>
-              <span className={styles.eyebrow}>Snapshot وقت التفعيل</span>
+              <span className={styles.eyebrow}>بيانات مثبتة وقت التفعيل</span>
               <h2>الضمان والمنتج</h2>
             </div>
           </div>
           <dl className={styles.grid}>
             <div><dt>رقم الضمان</dt><dd><Link href={`/operations/warranties/${claim.warranty_id}`} dir="ltr">{claim.warranty_number}</Link></dd></div>
-            <div><dt>حالة سجل الضمان</dt><dd>{claim.warranty_record_state}</dd></div>
+            <div><dt>حالة سجل الضمان</dt><dd>{warrantyRecordStateLabel(claim.warranty_record_state)}</dd></div>
             <div><dt>المنتج</dt><dd>{claim.product_name}</dd></div>
-            <div><dt>SKU</dt><dd dir="ltr">{claim.product_code}</dd></div>
+            <div><dt>كود المنتج</dt><dd dir="ltr">{claim.product_code}</dd></div>
             <div><dt>الإصدار</dt><dd>{claim.product_version ?? "—"}</dd></div>
             <div><dt>مدة الضمان</dt><dd>{claim.warranty_months} شهر</dd></div>
             <div><dt>مركز التفعيل</dt><dd>{claim.activating_center_name}</dd></div>
@@ -256,7 +271,7 @@ export default async function ClaimDetailPage({ params }: ClaimDetailPageProps) 
                 <div><dt>مركز الفحص</dt><dd>{claim.inspection_center_name ?? "—"}</dd></div>
                 <div><dt>طلب الفحص</dt><dd>{claim.inspection_requested_at ? <LocalDateTime value={claim.inspection_requested_at} /> : "—"}</dd></div>
                 <div><dt>تقديم الفحص</dt><dd>{claim.inspection_submitted_at ? <LocalDateTime value={claim.inspection_submitted_at} /> : "—"}</dd></div>
-                <div><dt>حالة الفحص</dt><dd>{claim.inspection_status ?? "—"}</dd></div>
+                <div><dt>حالة الفحص</dt><dd>{inspectionStatusLabel(claim.inspection_status)}</dd></div>
               </dl>
               {claim.technical_observation || claim.suspected_cause ? (
                 <div className={styles.prose}>
@@ -287,13 +302,13 @@ export default async function ClaimDetailPage({ params }: ClaimDetailPageProps) 
         </section>
 
         <section className={styles.card} aria-label="تسليم القرار إلى المعالجة">
-          <div className={styles.header}><h2>Resolution</h2></div>
+          <div className={styles.header}><h2>التنفيذ المرتبط</h2></div>
           {claim.resolution_id ? (
             <dl className={styles.grid}>
-              <div><dt>معرف Resolution</dt><dd dir="ltr">{claim.resolution_id}</dd></div>
-              <div><dt>الحالة</dt><dd>{claim.resolution_status}</dd></div>
+              <div><dt>معرف التنفيذ</dt><dd dir="ltr">{claim.resolution_id}</dd></div>
+              <div><dt>الحالة</dt><dd>{resolutionStatus(claim.resolution_status)}</dd></div>
             </dl>
-          ) : <p className={styles.muted}>لم يتم إنشاء Resolution لهذه المطالبة.</p>}
+          ) : <p className={styles.muted}>لم يتم إنشاء مهمة تنفيذ لهذه المطالبة.</p>}
         </section>
 
         <section className={styles.card} aria-label="سجل أحداث المطالبة">
@@ -306,7 +321,7 @@ export default async function ClaimDetailPage({ params }: ClaimDetailPageProps) 
                     <strong>{eventLabel(event.event_kind)}</strong>
                     <LocalDateTime value={event.created_at} />
                   </div>
-                  <span className={styles.muted}>الجهة: {event.actor_kind}</span>
+                  <span className={styles.muted}>الجهة: {actorKindLabel(event.actor_kind)}</span>
                   {event.reason ? <p>{event.reason}</p> : null}
                 </li>
               ))}
