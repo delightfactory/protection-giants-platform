@@ -6,6 +6,7 @@ export default function PublicRollNotFound() {
     <section className="container section" aria-labelledby="public-roll-recovery-title">
       <EmptyState
         eyebrow="رمز QR"
+        headingLevel={1}
         title={<span id="public-roll-recovery-title">تعذر فتح هذا الرمز</span>}
         description={(
           <>
