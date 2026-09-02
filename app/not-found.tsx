@@ -11,6 +11,7 @@ export default function RootNotFound() {
         <section className="container section" aria-labelledby="root-not-found-title">
           <EmptyState
             eyebrow="Protection Giants"
+            headingLevel={1}
             title={<span id="root-not-found-title">الصفحة غير متاحة</span>}
             description="قد يكون الرابط غير مكتمل أو لم يعد صالحًا. يمكنك العودة إلى الصفحة الرئيسية، أو استخدام المسارات العامة المعتمدة للوصول إلى المنتجات والضمان."
             action={(
