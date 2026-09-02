@@ -32,6 +32,25 @@ async function login(page, email) {
   ]);
   await page.getByRole("heading", { level: 1 }).waitFor({ state: "visible" });
 }
+function attachDiagnostics(page, prefix, runtimeErrors, failedResponses) {
+  page.on("pageerror", (error) => runtimeErrors.push(`${prefix} pageerror: ${error.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error" && !/^Failed to load resource:/.test(message.text())) {
+      runtimeErrors.push(`${prefix} console.error: ${message.text()}`);
+    }
+  });
+  page.on("response", (response) => {
+    if (response.status() >= 400) {
+      failedResponses.push({ actor: prefix, status: response.status(), method: response.request().method(), url: response.url() });
+    }
+  });
+}
+async function failureSnapshot(page, filePrefix) {
+  const diagnostic = { url: page.url(), bodyExcerpt: "" };
+  try { diagnostic.bodyExcerpt = (await page.locator("body").innerText()).slice(0, 1200); } catch {}
+  try { await page.screenshot({ path: path.join(artifactDir, `${filePrefix}-failure.png`), fullPage: true }); } catch {}
+  return diagnostic;
+}
 async function audit(page, label, mobile) {
   const geometry = await page.evaluate((enforce) => {
     const root = document.documentElement;
@@ -59,11 +78,13 @@ try {
   for (const scenario of fixture.scenarios) {
     const mobile = scenario.width < 600;
     const label = scenario.name;
+    const runtimeErrors = [];
+    const failedResponses = [];
     const senderContext = await browser.newContext({ viewport: { width: scenario.width, height: scenario.height }, locale: "ar-EG" });
     const senderPage = await senderContext.newPage();
-    const runtimeErrors = [];
-    senderPage.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
-    senderPage.on("console", (message) => { if (message.type() === "error" && !/^Failed to load resource:/.test(message.text())) runtimeErrors.push(`console.error: ${message.text()}`); });
+    attachDiagnostics(senderPage, "sender", runtimeErrors, failedResponses);
+    let recipientContext = null;
+    let recipientPage = null;
 
     try {
       await login(senderPage, fixture.sender.email);
@@ -95,10 +116,9 @@ try {
       const preReceiptCustody = one(await serviceRest(`roll_custody_current?roll_id=eq.${scenario.rollId}&select=custodian_party_id`), `${label} custody after send`);
       assert(preReceiptCustody.custodian_party_id === fixture.sender.partyId, `${label}: custody moved before receipt.`);
 
-      const recipientContext = await browser.newContext({ viewport: { width: scenario.width, height: scenario.height }, locale: "ar-EG" });
-      const recipientPage = await recipientContext.newPage();
-      recipientPage.on("pageerror", (error) => runtimeErrors.push(`recipient pageerror: ${error.message}`));
-      recipientPage.on("console", (message) => { if (message.type() === "error" && !/^Failed to load resource:/.test(message.text())) runtimeErrors.push(`recipient console.error: ${message.text()}`); });
+      recipientContext = await browser.newContext({ viewport: { width: scenario.width, height: scenario.height }, locale: "ar-EG" });
+      recipientPage = await recipientContext.newPage();
+      attachDiagnostics(recipientPage, "recipient", runtimeErrors, failedResponses);
       await login(recipientPage, fixture.recipient.email);
       await recipientPage.goto(`${baseUrl}/operations/transfers`, { waitUntil: "networkidle" });
       assert((await recipientPage.locator("body").innerText()).includes(transferNumber), `${label}: incoming transfer is not visible to recipient.`);
@@ -126,13 +146,23 @@ try {
       const postReceiptCustody = one(await serviceRest(`roll_custody_current?roll_id=eq.${scenario.rollId}&select=custodian_party_id`), `${label} custody after receipt`);
       assert(postReceiptCustody.custodian_party_id === fixture.recipient.partyId, `${label}: custody did not move to recipient.`);
       assert(runtimeErrors.length === 0, `${label}: runtime errors ${JSON.stringify(runtimeErrors)}`);
+      assert(failedResponses.length === 0, `${label}: unexpected HTTP failures ${JSON.stringify(failedResponses)}`);
 
-      results.push({ name: label, ok: true, transferNumber, transferId: transfer.id, sendAudit, receiveAudit });
-      await recipientContext.close();
+      results.push({ name: label, ok: true, transferNumber, transferId: transfer.id, sendAudit, receiveAudit, failedResponses });
     } catch (error) {
-      failures.push({ name: label, error: error instanceof Error ? error.message : String(error) });
+      const senderDiagnostic = await failureSnapshot(senderPage, `${label}-sender`);
+      const recipientDiagnostic = recipientPage ? await failureSnapshot(recipientPage, `${label}-recipient`) : null;
+      failures.push({
+        name: label,
+        error: error instanceof Error ? error.message : String(error),
+        senderDiagnostic,
+        recipientDiagnostic,
+        runtimeErrors,
+        failedResponses,
+      });
       results.push({ name: label, ok: false });
     } finally {
+      if (recipientContext) await recipientContext.close();
       await senderContext.close();
     }
   }
