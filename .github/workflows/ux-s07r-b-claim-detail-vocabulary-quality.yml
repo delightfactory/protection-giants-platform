@@ -1,0 +1,52 @@
+name: UX S07R B Claim Detail Vocabulary Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "lib/claims/ui-labels.ts"
+      - "app/operations/claims/[id]/page.tsx"
+      - "scripts/verify-ux-s07r-b-claim-detail-vocabulary.mjs"
+      - ".github/workflows/ux-s07r-b-claim-detail-vocabulary-quality.yml"
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  claim-detail-vocabulary-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify UX-S07R-B Claim detail vocabulary contract
+        run: node scripts/verify-ux-s07r-b-claim-detail-vocabulary.mjs
+
+      - name: Verify Cube Q Admin decision UI regression
+        run: node scripts/verify-cube-q-claim-admin-decision-ui.mjs
+
+      - name: Verify Cube R Admin Resolution UI regression
+        run: node scripts/verify-cube-r-claim-admin-resolution-ui.mjs
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify build does not rewrite tracked configuration
+        run: git diff --exit-code -- . ':!next-env.d.ts'
