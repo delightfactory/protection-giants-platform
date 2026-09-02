@@ -64,6 +64,10 @@
   padding-inline: .75rem;
 }
 
+.reportForm select {
+  min-height: 48px;
+}
+
 .identity {
   display: grid;
   gap: .35rem;
