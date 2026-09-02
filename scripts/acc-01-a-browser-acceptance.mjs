@@ -23,7 +23,7 @@ const routes = [
     name: "invalid-roll-qr",
     pathname: "/r/PG-R-20991231-99999999-99-99999",
     status: 404,
-    text: "الصفحة غير متاحة",
+    text: "تعذر فتح هذا الرمز",
   },
 ];
 
@@ -33,6 +33,10 @@ function assert(condition, message) {
 
 function safeName(value) {
   return value.replace(/[^a-z0-9-]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+}
+
+function isBrowserResourceStatusMessage(text) {
+  return /^Failed to load resource: the server responded with a status of \d{3}/.test(text);
 }
 
 async function pageGeometry(page, enforceTouchTargets) {
@@ -110,10 +114,28 @@ try {
       });
       const page = await context.newPage();
       const runtimeErrors = [];
+      const badResponses = [];
+      const targetUrl = new URL(route.pathname, baseUrl).toString();
 
       page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
       page.on("console", (message) => {
-        if (message.type() === "error") runtimeErrors.push(`console.error: ${message.text()}`);
+        if (message.type() !== "error") return;
+        const text = message.text();
+        if (!isBrowserResourceStatusMessage(text)) runtimeErrors.push(`console.error: ${text}`);
+      });
+      page.on("response", (response) => {
+        const status = response.status();
+        if (status < 400) return;
+
+        const request = response.request();
+        const isExpectedDocumentResponse = request.resourceType() === "document"
+          && response.url() === targetUrl
+          && status === route.status
+          && route.status >= 400;
+
+        if (!isExpectedDocumentResponse) {
+          badResponses.push(`${status} ${request.resourceType()} ${response.url()}`);
+        }
       });
 
       const label = `${viewport.name}/${route.name}`;
@@ -126,7 +148,7 @@ try {
       };
 
       try {
-        const response = await page.goto(`${baseUrl}${route.pathname}`, { waitUntil: "networkidle" });
+        const response = await page.goto(targetUrl, { waitUntil: "networkidle" });
         assert(response, `${label}: navigation returned no response.`);
         record.status = response.status();
         assert(response.status() === route.status,
@@ -170,14 +192,19 @@ try {
         const hasVisibleFocus = focus.outlineStyle !== "none" || focus.boxShadow !== "none";
         assert(hasVisibleFocus, `${label}: keyboard focus has no visible outline/ring.`);
 
+        record.runtimeErrors = runtimeErrors;
+        record.badResponses = badResponses;
         assert(runtimeErrors.length === 0,
           `${label}: browser runtime errors: ${runtimeErrors.join(" | ")}`);
+        assert(badResponses.length === 0,
+          `${label}: unexpected failed resource/API responses: ${badResponses.join(" | ")}`);
 
         record.ok = true;
       } catch (error) {
         record.ok = false;
         record.error = error instanceof Error ? error.message : String(error);
         record.runtimeErrors = runtimeErrors;
+        record.badResponses = badResponses;
         failures.push(`${label}: ${record.error}`);
       } finally {
         await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {});
@@ -200,4 +227,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`ACC-01-A browser acceptance PASS: ${results.length} rendered route/viewport cases completed with no overflow, touch-target, runtime, axe, or keyboard-focus failures.`);
+console.log(`ACC-01-A browser acceptance PASS: ${results.length} rendered route/viewport cases completed with no overflow, touch-target, runtime, axe, keyboard-focus, or unexpected resource/API failures.`);
