@@ -73,7 +73,7 @@
   .operations-mobile-user > span {
     display: block;
     overflow: hidden;
-    font-size: 7.5px;
+    font-size: 9px;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
