@@ -1,0 +1,110 @@
+name: ACC 01 A Browser Acceptance Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "scripts/acc-01-a-browser-acceptance.mjs"
+      - ".github/workflows/acc-01-a-browser-acceptance-quality.yml"
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  ACC_BASE_URL: "http://127.0.0.1:3000"
+  ACC_ARTIFACT_DIR: "artifacts/acc-01-a"
+
+jobs:
+  browser-acceptance-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install bounded browser acceptance tooling
+        run: npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.62.1 @axe-core/playwright@4.13.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Export local application environment
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Production build
+        run: npm run build
+
+      - name: Start production server
+        run: |
+          npm run start -- -H 127.0.0.1 -p 3000 > /tmp/acc-01-next.log 2>&1 &
+          echo $! > /tmp/acc-01-next.pid
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:3000/login > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/acc-01-next.log
+          exit 1
+
+      - name: Run rendered browser/mobile/accessibility acceptance
+        run: node scripts/acc-01-a-browser-acceptance.mjs
+
+      - name: Upload rendered acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acc-01-a-rendered-evidence-${{ github.sha }}
+          path: artifacts/acc-01-a
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Verify tracked configuration remains clean
+        if: always()
+        run: git diff --exit-code -- . ':!next-env.d.ts'
+
+      - name: Stop production server
+        if: always()
+        run: |
+          if [ -f /tmp/acc-01-next.pid ]; then
+            kill "$(cat /tmp/acc-01-next.pid)" 2>/dev/null || true
+          fi
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: |
+          if command -v supabase >/dev/null 2>&1; then
+            supabase stop --no-backup
+          fi
