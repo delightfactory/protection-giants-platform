@@ -70,6 +70,15 @@ function isBrowserResourceStatusMessage(text) {
   return /^Failed to load resource: the server responded with a status of \d{3}/.test(text);
 }
 
+async function firstVisible(locator, label) {
+  const count = await locator.count();
+  for (let index = 0; index < count; index += 1) {
+    const candidate = locator.nth(index);
+    if (await candidate.isVisible()) return candidate;
+  }
+  throw new Error(`${label}: no visible matching element was found.`);
+}
+
 async function visibleNavLabels(page) {
   return page.locator('nav[aria-label="تنقل بوابة التشغيل"] a').evaluateAll((links) => links
     .filter((link) => {
@@ -213,10 +222,15 @@ try {
         await page.screenshot({ path: screenshotPath, fullPage: true });
 
         if (viewport.mobile) {
-          const moreLink = page.locator('nav[aria-label="تنقل بوابة التشغيل"] a[href="/operations/more"]').filter({ visible: true });
+          const moreLink = await firstVisible(
+            page.locator('nav[aria-label="تنقل بوابة التشغيل"] a[href="/operations/more"]'),
+            `${label}/more-link`,
+          );
           await moreLink.click();
           await page.waitForURL((url) => url.pathname === "/operations/more");
-          await page.getByText(actor.moreRequired, { exact: true }).first().waitFor({ state: "visible" });
+          const moreText = await page.locator("body").innerText();
+          assert(moreText.includes(actor.moreRequired),
+            `${label}: More does not expose required destination ${actor.moreRequired}.`);
           record.moreRequired = actor.moreRequired;
           if (viewport.name === "390") {
             await page.screenshot({
@@ -268,7 +282,7 @@ try {
   const deniedPage = await deniedContext.newPage();
   try {
     await login(deniedPage, "acc-role-denied@example.test", "/access-denied");
-    await deniedPage.getByText("الوصول غير متاح", { exact: true }).waitFor({ state: "visible" });
+    await pageTextVisible(deniedPage, "الوصول غير متاح", "390/authenticated-denied");
     results.push({ viewport: "390", role: "authenticated-denied", path: "/access-denied", ok: true });
     await deniedPage.screenshot({ path: path.join(artifactDir, "390-authenticated-access-denied.png"), fullPage: true });
   } catch (error) {
@@ -293,3 +307,8 @@ if (failures.length) {
 }
 
 console.log(`ACC-01-B role browser acceptance PASS: ${actors.length * viewports.length} role/viewport walkthroughs plus authenticated access-denied were rendered successfully.`);
+
+async function pageTextVisible(page, text, label) {
+  const candidate = await firstVisible(page.getByText(text, { exact: true }), label);
+  await candidate.waitFor({ state: "visible" });
+}
