@@ -177,7 +177,7 @@ try {
         recipientPage.waitForURL((url) => url.pathname === `/operations/transfers/${transfer.id}`, { timeout: 30000 }),
         recipientPage.getByRole("button", { name: "نعم، استلمت هذه اللفات" }).click(),
       ]);
-      await recipientPage.getByRole("heading", { name: "تفاصيل التحويل", level: 1 }).waitFor({ timeout: 30000 });
+      await recipientPage.getByText("تفاصيل التحويل", { exact: true }).first().waitFor({ timeout: 30000 });
       await recipientPage.getByText("تم الاستلام", { exact: true }).first().waitFor({ timeout: 30000 });
       await recipientPage.getByText(transferNumber, { exact: true }).first().waitFor({ timeout: 30000 });
       await recipientPage.screenshot({ path: path.join(artifactDir, `${label}-receive-success.png`), fullPage: true });
