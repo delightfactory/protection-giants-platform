@@ -68,8 +68,12 @@ const companyParty = one(
   await rest("operational_parties?party_type=eq.company&select=id,transfer_code", adminToken),
   "Read Company party",
 );
+const agent = one(
+  await rest("country_agents?code=eq.NET-A-EG&select=id,code", adminToken),
+  "Read exact Agent A",
+);
 const agentParty = one(
-  await rest("operational_parties?party_type=eq.agent&country_agent_id=not.is.null&select=id,transfer_code,country_agent_id&order=created_at.asc&limit=1", adminToken),
+  await rest(`operational_parties?party_type=eq.agent&country_agent_id=eq.${agent.id}&select=id,transfer_code,country_agent_id`, adminToken),
   "Read Agent A party",
 );
 
