@@ -6,6 +6,7 @@ import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { RecordItem, RecordList } from "@/components/ui/record-list";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { resolutionStatusLabel } from "@/lib/claims/ui-labels";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -33,11 +34,11 @@ function queueHref(scope: string, status: string, page: number) {
 }
 
 function resolutionStatus(status: string) {
-  if (status === "authorized") return <StatusBadge tone="accent">بانتظار الإسناد</StatusBadge>;
-  if (status === "assigned") return <StatusBadge tone="warning">مسند للتنفيذ</StatusBadge>;
-  if (status === "completed") return <StatusBadge tone="success">مكتمل</StatusBadge>;
-  if (status === "cancelled") return <StatusBadge tone="neutral">أُغلق دون تنفيذ</StatusBadge>;
-  return <StatusBadge>غير معروفة</StatusBadge>;
+  if (status === "authorized") return <StatusBadge tone="accent">{resolutionStatusLabel(status)}</StatusBadge>;
+  if (status === "assigned") return <StatusBadge tone="warning">{resolutionStatusLabel(status)}</StatusBadge>;
+  if (status === "completed") return <StatusBadge tone="success">{resolutionStatusLabel(status)}</StatusBadge>;
+  if (status === "cancelled") return <StatusBadge tone="neutral">{resolutionStatusLabel(status)}</StatusBadge>;
+  return <StatusBadge>{resolutionStatusLabel(status)}</StatusBadge>;
 }
 
 function remedyLabel(remedy: string | null) {
@@ -82,7 +83,7 @@ export default async function ClaimResolutionQueuePage({ searchParams }: Resolut
       <PageHeader
         eyebrow="مطالبات الضمان · التنفيذ"
         title="تنفيذ المطالبات المقبولة"
-        description="قائمة الـResolution المعتمدة بعد قرار المطالبة. هنا يتم تحديد أسلوب المعالجة، إسناد مركز التنفيذ، وإدارة مادة الاستبدال عند الحاجة دون تغيير قرار المطالبة نفسه."
+        description="قائمة المعالجات المعتمدة بعد قرار المطالبة. هنا يتم تحديد أسلوب المعالجة، إسناد مركز التنفيذ، وإدارة مادة الاستبدال عند الحاجة دون تغيير قرار المطالبة نفسه."
         meta={`صفحة ${page.toLocaleString("en-US")} · ${resolutions.length.toLocaleString("en-US")} سجل${hasNext ? " · يوجد المزيد" : ""}`}
         actions={<Link href="/operations/claims" className="button button-ghost">مراجعة المطالبات</Link>}
       />
@@ -101,9 +102,9 @@ export default async function ClaimResolutionQueuePage({ searchParams }: Resolut
               <select name="status" defaultValue={status}>
                 <option value="">كل الحالات</option>
                 <option value="authorized">بانتظار الإسناد</option>
-                <option value="assigned">مسند للتنفيذ</option>
-                <option value="completed">مكتمل</option>
-                <option value="cancelled">أُغلق دون تنفيذ</option>
+                <option value="assigned">مسندة للتنفيذ</option>
+                <option value="completed">مكتملة</option>
+                <option value="cancelled">أُغلقت دون تنفيذ</option>
               </select>
             </FilterField>
             <FilterActions>
@@ -122,7 +123,7 @@ export default async function ClaimResolutionQueuePage({ searchParams }: Resolut
             ? "ارجع للصفحة السابقة أو غيّر معايير التصفية."
             : filtersActive
               ? "غيّر النطاق أو الحالة لعرض سجلات أخرى."
-              : "ستظهر هنا الـResolution التي ينشئها قرار قبول المطالبة في Cube Q."}
+              : "ستظهر هنا المعالجات التي تنشأ بعد قبول المطالبة وتصبح جاهزة لخطوات الإسناد والتنفيذ."}
           action={hasPrevious
             ? <Link href={queueHref(scope, status, page - 1)} className="button button-ghost">الصفحة السابقة</Link>
             : filtersActive
