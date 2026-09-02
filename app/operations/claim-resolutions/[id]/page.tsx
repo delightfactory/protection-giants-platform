@@ -5,6 +5,14 @@ import { LocalDateTime } from "@/components/ui/local-date-time";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import {
+  actorKindLabel,
+  allocationStatusLabel,
+  centerOperationalStatusLabel,
+  claimStatusLabel,
+  qualityStateLabel,
+  resolutionStatusLabel,
+} from "@/lib/claims/ui-labels";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import styles from "./resolution-detail.module.css";
@@ -16,32 +24,17 @@ type ResolutionDetailPageProps = {
 };
 
 function statusBadge(status: string) {
-  if (status === "authorized") return <StatusBadge tone="accent">بانتظار الإسناد</StatusBadge>;
-  if (status === "assigned") return <StatusBadge tone="warning">مسند للتنفيذ</StatusBadge>;
-  if (status === "completed") return <StatusBadge tone="success">مكتمل</StatusBadge>;
-  if (status === "cancelled") return <StatusBadge tone="neutral">أُغلق دون تنفيذ</StatusBadge>;
-  return <StatusBadge>غير معروفة</StatusBadge>;
+  if (status === "authorized") return <StatusBadge tone="accent">{resolutionStatusLabel(status)}</StatusBadge>;
+  if (status === "assigned") return <StatusBadge tone="warning">{resolutionStatusLabel(status)}</StatusBadge>;
+  if (status === "completed") return <StatusBadge tone="success">{resolutionStatusLabel(status)}</StatusBadge>;
+  if (status === "cancelled") return <StatusBadge tone="neutral">{resolutionStatusLabel(status)}</StatusBadge>;
+  return <StatusBadge>{resolutionStatusLabel(status)}</StatusBadge>;
 }
 
 function remedyLabel(remedy: string | null) {
   if (remedy === "service_reinstall") return "إعادة تركيب / خدمة";
   if (remedy === "replacement_roll_reinstall") return "استبدال لفة وإعادة تركيب";
   return "لم يُحدد بعد";
-}
-
-function allocationLabel(status: string | null) {
-  if (status === "reserved") return "محجوزة";
-  if (status === "released") return "محررة";
-  if (status === "consumed") return "مستهلكة";
-  return "لا يوجد تخصيص";
-}
-
-function qualityLabel(state: string | null) {
-  if (state === "pending") return "بلاغ جودة قيد المراجعة";
-  if (state === "return_required") return "Return Required — غير صالحة للاستخدام";
-  if (state === "clear_history") return "تاريخ جودة مغلق يسمح بالمتابعة حسب باقي الشروط";
-  if (state === "none") return "لا يوجد بلاغ جودة";
-  return "غير منطبق";
 }
 
 function dateValue(value: string | null) {
@@ -171,7 +164,7 @@ export default async function ResolutionDetailPage({ params }: ResolutionDetailP
     currentStepActionPrimary = true;
   } else if (recoveryAllowed) {
     currentStepTitle = "تدخل إدارة مطلوب لاستكمال التنفيذ";
-    currentStepDescription = "المركز المسند موقوف أو لا يملك مستخدم Center نشطًا. راجع مسار الإكمال الاستثنائي فقط بعد التحقق من فقد قدرة المركز على الإكمال الطبيعي.";
+    currentStepDescription = "المركز المسند موقوف أو لا يملك مستخدم مركز نشطًا. راجع مسار الإكمال الاستثنائي فقط بعد التحقق من فقد قدرة المركز على الإكمال الطبيعي.";
     currentStepBadge = <StatusBadge tone="warning">استثناء يحتاج تدخل</StatusBadge>;
     currentStepActionLabel = "فتح إجراءات التدخل";
     currentStepActionPrimary = true;
@@ -212,7 +205,7 @@ export default async function ResolutionDetailPage({ params }: ResolutionDetailP
       <PageHeader
         eyebrow="مطالبات الضمان · التنفيذ"
         title={`تنفيذ ${resolution.claim_number}`}
-        description="السجل التشغيلي للمعالجة بعد قبول المطالبة. قرارات الإسناد والمادة والإغلاق تمر فقط عبر حدود Cube R المؤهلة؛ هذه الصفحة لا تغير قرار المطالبة ولا الضمان الأصلي."
+        description="السجل التشغيلي للمعالجة بعد قبول المطالبة. قرارات الإسناد والمادة والإغلاق تمر عبر الإجراءات المؤهلة فقط؛ هذه الصفحة لا تغير قرار المطالبة ولا الضمان الأصلي."
         meta={`الضمان: ${resolution.warranty_number}`}
         actions={(
           <>
@@ -225,14 +218,14 @@ export default async function ResolutionDetailPage({ params }: ResolutionDetailP
       <div className={styles.stack}>
         <section className={styles.card} aria-label="ملخص التنفيذ">
           <div className={styles.header}>
-            <div><span className={styles.eyebrow}>Resolution</span><h2>الحالة التشغيلية</h2></div>
+            <div><span className={styles.eyebrow}>التنفيذ</span><h2>الحالة التشغيلية</h2></div>
             {statusBadge(resolution.resolution_status)}
           </div>
           <dl className={styles.grid}>
             <div><dt>أسلوب المعالجة</dt><dd>{remedyLabel(resolution.remedy_kind)}</dd></div>
             <div><dt>مركز التنفيذ</dt><dd>{resolution.performing_center_name ?? "لم يُسند بعد"}</dd></div>
-            <div><dt>حالة المركز</dt><dd>{resolution.performing_center_status ?? "غير منطبق"} · {activeOperatorCount.toLocaleString("en-US")} مستخدم Center نشط</dd></div>
-            <div><dt>اعتماد Resolution</dt><dd>{dateValue(resolution.authorized_at)}</dd></div>
+            <div><dt>حالة المركز</dt><dd>{centerOperationalStatusLabel(resolution.performing_center_status)} · {activeOperatorCount.toLocaleString("en-US")} مستخدم مركز نشط</dd></div>
+            <div><dt>اعتماد المعالجة</dt><dd>{dateValue(resolution.authorized_at)}</dd></div>
             <div><dt>الإسناد</dt><dd>{dateValue(resolution.assigned_at)}</dd></div>
             <div><dt>الإكمال</dt><dd>{dateValue(resolution.completed_at)}</dd></div>
           </dl>
@@ -282,10 +275,10 @@ export default async function ResolutionDetailPage({ params }: ResolutionDetailP
         </div>
 
         <section className={styles.card} aria-label="سياق المطالبة والضمان">
-          <div className={styles.header}><div><span className={styles.eyebrow}>Claim / Warranty</span><h2>السياق المرتبط</h2></div></div>
+          <div className={styles.header}><div><span className={styles.eyebrow}>المطالبة والضمان</span><h2>السياق المرتبط</h2></div></div>
           <dl className={styles.grid}>
             <div><dt>رقم المطالبة</dt><dd dir="ltr">{resolution.claim_number}</dd></div>
-            <div><dt>حالة المطالبة</dt><dd>{resolution.claim_status}</dd></div>
+            <div><dt>حالة المطالبة</dt><dd>{claimStatusLabel(resolution.claim_status)}</dd></div>
             <div><dt>المنتج</dt><dd>{resolution.product_name} · <span dir="ltr">{resolution.product_code}</span></dd></div>
             <div><dt>السيارة</dt><dd>{vehicle}</dd></div>
             <div><dt>العميل</dt><dd>{resolution.customer_name}</dd></div>
@@ -301,14 +294,14 @@ export default async function ResolutionDetailPage({ params }: ResolutionDetailP
 
         {resolution.remedy_kind === "replacement_roll_reinstall" || resolution.allocation_id ? (
           <section className={styles.card} aria-label="مادة الاستبدال">
-            <div className={styles.header}><div><span className={styles.eyebrow}>Replacement material</span><h2>لفة الاستبدال</h2></div></div>
+            <div className={styles.header}><div><span className={styles.eyebrow}>مادة الاستبدال</span><h2>لفة الاستبدال</h2></div></div>
             <dl className={styles.grid}>
-              <div><dt>حالة التخصيص</dt><dd>{allocationLabel(resolution.allocation_status)}</dd></div>
+              <div><dt>حالة التخصيص</dt><dd>{allocationStatusLabel(resolution.allocation_status)}</dd></div>
               <div><dt>أساس الأهلية</dt><dd>{resolution.product_eligibility_basis ?? "—"}</dd></div>
-              <div><dt>Serial</dt><dd dir="ltr">{resolution.replacement_roll_serial ?? "—"}</dd></div>
+              <div><dt>الرقم التسلسلي</dt><dd dir="ltr">{resolution.replacement_roll_serial ?? "—"}</dd></div>
               <div><dt>المنتج الفعلي</dt><dd>{resolution.replacement_roll_product_name ?? "—"} {resolution.replacement_roll_product_code ? <span dir="ltr">({resolution.replacement_roll_product_code})</span> : null}</dd></div>
-              <div><dt>Opening</dt><dd>{dateValue(resolution.replacement_opened_at)}</dd></div>
-              <div><dt>الجودة</dt><dd>{qualityLabel(resolution.replacement_quality_state)}</dd></div>
+              <div><dt>وقت فتح اللفة</dt><dd>{dateValue(resolution.replacement_opened_at)}</dd></div>
+              <div><dt>الجودة</dt><dd>{qualityStateLabel(resolution.replacement_quality_state)}</dd></div>
               <div><dt>الحجز</dt><dd>{dateValue(resolution.allocation_reserved_at)}</dd></div>
               <div><dt>الاستهلاك</dt><dd>{dateValue(resolution.allocation_consumed_at)}</dd></div>
             </dl>
@@ -317,9 +310,9 @@ export default async function ResolutionDetailPage({ params }: ResolutionDetailP
 
         {resolution.resolution_status === "completed" ? (
           <section className={styles.card} aria-label="حقائق الإكمال">
-            <div className={styles.header}><div><span className={styles.eyebrow}>Completion</span><h2>الإكمال النهائي</h2></div></div>
+            <div className={styles.header}><div><span className={styles.eyebrow}>الإكمال</span><h2>الإكمال النهائي</h2></div></div>
             <dl className={styles.grid}>
-              <div><dt>منفذ الإكمال</dt><dd>{resolution.completion_actor_kind === "admin_recovery" ? "Admin recovery" : "مركز التنفيذ"}</dd></div>
+              <div><dt>منفذ الإكمال</dt><dd>{actorKindLabel(resolution.completion_actor_kind)}</dd></div>
               <div><dt>وقت الإكمال</dt><dd>{dateValue(resolution.completed_at)}</dd></div>
               <div><dt>عدد صور الإثبات</dt><dd>{Number(resolution.completion_evidence_count ?? 0).toLocaleString("en-US")}</dd></div>
               <div><dt>إغلاق المطالبة</dt><dd>{dateValue(resolution.claim_closed_at)}</dd></div>
@@ -330,7 +323,7 @@ export default async function ResolutionDetailPage({ params }: ResolutionDetailP
 
         {resolution.resolution_status === "cancelled" ? (
           <section className={styles.card} aria-label="إغلاق التنفيذ دون إكمال">
-            <div className={styles.header}><div><span className={styles.eyebrow}>PD-079</span><h2>إغلاق التنفيذ بناءً على رغبة العميل</h2></div></div>
+            <div className={styles.header}><div><span className={styles.eyebrow}>إغلاق بطلب العميل</span><h2>إغلاق التنفيذ بناءً على رغبة العميل</h2></div></div>
             <dl className={styles.grid}>
               <div><dt>وقت الإغلاق</dt><dd>{dateValue(resolution.cancelled_at)}</dd></div>
               <div><dt>إغلاق المطالبة</dt><dd>{dateValue(resolution.claim_closed_at)}</dd></div>
