@@ -168,8 +168,10 @@ try {
   await adminPage.getByRole("heading", { name: "إسناد المعالجة إلى مركز تنفيذ", exact: true }).waitFor();
   audits.adminAuthorizedResolution = await audit(adminPage, "K Admin authorized Resolution", true);
   await adminPage.screenshot({ path: path.join(artifactDir, "admin-authorized-resolution.png"), fullPage: true });
-  await adminPage.getByLabel("أسلوب المعالجة", { exact: true }).selectOption("service_reinstall");
-  await adminPage.getByLabel("مركز التنفيذ", { exact: true }).selectOption(centerParty.party_id);
+  const assignmentSelects = adminPage.locator("select");
+  assert(await assignmentSelects.count() >= 2, "K Resolution assignment controls are missing.");
+  await assignmentSelects.nth(0).selectOption("service_reinstall");
+  await assignmentSelects.nth(1).selectOption(centerParty.party_id);
   await adminPage.getByRole("button", { name: "إسناد التنفيذ", exact: true }).click();
   await adminPage.getByText("تم إسناد التنفيذ إلى المركز المختار.", { exact: true }).waitFor({ timeout: 30000 });
   const assigned = oneSql(`
