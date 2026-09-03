@@ -489,7 +489,6 @@ export async function submitWarrantyClaim(input: {
 
   if (!error && Array.isArray(data) && data.length === 1) {
     const row = data[0] as { claim_id: string; claim_number: string };
-    revalidatePath(`/w/${input.publicCode}/claim`);
     return { ok: true, claimNumber: row.claim_number };
   }
 
@@ -524,7 +523,6 @@ export async function submitWarrantyClaim(input: {
 
   if (!existingError && Array.isArray(existing) && existing.length === 1) {
     const row = existing[0] as { claim_id: string; claim_number: string };
-    revalidatePath(`/w/${input.publicCode}/claim`);
     return { ok: true, claimNumber: row.claim_number };
   }
 
