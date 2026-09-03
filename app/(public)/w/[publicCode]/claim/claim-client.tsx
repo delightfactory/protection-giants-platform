@@ -376,7 +376,6 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
           }
           requestIdRef.current = null;
           setSuccessNumber(result.claimNumber);
-          router.refresh();
         } catch {
           setSubmitError("انقطع تأكيد إرسال المطالبة. لا تغيّر البيانات أو الصور؛ أعد التأكيد ليستخدم النظام نفس رقم المحاولة بأمان.");
         }
