@@ -203,7 +203,7 @@ try {
     await mobilePage.getByLabel("رقم الهاتف المسجل — بصيغة دولية").fill(warranty.customer_phone);
     await mobilePage.getByRole("button", { name: "متابعة" }).click();
     await mobilePage.getByText("ضمان تم التحقق منه", { exact: true }).waitFor();
-    await mobilePage.getByRole("heading", { name: warranty.product_name_snapshot }).waitFor();
+    await mobilePage.getByRole("heading", { name: warranty.product_name_snapshot, exact: true }).first().waitFor();
     await mobilePage.getByRole("heading", { name: "صف لنا المشكلة" }).waitFor();
 
     const verifiedBody = await mobilePage.locator("body").innerText();
