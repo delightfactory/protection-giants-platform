@@ -352,8 +352,8 @@ try {
 
   await adminPage.getByText("تم قبول المطالبة، وتظل مفتوحة حتى اكتمال المعالجة المسندة وتنفيذها.", { exact: true }).waitFor();
   await adminPage.getByRole("heading", { name: "مقبولة", exact: true }).waitFor();
-  await adminPage.getByText(decisionReason, { exact: true }).waitFor();
-  await adminPage.getByText(customerMessage, { exact: true }).waitFor();
+  await adminPage.getByLabel("حالة المطالبة").getByText(decisionReason, { exact: true }).waitFor();
+  await adminPage.getByLabel("حالة المطالبة").getByText(customerMessage, { exact: true }).waitFor();
   audits.adminApprovedClaim = await audit(adminPage, "J Admin approved Claim detail", true);
   await adminPage.screenshot({ path: path.join(artifactDir, "admin-approved-claim.png"), fullPage: true });
   await adminContext.close();
