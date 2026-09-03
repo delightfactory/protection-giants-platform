@@ -75,7 +75,15 @@
   line-height: 1.55;
 }
 
-.grid a,
+.grid a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .18em;
+}
+
 .historyItem {
   color: inherit;
   text-decoration-thickness: 1px;
