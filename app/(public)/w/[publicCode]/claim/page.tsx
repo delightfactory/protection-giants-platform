@@ -12,7 +12,6 @@ type Props = {
 };
 
 export const metadata: Metadata = {
-  title: "خدمة الضمان | Protection Giants",
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };
