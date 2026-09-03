@@ -1,0 +1,200 @@
+name: ACC 01 I Claim Inspection Assignment Browser Acceptance Quality
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "supabase/migrations/**"
+      - "scripts/acc-01-a-browser-acceptance.mjs"
+      - "scripts/acc-01-b-role-fixtures.mjs"
+      - "scripts/acc-01-b-role-browser-acceptance.mjs"
+      - "scripts/acc-01-c-transfer-fixtures.mjs"
+      - "scripts/acc-01-c-transfer-browser-acceptance.mjs"
+      - "scripts/acc-01-d-roll-opening-fixtures.mjs"
+      - "scripts/acc-01-d-roll-opening-browser-acceptance.mjs"
+      - "scripts/acc-01-e-preinstall-issue-browser-acceptance.mjs"
+      - "scripts/acc-01-f-warranty-activation-fixtures.mjs"
+      - "scripts/acc-01-f-warranty-activation-browser-acceptance.mjs"
+      - "scripts/acc-01-g-public-warranty-browser-acceptance.mjs"
+      - "scripts/acc-01-h-customer-claim-browser-acceptance.mjs"
+      - "scripts/acc-01-i-claim-inspection-assignment-browser-acceptance.mjs"
+      - "scripts/verify-agent-network-foundation.mjs"
+      - ".github/workflows/acc-01-a-browser-acceptance-quality.yml"
+      - ".github/workflows/acc-01-b-role-browser-acceptance-quality.yml"
+      - ".github/workflows/acc-01-c-transfer-browser-acceptance-quality.yml"
+      - ".github/workflows/acc-01-d-roll-opening-browser-acceptance-quality.yml"
+      - ".github/workflows/acc-01-e-preinstall-issue-browser-acceptance-quality.yml"
+      - ".github/workflows/acc-01-f-warranty-activation-browser-acceptance-quality.yml"
+      - ".github/workflows/acc-01-g-public-warranty-browser-acceptance-quality.yml"
+      - ".github/workflows/acc-01-h-customer-claim-browser-acceptance-quality.yml"
+      - ".github/workflows/acc-01-i-claim-inspection-assignment-browser-acceptance-quality.yml"
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  ACC_BASE_URL: "http://127.0.0.1:3000"
+  NEXT_PUBLIC_SITE_URL: "http://127.0.0.1:3000"
+  ACC_ARTIFACT_DIR: "artifacts/acc-01-a"
+  ACC_B_ARTIFACT_DIR: "artifacts/acc-01-b"
+  ACC_C_ARTIFACT_DIR: "artifacts/acc-01-c"
+  ACC_D_ARTIFACT_DIR: "artifacts/acc-01-d"
+  ACC_E_ARTIFACT_DIR: "artifacts/acc-01-e"
+  ACC_F_ARTIFACT_DIR: "artifacts/acc-01-f"
+  ACC_G_ARTIFACT_DIR: "artifacts/acc-01-g"
+  ACC_H_ARTIFACT_DIR: "artifacts/acc-01-h"
+  ACC_I_ARTIFACT_DIR: "artifacts/acc-01-i"
+
+jobs:
+  claim-inspection-assignment-browser-acceptance-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Pin npm for browser acceptance tooling
+        run: npm install --global npm@11.6.0 --no-audit --no-fund
+
+      - name: Install application dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install bounded browser acceptance tooling
+        run: npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.62.1 @axe-core/playwright@4.13.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Export local application and fixture environment
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "API_URL=$API_URL"
+            echo "ANON_KEY=$ANON_KEY"
+            echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Create and verify bounded Admin Agent Dealer network fixtures
+        run: node scripts/verify-agent-network-foundation.mjs
+
+      - name: Create Center and authenticated access-denied fixtures
+        run: node scripts/acc-01-b-role-fixtures.mjs
+
+      - name: Create bounded Transfer send receive fixtures
+        run: node scripts/acc-01-c-transfer-fixtures.mjs
+
+      - name: Create bounded Roll Opening fixtures and deliver Rolls to Center
+        run: node scripts/acc-01-d-roll-opening-fixtures.mjs
+
+      - name: Create bounded Warranty Activation Roll and deliver it to Center
+        run: node scripts/acc-01-f-warranty-activation-fixtures.mjs
+
+      - name: Production build
+        run: npm run build
+
+      - name: Start production server
+        run: |
+          npm run start -- -H 127.0.0.1 -p 3000 > /tmp/acc-01-next.log 2>&1 &
+          echo $! > /tmp/acc-01-next.pid
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:3000/login > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/acc-01-next.log
+          exit 1
+
+      - name: Re-run ACC-01-A public browser acceptance regression
+        run: node scripts/acc-01-a-browser-acceptance.mjs
+
+      - name: Re-run ACC-01-B role browser acceptance regression
+        run: node scripts/acc-01-b-role-browser-acceptance.mjs
+
+      - name: Re-run ACC-01-C Transfer send receive browser acceptance regression
+        run: node scripts/acc-01-c-transfer-browser-acceptance.mjs
+
+      - name: Re-run ACC-01-D Roll Opening manual fallback browser acceptance
+        run: node scripts/acc-01-d-roll-opening-browser-acceptance.mjs
+
+      - name: Re-run ACC-01-E Pre-install Issue and Activation hold browser acceptance
+        run: node scripts/acc-01-e-preinstall-issue-browser-acceptance.mjs
+
+      - name: Re-run ACC-01-F Warranty Activation success blocked idempotency browser acceptance
+        run: node scripts/acc-01-f-warranty-activation-browser-acceptance.mjs
+
+      - name: Re-run ACC-01-G anonymous Public Warranty privacy browser acceptance
+        run: |
+          ACC_G_ACTIVE_ROLL_SERIAL="$(node -e "const f=require('./artifacts/acc-01-f/fixture.json'); process.stdout.write(f.positive.serialNumber)")" \
+          ACC_G_PENDING_ISSUE_ROLL_SERIAL="$(node -e "const f=require('./artifacts/acc-01-f/fixture.json'); process.stdout.write(f.blocked.serialNumber)")" \
+          node scripts/acc-01-g-public-warranty-browser-acceptance.mjs
+
+      - name: Re-run ACC-01-H Customer Warranty Claim Intake browser acceptance
+        run: |
+          ACC_H_ACTIVE_ROLL_SERIAL="$(node -e "const f=require('./artifacts/acc-01-f/fixture.json'); process.stdout.write(f.positive.serialNumber)")" \
+          node scripts/acc-01-h-customer-claim-browser-acceptance.mjs
+
+      - name: Run ACC-01-I Admin review inspection assignment Center handoff acceptance
+        run: node scripts/acc-01-i-claim-inspection-assignment-browser-acceptance.mjs
+
+      - name: Upload rendered ACC-01 acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acc-01-i-rendered-evidence-${{ github.sha }}
+          path: |
+            artifacts/acc-01-a
+            artifacts/acc-01-b
+            artifacts/acc-01-c
+            artifacts/acc-01-d
+            artifacts/acc-01-e
+            artifacts/acc-01-f
+            artifacts/acc-01-g
+            artifacts/acc-01-h
+            artifacts/acc-01-i
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Verify tracked configuration remains clean
+        if: always()
+        run: git diff --exit-code -- . ':!next-env.d.ts'
+
+      - name: Stop production server
+        if: always()
+        run: |
+          if [ -f /tmp/acc-01-next.pid ]; then
+            kill "$(cat /tmp/acc-01-next.pid)" 2>/dev/null || true
+          fi
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: |
+          if command -v supabase >/dev/null 2>&1; then
+            supabase stop --no-backup
+          fi
