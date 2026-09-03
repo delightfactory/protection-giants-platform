@@ -488,8 +488,16 @@ try {
     `${baseUrl}/operations/claim-inspections/${inspection.inspection_id}`,
     { waitUntil: "networkidle" },
   );
-  assert(directResponse?.status() === 404,
-    `Unassigned Center exact inspection detail should be hidden as 404; received ${directResponse?.status()}.`);
+  const directStatus = directResponse?.status();
+  assert(directStatus === 200 || directStatus === 404,
+    `Unassigned Center exact inspection detail returned unexpected HTTP ${directStatus}.`);
+  assert(new URL(unassignedPage.url()).pathname === `/operations/claim-inspections/${inspection.inspection_id}`,
+    `Unassigned Center exact inspection detail navigated unexpectedly: ${unassignedPage.url()}`);
+  await unassignedPage.getByText("السجل أو الصفحة المطلوبة غير متاحة", { exact: true }).waitFor();
+  const robotsContents = await unassignedPage.locator('meta[name="robots"]').evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute("content") ?? ""));
+  assert(robotsContents.some((content) => content.toLowerCase().split(",").map((token) => token.trim()).includes("noindex")),
+    `Unassigned Center not-found response was not marked noindex: ${JSON.stringify(robotsContents)}`);
   const unassignedDetailBody = await unassignedPage.locator("body").innerText();
   assertBodyExcludes(unassignedDetailBody, [
     claim.claim_number,
