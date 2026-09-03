@@ -357,7 +357,7 @@ try {
   await adminPage.getByLabel("مركز الفحص").selectOption(assignedCenter.party_id);
   await confirmAction(adminPage, "طلب فحص رسمي", "تأكيد طلب الفحص؟", "تأكيد التكليف");
   await adminPage.getByText("المركز المكلف حاليًا", { exact: true }).waitFor({ state: "visible", timeout: 30000 });
-  await adminPage.getByText(assignedCenter.name, { exact: true }).waitFor();
+  await adminPage.getByLabel(/إجراءات مراجعة المطالبة/).getByText(assignedCenter.name, { exact: true }).waitFor();
 
   const inspection = oneSql(`
     select
