@@ -34,7 +34,7 @@ export default async function WarrantyClaimPage({ params }: Props) {
       : null;
 
   return (
-    <main className={styles.page}>
+    <section className={styles.page}>
       <div className={styles.wrap}>
         <CustomerClaimIntake
           publicCode={publicCode}
@@ -43,6 +43,6 @@ export default async function WarrantyClaimPage({ params }: Props) {
           publicState={publicWarranty.kind === "not_found" ? null : publicWarranty.kind}
         />
       </div>
-    </main>
+    </section>
   );
 }
