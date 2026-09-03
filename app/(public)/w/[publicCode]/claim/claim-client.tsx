@@ -376,7 +376,6 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
           }
           requestIdRef.current = null;
           setSuccessNumber(result.claimNumber);
-          router.refresh();
         } catch {
           setSubmitError("انقطع تأكيد إرسال المطالبة. لا تغيّر البيانات أو الصور؛ أعد التأكيد ليستخدم النظام نفس رقم المحاولة بأمان.");
         }
@@ -452,12 +451,12 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
         <span>نهاية التغطية</span><strong><LocalDateTime value={context.coverageExpiresAt} /></strong>
       </div>
 
-      {context.currentOpenClaim ? (
+      {context.currentOpenClaim && !successNumber ? (
         <div className={styles.stack}>
           <ClaimSummaryCard claim={context.currentOpenClaim} />
           <p className={styles.quietNotice}>لا يمكن إنشاء مطالبة أخرى قبل إغلاق المطالبة الحالية.</p>
         </div>
-      ) : context.canSubmitNewClaim ? (
+      ) : context.canSubmitNewClaim || successNumber ? (
         successNumber ? (
           <div className={styles.successBox} role="status">
             <span className={styles.eyebrow}>تم الاستلام بنجاح</span>
