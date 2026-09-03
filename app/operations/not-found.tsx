@@ -5,6 +5,7 @@ export default function OperationsNotFound() {
   return (
     <EmptyState
       eyebrow="غير موجود"
+      headingLevel={1}
       title="السجل أو الصفحة المطلوبة غير متاحة"
       description="قد يكون الرابط غير صحيح أو أن السجل لم يعد موجودًا في النطاق التشغيلي الحالي."
       action={<Link href="/operations" className="button button-primary">العودة للرئيسية</Link>}
