@@ -451,104 +451,102 @@ export default function CustomerClaimIntake({ publicCode, initialContext, public
         <span>نهاية التغطية</span><strong><LocalDateTime value={context.coverageExpiresAt} /></strong>
       </div>
 
-      {context.currentOpenClaim ? (
+      {successNumber ? (
+        <div className={styles.successBox} role="status">
+          <span className={styles.eyebrow}>تم الاستلام بنجاح</span>
+          <h2>رقم المطالبة</h2>
+          <strong dir="ltr">{successNumber}</strong>
+          <p>احتفظ بالرقم كمرجع. ستظهر حالة المطالبة هنا بعد تحديث الصفحة.</p>
+        </div>
+      ) : context.currentOpenClaim ? (
         <div className={styles.stack}>
           <ClaimSummaryCard claim={context.currentOpenClaim} />
           <p className={styles.quietNotice}>لا يمكن إنشاء مطالبة أخرى قبل إغلاق المطالبة الحالية.</p>
         </div>
       ) : context.canSubmitNewClaim ? (
-        successNumber ? (
-          <div className={styles.successBox} role="status">
-            <span className={styles.eyebrow}>تم الاستلام بنجاح</span>
-            <h2>رقم المطالبة</h2>
-            <strong dir="ltr">{successNumber}</strong>
-            <p>احتفظ بالرقم كمرجع. ستظهر حالة المطالبة هنا بعد تحديث الصفحة.</p>
+        <form className={styles.claimForm} onSubmit={submit}>
+          <div className={styles.sectionHeading}>
+            <span className={styles.eyebrow}>مطالبة جديدة</span>
+            <h2>صف لنا المشكلة</h2>
+            <p>اختيار نوع المشكلة يساعد المراجعة، لكنه لا يعني قبول أو رفض المطالبة تلقائيًا.</p>
           </div>
-        ) : (
-          <form className={styles.claimForm} onSubmit={submit}>
-            <div className={styles.sectionHeading}>
-              <span className={styles.eyebrow}>مطالبة جديدة</span>
-              <h2>صف لنا المشكلة</h2>
-              <p>اختيار نوع المشكلة يساعد المراجعة، لكنه لا يعني قبول أو رفض المطالبة تلقائيًا.</p>
-            </div>
 
-            <label>
-              <span>نوع المشكلة</span>
-              <select value={category} onChange={(event) => { setCategory(event.target.value); payloadChanged(); }} required disabled={busy}>
-                <option value="">اختر نوع المشكلة</option>
-                {WARRANTY_CLAIM_CATEGORIES.map((item) => (
-                  <option key={item} value={item}>{WARRANTY_CLAIM_CATEGORY_LABELS[item]}</option>
-                ))}
-              </select>
-            </label>
+          <label>
+            <span>نوع المشكلة</span>
+            <select value={category} onChange={(event) => { setCategory(event.target.value); payloadChanged(); }} required disabled={busy}>
+              <option value="">اختر نوع المشكلة</option>
+              {WARRANTY_CLAIM_CATEGORIES.map((item) => (
+                <option key={item} value={item}>{WARRANTY_CLAIM_CATEGORY_LABELS[item]}</option>
+              ))}
+            </select>
+          </label>
 
-            <label>
-              <span>الجزء أو المنطقة المتأثرة</span>
-              <input
-                value={affectedArea}
-                onChange={(event) => { setAffectedArea(event.target.value); payloadChanged(); }}
-                minLength={2}
-                maxLength={160}
-                placeholder="مثال: غطاء المحرك — الجهة اليمنى"
-                required
-                disabled={busy}
-              />
-            </label>
+          <label>
+            <span>الجزء أو المنطقة المتأثرة</span>
+            <input
+              value={affectedArea}
+              onChange={(event) => { setAffectedArea(event.target.value); payloadChanged(); }}
+              minLength={2}
+              maxLength={160}
+              placeholder="مثال: غطاء المحرك — الجهة اليمنى"
+              required
+              disabled={busy}
+            />
+          </label>
 
-            <label>
-              <span>وصف المشكلة</span>
-              <textarea
-                value={description}
-                onChange={(event) => { setDescription(event.target.value); payloadChanged(); }}
-                minLength={10}
-                maxLength={3000}
-                rows={5}
-                placeholder="متى لاحظت المشكلة؟ وما شكلها الحالي؟"
-                required
-                disabled={busy}
-              />
-            </label>
+          <label>
+            <span>وصف المشكلة</span>
+            <textarea
+              value={description}
+              onChange={(event) => { setDescription(event.target.value); payloadChanged(); }}
+              minLength={10}
+              maxLength={3000}
+              rows={5}
+              placeholder="متى لاحظت المشكلة؟ وما شكلها الحالي؟"
+              required
+              disabled={busy}
+            />
+          </label>
 
-            <div className={styles.evidenceBlock}>
-              <LocalEvidenceReview
-                idPrefix="customer-claim-evidence"
-                title="صور المشكلة"
-                help="مطلوب صورة واحدة على الأقل · JPEG / PNG / WebP · حتى 8MB للصورة. راجع الصور قبل أن يبدأ الرفع."
-                items={uploads}
-                maxFiles={WARRANTY_CLAIM_MAX_IMAGES}
-                accept={EVIDENCE_ACCEPT}
-                disabled={busy}
-                addLabel="إضافة صور"
-                onAdd={addFiles}
-                onRemove={(reviewItem) => {
-                  const item = uploads.find((candidate) => candidate.id === reviewItem.id);
-                  if (item) void removeUpload(item);
-                }}
-                onReplace={(reviewItem, file) => {
-                  const item = uploads.find((candidate) => candidate.id === reviewItem.id);
-                  if (item) void replaceUpload(item, file);
-                }}
-              />
-            </div>
+          <div className={styles.evidenceBlock}>
+            <LocalEvidenceReview
+              idPrefix="customer-claim-evidence"
+              title="صور المشكلة"
+              help="مطلوب صورة واحدة على الأقل · JPEG / PNG / WebP · حتى 8MB للصورة. راجع الصور قبل أن يبدأ الرفع."
+              items={uploads}
+              maxFiles={WARRANTY_CLAIM_MAX_IMAGES}
+              accept={EVIDENCE_ACCEPT}
+              disabled={busy}
+              addLabel="إضافة صور"
+              onAdd={addFiles}
+              onRemove={(reviewItem) => {
+                const item = uploads.find((candidate) => candidate.id === reviewItem.id);
+                if (item) void removeUpload(item);
+              }}
+              onReplace={(reviewItem, file) => {
+                const item = uploads.find((candidate) => candidate.id === reviewItem.id);
+                if (item) void replaceUpload(item, file);
+              }}
+            />
+          </div>
 
-            {submitError ? <p className={styles.errorText} role="alert">{submitError}</p> : null}
+          {submitError ? <p className={styles.errorText} role="alert">{submitError}</p> : null}
 
-            <div className={styles.confirmBox}>
-              <p>بالإرسال أنت تطلب من Protection Giants مراجعة الحالة وفق سياسة الضمان المسجلة. الإرسال لا يعني قرار قبول تلقائي.</p>
-            </div>
+          <div className={styles.confirmBox}>
+            <p>بالإرسال أنت تطلب من Protection Giants مراجعة الحالة وفق سياسة الضمان المسجلة. الإرسال لا يعني قرار قبول تلقائي.</p>
+          </div>
 
-            <ConfirmSubmitButton
-              title={`إرسال المطالبة مع ${uploads.length.toLocaleString("en-US")} صورة؟`}
-              description="بعد هذا التأكيد فقط سيبدأ رفع الصور المختارة، ثم تُرسل المطالبة للمراجعة إذا نجحت العملية النهائية."
-              confirmLabel="تأكيد وإرسال المطالبة"
-              tone="primary"
-              className={styles.primaryButton}
-              disabled={busy || hasReservedUploadError || uploads.length < 1}
-            >
-              {isPending ? "جارٍ إرسال المطالبة…" : "إرسال المطالبة"}
-            </ConfirmSubmitButton>
-          </form>
-        )
+          <ConfirmSubmitButton
+            title={`إرسال المطالبة مع ${uploads.length.toLocaleString("en-US")} صورة؟`}
+            description="بعد هذا التأكيد فقط سيبدأ رفع الصور المختارة، ثم تُرسل المطالبة للمراجعة إذا نجحت العملية النهائية."
+            confirmLabel="تأكيد وإرسال المطالبة"
+            tone="primary"
+            className={styles.primaryButton}
+            disabled={busy || hasReservedUploadError || uploads.length < 1}
+          >
+            {isPending ? "جارٍ إرسال المطالبة…" : "إرسال المطالبة"}
+          </ConfirmSubmitButton>
+        </form>
       ) : (
         <div className={styles.closedNotice}>
           <span className={styles.eyebrow}>متابعة فقط</span>
