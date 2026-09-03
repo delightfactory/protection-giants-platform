@@ -263,14 +263,17 @@ try {
   databaseEvidence.inspectionEvent = inspectionEvent;
 
   const submittedDetailResponse = await centerPage.goto(`${baseUrl}/operations/claim-inspections/${fixture.inspection_id}`, { waitUntil: "networkidle" });
-  assert(submittedDetailResponse?.status() === 200, "Submitted inspection detail did not remain readable to assigned Center.");
+  assert(submittedDetailResponse?.status() === 200,
+    "Submitted inspection terminal route did not resolve to the bounded Not Found surface.");
+  await centerPage.getByText("غير موجود", { exact: true }).first().waitFor();
   assert(await centerPage.getByRole("heading", { name: "تسجيل الفحص" }).count() === 0,
     "Submitted inspection still exposes the mutable Center submission workspace.");
   assert(await centerPage.getByRole("button", { name: "إرسال نتيجة الفحص", exact: true }).count() === 0,
     "Submitted inspection still exposes the submit action.");
-  await centerPage.getByText(technicalObservation, { exact: true }).waitFor();
-  audits.centerSubmittedInspection = await audit(centerPage, "J Center submitted inspection read-only detail", true);
-  await centerPage.screenshot({ path: path.join(artifactDir, "center-submitted-inspection.png"), fullPage: true });
+  assert(await centerPage.getByText(technicalObservation, { exact: true }).count() === 0,
+    "Submitted inspection leaked the technical observation back to Center after task closure.");
+  audits.centerSubmittedInspectionHidden = await audit(centerPage, "J Center submitted inspection privacy boundary", true);
+  await centerPage.screenshot({ path: path.join(artifactDir, "center-submitted-inspection-hidden.png"), fullPage: true });
 
   await centerPage.goto(`${baseUrl}/operations/claim-inspections`, { waitUntil: "networkidle" });
   assert(await centerPage.locator(`a[href="/operations/claim-inspections/${fixture.inspection_id}"]`).count() === 0,
