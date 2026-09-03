@@ -116,8 +116,7 @@ const fixture = oneSql(`
     warranty.customer_phone,
     identity.public_code,
     center.party_id::text as center_party_id,
-    center.center_id::text as center_id,
-    center.name as center_name
+    center.center_id::text as center_id
   from public.warranty_claim_resolutions resolution
   join public.warranty_claims claim on claim.id = resolution.claim_id
   join public.warranties warranty on warranty.id = claim.warranty_id
@@ -280,7 +279,7 @@ try {
   await customerPage.getByRole("button", { name: "متابعة", exact: true }).click();
   await customerPage.getByRole("heading", { name: "سجل خدمات الضمان", exact: true }).waitFor({ timeout: 30000 });
   const customerBody = await customerPage.locator("body").innerText();
-  assert(customerBody.includes("تم التنفيذ") && customerBody.includes("إعادة تنفيذ الخدمة") && customerBody.includes(fixture.claim_number) && customerBody.includes(fixture.center_name), "Customer service history omitted an allowed completed-service fact.");
+  assert(customerBody.includes("تم التنفيذ") && customerBody.includes("إعادة تنفيذ الخدمة") && customerBody.includes(fixture.claim_number) && customerBody.includes(centerParty.name), "Customer service history omitted an allowed completed-service fact.");
   assert(fixture.customer_decision_message && customerBody.includes(fixture.customer_decision_message), "Customer history omitted the customer-facing decision message.");
   for (const forbidden of [completed.completion_note, fixture.resolution_id, evidence.storage_path, evidence.storage_path.split("/").at(-1), adminProfile.profile_id, "completion_actor_kind", "product_eligibility_basis"]) {
     if (forbidden) assert(!customerBody.includes(String(forbidden)), `Customer flow leaked forbidden internal value ${forbidden}.`);
