@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getFreshClaimAccess } from "@/lib/warranty/claim-access.server";
 import { resolvePublicWarranty } from "@/lib/warranty/public-warranty";
 import CustomerClaimIntake from "./claim-client";
@@ -8,6 +9,11 @@ export const revalidate = 0;
 
 type Props = {
   params: Promise<{ publicCode: string }>;
+};
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+  referrer: "no-referrer",
 };
 
 export default async function WarrantyClaimPage({ params }: Props) {
