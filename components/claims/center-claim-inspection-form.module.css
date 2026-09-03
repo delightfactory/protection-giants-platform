@@ -126,7 +126,14 @@
 }
 
 .acknowledgement input {
-  margin-top: 0.2rem;
+  inline-size: 44px;
+  block-size: 44px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.acknowledgement input:disabled {
+  cursor: not-allowed;
 }
 
 .acknowledgement span {
