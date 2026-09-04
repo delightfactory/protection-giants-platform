@@ -72,4 +72,36 @@ describe("Cube O Warranty QR label contract", () => {
     expect(model.productName).toBe("PG Shield Matte");
     expect(() => buildWarrantyQrLabelModel({ publicCode: codeA, productNameSnapshot: "  " })).toThrow();
   });
+
+  it("renders deterministic PDF for short, long, single-token, and 120-char product names", async () => {
+    const { renderWarrantyQrLabelMasterPdf } = await import("../lib/labels/warranty-qr-label-pdf");
+    const { PDFDocument } = await import("pdf-lib");
+
+    const testNames = [
+      "PG Shield Ceramic",
+      "PROTECTION GIANTS ULTIMATE PLUS CERAMIC PPF 1524MM",
+      "SUPERLONGPRODUCTTOKENWITHOUTANYSPACESATALL1234567890",
+      "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1524MM",
+    ];
+
+    for (const name of testNames) {
+      const model = buildWarrantyQrLabelModel({
+        publicCode: codeA,
+        productNameSnapshot: name,
+      });
+
+      const pdfBytes1 = await renderWarrantyQrLabelMasterPdf(model);
+      const pdfBytes2 = await renderWarrantyQrLabelMasterPdf(model);
+
+      expect(Buffer.from(pdfBytes1).subarray(0, 4).toString("ascii")).toBe("%PDF");
+      expect(Buffer.from(pdfBytes1)).toEqual(Buffer.from(pdfBytes2));
+
+      const doc = await PDFDocument.load(pdfBytes1);
+      expect(doc.getPageCount()).toBe(1);
+      const page = doc.getPage(0);
+      const POINTS_PER_MM = 72 / 25.4;
+      expect(page.getWidth()).toBeCloseTo(70 * POINTS_PER_MM, 2);
+      expect(page.getHeight()).toBeCloseTo(45 * POINTS_PER_MM, 2);
+    }
+  });
 });

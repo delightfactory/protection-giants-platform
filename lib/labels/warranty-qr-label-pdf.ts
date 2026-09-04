@@ -85,6 +85,101 @@ function drawQrGeometry(
   }
 }
 
+function splitIntoTwoLines(
+  text: string,
+  font: PDFFont,
+  maxWidthPt: number,
+): { lines: [string, string]; size: number } {
+  const words = text.split(/\s+/).filter(Boolean);
+
+  if (words.length <= 1) {
+    const token = words[0] || text;
+    const mid = Math.ceil(token.length / 2);
+    const line1 = token.slice(0, mid);
+    const line2 = token.slice(mid);
+    let size = 7.5;
+    while (
+      size > 3.5 &&
+      (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
+    ) {
+      size -= 0.25;
+    }
+    return { lines: [line1, line2], size };
+  }
+
+  let bestSplit = 1;
+  let minDiff = Infinity;
+
+  for (let i = 1; i < words.length; i++) {
+    const l1 = words.slice(0, i).join(" ");
+    const l2 = words.slice(i).join(" ");
+    const w1 = font.widthOfTextAtSize(l1, 10);
+    const w2 = font.widthOfTextAtSize(l2, 10);
+    const diff = Math.abs(w1 - w2);
+    if (diff < minDiff) {
+      minDiff = diff;
+      bestSplit = i;
+    }
+  }
+
+  const line1 = words.slice(0, bestSplit).join(" ");
+  const line2 = words.slice(bestSplit).join(" ");
+
+  let size = 7.5;
+  while (
+    size > 3.5 &&
+    (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
+  ) {
+    size -= 0.25;
+  }
+
+  if (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt) {
+    while (
+      size > 2.5 &&
+      (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
+    ) {
+      size -= 0.25;
+    }
+  }
+
+  return { lines: [line1, line2], size };
+}
+
+export function drawWarrantyProductName(
+  page: PDFPage,
+  font: PDFFont,
+  productName: string,
+  xPt: number,
+  baseYPt: number,
+  maxWidthPt: number,
+): { lines: string[]; size: number } {
+  let singleLineSize = 8.5;
+  while (singleLineSize >= 7.0 && font.widthOfTextAtSize(productName, singleLineSize) > maxWidthPt) {
+    singleLineSize -= 0.25;
+  }
+
+  if (font.widthOfTextAtSize(productName, singleLineSize) <= maxWidthPt) {
+    page.drawText(productName, {
+      x: xPt,
+      y: baseYPt,
+      size: singleLineSize,
+      font,
+      color: BLACK,
+    });
+    return { lines: [productName], size: singleLineSize };
+  }
+
+  const { lines, size } = splitIntoTwoLines(productName, font, maxWidthPt);
+  const lineSpacingPt = Math.max(size * 1.25, 9);
+  const line1Y = baseYPt + lineSpacingPt * 0.55;
+  const line2Y = baseYPt - lineSpacingPt * 0.45;
+
+  page.drawText(lines[0], { x: xPt, y: line1Y, size, font, color: BLACK });
+  page.drawText(lines[1], { x: xPt, y: line2Y, size, font, color: BLACK });
+
+  return { lines, size };
+}
+
 export async function renderWarrantyQrLabelMasterPdf(
   model: WarrantyQrLabelViewModel,
 ): Promise<Uint8Array> {
@@ -129,7 +224,7 @@ export async function renderWarrantyQrLabelMasterPdf(
   page.drawText("PROTECTION GIANTS", {
     x: mm(template.brand.xMm),
     y: mm(template.brand.yMm),
-    size: 7,
+    size: 7.2,
     font: bold,
     color: WHITE,
   });
@@ -137,7 +232,7 @@ export async function renderWarrantyQrLabelMasterPdf(
   page.drawText("WARRANTY", {
     x: mm(template.title.xMm),
     y: mm(template.title.yMm),
-    size: 13,
+    size: 13.5,
     font: bold,
     color: BLACK,
   });
@@ -148,16 +243,14 @@ export async function renderWarrantyQrLabelMasterPdf(
     font: bold,
     color: MUTED,
   });
-  drawFittedText(
+
+  drawWarrantyProductName(
     page,
-    regular,
+    bold,
     productName,
     mm(template.productName.xMm),
     mm(template.productName.yMm),
     mm(template.productName.widthMm),
-    7.5,
-    5.25,
-    BLACK,
   );
 
   drawQrGeometry(page, geometry, {
@@ -169,7 +262,7 @@ export async function renderWarrantyQrLabelMasterPdf(
   page.drawText("protectiongiants.com", {
     x: mm(template.qrCaption.xMm),
     y: mm(template.qrCaption.yMm),
-    size: 5.25,
+    size: 6,
     font: regular,
     color: MUTED,
   });
