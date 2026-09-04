@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 const server = spawn(process.platform === "win32" ? "cmd.exe" : "npm", process.platform === "win32"
   ? ["/d", "/s", "/c", "npm run start -- -p 3100"]
@@ -19,5 +19,9 @@ try {
   if (Date.now() >= deadline) throw new Error("Next production server did not become ready within 30 seconds.");
   await import("./uat-01-d-navigation-browser.mjs");
 } finally {
-  server.kill();
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
+  } else {
+    server.kill();
+  }
 }
