@@ -641,6 +641,9 @@ comment on function private.materialize_warranty_claim_resolution_notification_e
 
 -- Repair already-materialized action-required rows without recreating notifications.
 -- Source-event identity remains the join authority, preserving durable idempotency.
+alter table public.notifications
+  disable trigger notifications_guard_mutation;
+
 update public.notifications notification
 set action_path = '/operations/claims/' || event.claim_id::text || '/review'
 from public.warranty_claim_events event
@@ -663,6 +666,9 @@ where notification.source_domain = 'warranty_claim_resolution'
     or (notification.event_type = 'claim_resolution.reassigned' and event.event_kind = 'resolution_reassigned')
   )
   and notification.source_event_key = 'warranty_claim_resolution_events:' || event.id::text;
+
+alter table public.notifications
+  enable trigger notifications_guard_mutation;
 
 comment on function private.materialize_warranty_claim_notification_event() is
   'UX-HANDOFF-01 cumulative Claim -> Cube L projector. Existing recipient/privacy/idempotency semantics remain authoritative; submitted Claims now route active Admin recipients to the authorized Claim review page.';

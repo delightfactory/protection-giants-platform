@@ -1,0 +1,43 @@
+name: UX-HANDOFF Notification Upgrade Quality
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/20260831183000_ux_handoff_01_claim_resolution_notification_routes.sql"
+      - "scripts/verify-ux-handoff-upgrade.mjs"
+      - ".github/workflows/ux-handoff-notification-upgrade-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+          github-token: ${{ github.token }}
+
+      - name: Start fresh local Supabase stack
+        run: supabase start
+
+      - name: Build the pre-UX-HANDOFF upgrade state
+        run: supabase db reset --local --no-seed --version 20260831114500
+
+      - name: Lint the pre-upgrade local database
+        run: supabase db lint --local --level warning --fail-on error
+
+      - name: Verify the populated UX-HANDOFF upgrade and invariant restoration
+        run: node scripts/verify-ux-handoff-upgrade.mjs
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
