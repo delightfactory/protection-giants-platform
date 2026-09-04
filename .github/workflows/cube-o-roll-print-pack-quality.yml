@@ -50,7 +50,9 @@ jobs:
 
       - name: Verify Warranty in-platform rendered preview regression
         run: |
-          npm install --no-save --package-lock=false playwright@1.63.0
+          npm install --global npm@11.6.0 --no-audit --no-fund
+          npm --version
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.63.0
           npx playwright install --with-deps chromium
           node scripts/verify-cube-o-warranty-preview-rendering.mjs
 
