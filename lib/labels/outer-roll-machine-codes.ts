@@ -1,10 +1,11 @@
 import bwipjs from "bwip-js/browser";
 
+import { isValidProductBarcode } from "../products/barcode";
 import { buildQrVectorGeometry, type QrVectorGeometry } from "../qr/qr-vector";
 
 export const OUTER_ROLL_MACHINE_CODE_RENDER_SCALE = 4;
 
-export type OuterRollGtinSymbology = "ean8" | "upca" | "ean13" | "itf14";
+export type OuterRollProductBarcodeSymbology = "code128";
 
 export type BwipVectorLine = {
   x0: number;
@@ -25,9 +26,9 @@ export type BwipVectorGeometry = {
   polygons: readonly BwipVectorPolygon[];
 };
 
-export type OuterRollGtinBarcodeVector = {
+export type OuterRollProductBarcodeVector = {
   payload: string;
-  symbology: OuterRollGtinSymbology;
+  symbology: OuterRollProductBarcodeSymbology;
   geometry: BwipVectorGeometry;
 };
 
@@ -40,42 +41,6 @@ export class OuterRollMachineCodeError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "OuterRollMachineCodeError";
-  }
-}
-
-function isValidGtin(value: string): boolean {
-  if (!/^\d+$/.test(value) || ![8, 12, 13, 14].includes(value.length)) return false;
-
-  const digits = Array.from(value, Number);
-  const checkDigit = digits.pop();
-  if (checkDigit === undefined) return false;
-
-  let sum = 0;
-  let weight = 3;
-  for (let index = digits.length - 1; index >= 0; index -= 1) {
-    sum += digits[index] * weight;
-    weight = weight === 3 ? 1 : 3;
-  }
-
-  return ((10 - (sum % 10)) % 10) === checkDigit;
-}
-
-export function selectOuterRollGtinSymbology(gtin: string): OuterRollGtinSymbology {
-  if (!isValidGtin(gtin)) {
-    throw new OuterRollMachineCodeError("A valid GTIN-8/12/13/14 is required for the Product linear barcode.");
-  }
-
-  switch (gtin.length) {
-    case 8:
-      return "ean8";
-    case 12:
-      return "upca";
-    case 13:
-      return "ean13";
-    case 14:
-      return "itf14";
-    default:
-      throw new OuterRollMachineCodeError("Unsupported GTIN length for outer Roll barcode.");
   }
 }
 
@@ -134,15 +99,19 @@ function renderVector(options: RenderOptions): BwipVectorGeometry {
   return bwipjs.render<BwipVectorGeometry>(options, drawing);
 }
 
-export function buildOuterRollGtinBarcodeGeometry(
-  gtin: string,
+export function buildOuterRollProductBarcodeGeometry(
+  barcode: string,
   targetWidthMm = 80,
   targetHeightMm = 18,
-): OuterRollGtinBarcodeVector {
-  const symbology = selectOuterRollGtinSymbology(gtin);
+): OuterRollProductBarcodeVector {
+  if (!isValidProductBarcode(barcode)) {
+    throw new OuterRollMachineCodeError("A valid V1 Product Barcode of 1-32 digits is required for the Product linear barcode.");
+  }
+
+  const symbology: OuterRollProductBarcodeSymbology = "code128";
   const geometry = renderVector({
     bcid: symbology,
-    text: gtin,
+    text: barcode,
     scale: OUTER_ROLL_MACHINE_CODE_RENDER_SCALE,
     width: targetWidthMm,
     height: targetHeightMm,
@@ -150,10 +119,10 @@ export function buildOuterRollGtinBarcodeGeometry(
   });
 
   if (geometry.lines.length === 0 && geometry.polygons.length === 0) {
-    throw new OuterRollMachineCodeError("Product GTIN barcode produced no vector marks.");
+    throw new OuterRollMachineCodeError("Product Barcode produced no vector marks.");
   }
 
-  return { payload: gtin, symbology, geometry };
+  return { payload: barcode, symbology, geometry };
 }
 
 export function buildOuterRollQrVector(qrPayload: string): OuterRollQrVector {
