@@ -4,6 +4,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormPanel } from "@/components/ui/form-layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createProduct } from "./actions";
 
@@ -36,7 +37,7 @@ export default async function ProductCreatePage({ searchParams }: ProductCreateP
           <ProductCoreFields />
 
           <div className="operations-form-actions">
-            <button type="submit" className="button button-primary">حفظ المنتج</button>
+            <SubmitButton pendingLabel="جارٍ حفظ المنتج…">حفظ المنتج</SubmitButton>
             <Link href="/operations/products" className="button button-ghost">إلغاء</Link>
           </div>
         </form>

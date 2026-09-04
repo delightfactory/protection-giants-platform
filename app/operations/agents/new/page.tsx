@@ -4,6 +4,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormPanel, FormSection } from "@/components/ui/form-layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createAgent } from "./actions";
 
@@ -42,7 +43,7 @@ export default async function AgentCreatePage({ searchParams }: AgentCreatePageP
           </FormSection>
 
           <div className="operations-form-actions">
-            <button type="submit" className="button button-primary">إنشاء وكيل الدولة</button>
+            <SubmitButton pendingLabel="جارٍ إنشاء وكيل الدولة…">إنشاء وكيل الدولة</SubmitButton>
             <Link href="/operations/agents" className="button button-ghost">إلغاء</Link>
           </div>
         </form>

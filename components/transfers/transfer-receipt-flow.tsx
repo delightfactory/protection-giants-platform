@@ -589,7 +589,7 @@ export function TransferReceiptFlow({
             <p id="receipt-confirm-description">أنت تؤكد أنك استلمت فعليًا {selectedCount} لفة أمامك. {afterReceiptRemaining > 0 ? `سيظل ${afterReceiptRemaining} لفة معلقًا في التحويل دون نقل عهدته.` : "سيُغلق التحويل كمستلم بالكامل."}</p>
             <div className={styles.sheetActions}>
               <button type="button" className="button button-ghost" onClick={() => setConfirmOpen(false)} disabled={isSubmitting} data-dialog-initial-focus>رجوع</button>
-              <button type="button" className="button button-primary" onClick={submitReceipt} disabled={isSubmitting}>{isSubmitting ? "جارٍ تثبيت العهدة…" : "نعم، استلمت هذه اللفات"}</button>
+              <button type="button" className="button button-primary" onClick={submitReceipt} disabled={isSubmitting} aria-busy={isSubmitting || undefined}>{isSubmitting ? "جارٍ تثبيت العهدة…" : "نعم، استلمت هذه اللفات"}</button>
             </div>
           </section>
         ) : null}

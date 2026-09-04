@@ -546,7 +546,7 @@ export function WarrantyActivationFlow({
           {feedback ? <FeedbackBanner tone={feedback.tone}>{feedback.text}</FeedbackBanner> : null}
 
           <div className={styles.actions}>
-            <button type="button" className="button button-primary" onClick={confirmActivation} disabled={isActivating}>
+            <button type="button" className="button button-primary" onClick={confirmActivation} disabled={isActivating} aria-busy={isActivating || undefined}>
               {isActivating ? "جارٍ تفعيل الضمان…" : "تأكيد تفعيل ضمان العميل"}
             </button>
             <button type="button" className="button button-ghost" onClick={() => { setStage("details"); setFeedback(null); }} disabled={isActivating}>

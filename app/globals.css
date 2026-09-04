@@ -260,6 +260,7 @@ textarea:focus-visible {
 .button:active { transform: translateY(1px); }
 .button:disabled,
 .button[aria-disabled="true"] { opacity: .46; cursor: not-allowed; transform: none; }
+.button[aria-busy="true"] { cursor: wait; }
 .button-primary {
   background: var(--accent);
   color: var(--accent-ink);

@@ -6,6 +6,7 @@ import { FormPanel, FormSection } from "@/components/ui/form-layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { setAgentOpenedRollRecovery, updateAgent } from "./actions";
@@ -91,7 +92,7 @@ export default async function AgentEditPage({ params, searchParams }: AgentEditP
           </FormSection>
 
           <div className="operations-form-actions">
-            <button type="submit" className="button button-primary">حفظ التعديلات</button>
+            <SubmitButton pendingLabel="جارٍ حفظ التعديلات…">حفظ التعديلات</SubmitButton>
             <Link href="/operations/agents" className="button button-ghost">إلغاء</Link>
           </div>
         </form>
