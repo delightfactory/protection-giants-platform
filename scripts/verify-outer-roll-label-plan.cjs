@@ -31,7 +31,7 @@ function roll(idSuffix, lotId, lotSequence, rollIndex) {
 function fixture(overrides = {}) {
   return {
     publicSiteOrigin: origin,
-    product: { id: productId, gtin: "4006381333931" },
+    product: { id: productId, gtin: "1234567890" },
     order: {
       id: orderId,
       productId,
@@ -82,7 +82,7 @@ const firstModel = plan.chunks[0].items[0];
 assert.equal(firstModel.productName, "AI Pro");
 assert.equal(firstModel.productVersion, "7.5 mil");
 assert.equal(firstModel.sku, "AI-PRO-75");
-assert.equal(firstModel.gtin, "4006381333931");
+assert.equal(firstModel.gtin, "1234567890");
 assert.equal(firstModel.widthMm, 1524);
 assert.equal(firstModel.lengthM, 15);
 assert.equal(firstModel.thicknessMil, 7.5);
@@ -95,6 +95,15 @@ assert.notStrictEqual(copyA, copyB);
 
 const repeatPlan = buildOuterRollLabelPlan(fixture());
 assert.deepEqual(repeatPlan, plan, "Reprint planning must be deterministic for unchanged source data.");
+
+const formerBadGtinChecksumPlan = buildOuterRollLabelPlan(fixture({
+  product: { id: productId, gtin: "4006381333932" },
+}));
+assert.equal(
+  formerBadGtinChecksumPlan.chunks[0].items[0].gtin,
+  "4006381333932",
+  "V1 Product Barcode must not require a GS1 check digit.",
+);
 
 const lotPlan = buildOuterRollLabelPlan(fixture({ selection: { mode: "lot", lotId: lot2Id } }));
 assert.equal(lotPlan.rollCount, 1);
@@ -113,7 +122,10 @@ expectPlanError("order-not-generated", () => buildOuterRollLabelPlan(fixture({
 })));
 expectPlanError("missing-gtin", () => buildOuterRollLabelPlan(fixture({ product: { id: productId, gtin: null } })));
 expectPlanError("invalid-gtin", () => buildOuterRollLabelPlan(fixture({
-  product: { id: productId, gtin: "4006381333932" },
+  product: { id: productId, gtin: "BARCODE-123" },
+})));
+expectPlanError("invalid-gtin", () => buildOuterRollLabelPlan(fixture({
+  product: { id: productId, gtin: "123456789012345678901234567890123" },
 })));
 expectPlanError("invalid-public-origin", () => buildOuterRollLabelPlan(fixture({ publicSiteOrigin: "http://platform.example" })));
 expectPlanError("invalid-range", () => buildOuterRollLabelPlan(fixture({
@@ -169,4 +181,4 @@ for (let index = 1; index <= 10_000; index += 1) {
   assert.equal(plannedSerials[index - 1], serial(1, index), `Missing or reordered Roll at position ${index}.`);
 }
 
-console.log("Outer Roll label view-model, GTIN preflight, source completeness, selection and chunk planning verification passed.");
+console.log("Outer Roll label view-model, V1 Barcode preflight, source completeness, selection and chunk planning verification passed.");
