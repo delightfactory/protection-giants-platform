@@ -71,6 +71,10 @@ function drawFittedText(
     size -= 0.25;
   }
 
+  while (size > 4 && font.widthOfTextAtSize(text, size) > maxWidthPt) {
+    size -= 0.25;
+  }
+
   if (font.widthOfTextAtSize(text, size) > maxWidthPt) {
     throw new OuterRollLabelPdfError(`Required label text does not fit the fixed V1 geometry: ${text}`);
   }
@@ -89,14 +93,17 @@ function drawField(
   xMm: number,
   yMm: number,
   widthMm: number,
-  valueSizePt = 8.5,
+  valueSizePt = 12,
+  minValueSizePt = 5,
 ) {
   const xPt = originXPt + millimetresToPdfPoints(xMm);
   const yPt = originYPt + millimetresToPdfPoints(yMm);
+  const labelSizePt = 6.5;
+  const labelYPt = yPt + Math.max(valueSizePt * 0.9, 11.5);
   page.drawText(label, {
     x: xPt,
-    y: yPt + 9,
-    size: 5,
+    y: labelYPt,
+    size: labelSizePt,
     font: fonts.bold,
     color: MUTED,
   });
@@ -108,7 +115,7 @@ function drawField(
     yPt,
     millimetresToPdfPoints(widthMm),
     valueSizePt,
-    5.5,
+    minValueSizePt,
   );
 }
 
@@ -221,6 +228,154 @@ function drawQrVectorGeometry(
   }
 }
 
+function drawOuterProductName(
+  page: PDFPage,
+  font: PDFFont,
+  productName: string,
+  xPt: number,
+  baseYPt: number,
+  maxWidthPt: number,
+) {
+  let singleLineSize = 18;
+  while (singleLineSize >= 11 && font.widthOfTextAtSize(productName, singleLineSize) > maxWidthPt) {
+    singleLineSize -= 0.5;
+  }
+
+  if (font.widthOfTextAtSize(productName, singleLineSize) <= maxWidthPt) {
+    page.drawText(productName, {
+      x: xPt,
+      y: baseYPt,
+      size: singleLineSize,
+      font,
+      color: WHITE,
+    });
+    return;
+  }
+
+  const words = productName.split(/\s+/).filter(Boolean);
+  let bestSplit = 1;
+  let minDiff = Infinity;
+
+  if (words.length <= 1) {
+    const token = words[0] || productName;
+    const mid = Math.ceil(token.length / 2);
+    const l1 = token.slice(0, mid);
+    const l2 = token.slice(mid);
+    let size = 11;
+    while (
+      size > 5.5 &&
+      (font.widthOfTextAtSize(l1, size) > maxWidthPt || font.widthOfTextAtSize(l2, size) > maxWidthPt)
+    ) {
+      size -= 0.25;
+    }
+    const lineSpacing = Math.max(size * 1.2, 11);
+    page.drawText(l1, { x: xPt, y: baseYPt + lineSpacing * 0.45, size, font, color: WHITE });
+    page.drawText(l2, { x: xPt, y: baseYPt - lineSpacing * 0.55, size, font, color: WHITE });
+    return;
+  }
+
+  for (let i = 1; i < words.length; i++) {
+    const l1 = words.slice(0, i).join(" ");
+    const l2 = words.slice(i).join(" ");
+    const w1 = font.widthOfTextAtSize(l1, 10);
+    const w2 = font.widthOfTextAtSize(l2, 10);
+    const diff = Math.abs(w1 - w2);
+    if (diff < minDiff) {
+      minDiff = diff;
+      bestSplit = i;
+    }
+  }
+
+  const line1 = words.slice(0, bestSplit).join(" ");
+  const line2 = words.slice(bestSplit).join(" ");
+
+  let size = 11;
+  while (
+    size > 5.5 &&
+    (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
+  ) {
+    size -= 0.25;
+  }
+
+  const lineSpacing = Math.max(size * 1.2, 11);
+  page.drawText(line1, { x: xPt, y: baseYPt + lineSpacing * 0.45, size, font, color: WHITE });
+  page.drawText(line2, { x: xPt, y: baseYPt - lineSpacing * 0.55, size, font, color: WHITE });
+}
+
+function drawOuterProductVersion(
+  page: PDFPage,
+  font: PDFFont,
+  productVersion: string,
+  xPt: number,
+  baseYPt: number,
+  maxWidthPt: number,
+) {
+  let singleLineSize = 11;
+  while (singleLineSize >= 8 && font.widthOfTextAtSize(productVersion, singleLineSize) > maxWidthPt) {
+    singleLineSize -= 0.25;
+  }
+
+  if (font.widthOfTextAtSize(productVersion, singleLineSize) <= maxWidthPt) {
+    page.drawText(productVersion, {
+      x: xPt,
+      y: baseYPt,
+      size: singleLineSize,
+      font,
+      color: WHITE,
+    });
+    return;
+  }
+
+  const words = productVersion.split(/\s+/).filter(Boolean);
+  let bestSplit = 1;
+  let minDiff = Infinity;
+
+  if (words.length <= 1) {
+    const token = words[0] || productVersion;
+    const mid = Math.ceil(token.length / 2);
+    const l1 = token.slice(0, mid);
+    const l2 = token.slice(mid);
+    let size = 8;
+    while (
+      size > 3.5 &&
+      (font.widthOfTextAtSize(l1, size) > maxWidthPt || font.widthOfTextAtSize(l2, size) > maxWidthPt)
+    ) {
+      size -= 0.25;
+    }
+    const lineSpacing = Math.max(size * 1.2, 8);
+    page.drawText(l1, { x: xPt, y: baseYPt + lineSpacing * 0.45, size, font, color: WHITE });
+    page.drawText(l2, { x: xPt, y: baseYPt - lineSpacing * 0.55, size, font, color: WHITE });
+    return;
+  }
+
+  for (let i = 1; i < words.length; i++) {
+    const l1 = words.slice(0, i).join(" ");
+    const l2 = words.slice(i).join(" ");
+    const w1 = font.widthOfTextAtSize(l1, 10);
+    const w2 = font.widthOfTextAtSize(l2, 10);
+    const diff = Math.abs(w1 - w2);
+    if (diff < minDiff) {
+      minDiff = diff;
+      bestSplit = i;
+    }
+  }
+
+  const line1 = words.slice(0, bestSplit).join(" ");
+  const line2 = words.slice(bestSplit).join(" ");
+
+  let size = 8;
+  while (
+    size > 3.5 &&
+    (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
+  ) {
+    size -= 0.25;
+  }
+
+  const lineSpacing = Math.max(size * 1.2, 8);
+  page.drawText(line1, { x: xPt, y: baseYPt + lineSpacing * 0.45, size, font, color: WHITE });
+  page.drawText(line2, { x: xPt, y: baseYPt - lineSpacing * 0.55, size, font, color: WHITE });
+}
+
 function drawFixedOuterRollLabel(
   page: PDFPage,
   fonts: OuterRollLabelPdfFonts,
@@ -264,40 +419,36 @@ function drawFixedOuterRollLabel(
   page.drawText("PROTECTION GIANTS", {
     x: x(template.brandLabel.xMm),
     y: y(template.brandLabel.yMm),
-    size: 7.5,
+    size: 9.5,
     font: fonts.bold,
     color: WHITE,
   });
-  drawFittedText(
+
+  drawOuterProductName(
     page,
     fonts.bold,
     productName,
     x(template.productName.xMm),
     y(template.productName.yMm),
     millimetresToPdfPoints(template.productName.widthMm),
-    18,
-    10,
-    WHITE,
   );
 
   if (productVersion) {
-    drawFittedText(
+    drawOuterProductVersion(
       page,
       fonts.bold,
       productVersion,
       x(template.productVersion.xMm),
       y(template.productVersion.yMm),
       millimetresToPdfPoints(template.productVersion.widthMm),
-      9,
-      6,
-      WHITE,
     );
   }
+
   page.drawText("PPF / OUTER ROLL", {
     x: x(template.sideLabel.xMm),
     y: y(template.sideLabel.yMm),
-    size: 5.5,
-    font: fonts.regular,
+    size: 7.5,
+    font: fonts.bold,
     color: WHITE,
   });
 
@@ -318,7 +469,8 @@ function drawFixedOuterRollLabel(
     template.fields.sku.xMm,
     template.fields.sku.yMm,
     template.fields.sku.widthMm,
-    9,
+    12.5,
+    5,
   );
   drawField(
     page,
@@ -330,7 +482,8 @@ function drawFixedOuterRollLabel(
     template.fields.size.xMm,
     template.fields.size.yMm,
     template.fields.size.widthMm,
-    9,
+    12,
+    6,
   );
   drawField(
     page,
@@ -342,7 +495,8 @@ function drawFixedOuterRollLabel(
     template.fields.thickness.xMm,
     template.fields.thickness.yMm,
     template.fields.thickness.widthMm,
-    9,
+    12,
+    6,
   );
   drawField(
     page,
@@ -354,7 +508,8 @@ function drawFixedOuterRollLabel(
     template.fields.lot.xMm,
     template.fields.lot.yMm,
     template.fields.lot.widthMm,
-    8.25,
+    11.5,
+    5,
   );
   drawField(
     page,
@@ -366,7 +521,8 @@ function drawFixedOuterRollLabel(
     template.fields.roll.xMm,
     template.fields.roll.yMm,
     template.fields.roll.widthMm,
-    7.2,
+    12.5,
+    5,
   );
 
   const barcodeVector = buildOuterRollProductBarcodeGeometry(
@@ -389,7 +545,7 @@ function drawFixedOuterRollLabel(
   page.drawText(`BARCODE ${barcode}`, {
     x: x(template.gtinLabel.xMm),
     y: y(template.gtinLabel.yMm),
-    size: 5.5,
+    size: 7.5,
     font: fonts.bold,
     color: BLACK,
   });
@@ -405,7 +561,7 @@ function drawFixedOuterRollLabel(
   page.drawText("ROLL QR", {
     x: x(template.qrLabel.xMm),
     y: y(template.qrLabel.yMm),
-    size: 5.5,
+    size: 7,
     font: fonts.bold,
     color: MUTED,
   });
@@ -423,10 +579,15 @@ function drawFixedOuterRollLabel(
     },
   );
 
-  page.drawText("SCAN ROLL", {
-    x: x(template.scanLabel.xMm),
+  const scanText = "SCAN ROLL";
+  const scanSize = 6.5;
+  const scanWidthPt = fonts.bold.widthOfTextAtSize(scanText, scanSize);
+  const quietBoxPt = millimetresToPdfPoints(quietBox.widthMm);
+  const scanXPt = x(quietBox.xMm) + (quietBoxPt - scanWidthPt) / 2;
+  page.drawText(scanText, {
+    x: scanXPt,
     y: y(template.scanLabel.yMm),
-    size: 5,
+    size: scanSize,
     font: fonts.bold,
     color: MUTED,
   });

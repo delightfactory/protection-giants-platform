@@ -107,6 +107,34 @@ async function main() {
   const tamperedLayout = { ...layout, labelCount: layout.labelCount + 1 };
   await assert.rejects(() => renderOuterRollPrintPdf(tamperedLayout));
 
+  const longestValidModel: OuterRollLabelViewModel = {
+    templateId: "outer-roll-label-v1",
+    productName: "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1524MM",
+    productVersion: "PREMIUM PLUS ULTRA THICK CERAMIC COATED EXTENDED WARRANTY EDITION SERIES 2026-X",
+    sku: "PG-ULT-PLUS-CER-PPF-1524-75MIL-EXP-PRO-X",
+    gtin: "12345678901234567890123456789012",
+    widthMm: 1524,
+    lengthM: 30,
+    thicknessMil: 12.5,
+    productionOrderNumber: "PG-PO-20260825-00000001",
+    productionDate: "2026-08-25",
+    lotNumber: "PG-L-20260825-00000001-99",
+    lotSequence: 99,
+    rollId: "44444444-4444-4444-8444-999999999999",
+    rollSerial: "PG-R-20260825-00000001-99-9999",
+    rollIndex: 9999,
+    qrPayload: "https://protectiongiants.com/r/PG-R-20260825-00000001-99-9999",
+  };
+  const longestMasterA = await renderOuterRollLabelMasterPdf(longestValidModel);
+  const longestMasterB = await renderOuterRollLabelMasterPdf(longestValidModel);
+  assert.equal(Buffer.from(longestMasterA).subarray(0, 4).toString("ascii"), "%PDF");
+  assert.deepEqual(Buffer.from(longestMasterA), Buffer.from(longestMasterB), "Longest valid values reprint must be byte-deterministic.");
+  const longestDoc = await PDFDocument.load(longestMasterA);
+  assert.equal(longestDoc.getPageCount(), 1);
+  const longestPage = longestDoc.getPage(0);
+  assert.ok(Math.abs(longestPage.getWidth() - millimetresToPdfPoints(150)) < 0.01);
+  assert.ok(Math.abs(longestPage.getHeight() - millimetresToPdfPoints(100)) < 0.01);
+
   console.log("Outer Roll V1 Product Barcode, QR quiet-zone, PDF dimension and deterministic export verification passed.");
 }
 
