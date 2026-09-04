@@ -32,7 +32,7 @@ function runSql(sql, { tuplesOnly = false } = {}) {
     "-d",
     "postgres",
   ];
-  if (tuplesOnly) args.push("-At");
+  if (tuplesOnly) args.push("-qAt");
   return execFileSync("docker", args, {
     input: sql,
     encoding: "utf8",
