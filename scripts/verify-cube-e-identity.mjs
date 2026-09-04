@@ -305,10 +305,13 @@ assert(
   "Produced Product Barcode drifted after rejected mutations.",
 );
 
-// Publishing is intentionally a non-physical content change, so it remains
-// editable after production and lets the existing public resolver fixture be
-// exercised without creating another Production Order.
-runSql(`update public.products set publication_status = 'published' where id = ${sqlUuid(producedProductId)};`);
+// Public QR resolution requires the Product itself to be active and published;
+// these are public-eligibility flags, not physical identity fields.
+runSql(`
+update public.products
+set status = 'active', publication_status = 'published'
+where id = ${sqlUuid(producedProductId)};
+`);
 const producedSlug = scalar(`select slug from public.products where id = ${sqlUuid(producedProductId)}`);
 const generatedSerial = scalar(`
   select r.serial_number
