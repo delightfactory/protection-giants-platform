@@ -36,4 +36,9 @@ assert(preview.includes("Outer ×2 · Warranty ×3"), "Pack preview guide must m
 assert(previewCss.includes("@media (max-width: 760px)"), "Pack preview must preserve an explicit mobile breakpoint.");
 assert(previewCss.includes("grid-template-columns: 1fr"), "Pack pieces must collapse to one column on narrow mobile screens.");
 
+const warrantyCss = readFileSync("components/labels/warranty-qr-label-preview.module.css", "utf8");
+assert(warrantyCss.includes("container-type: inline-size"), "Warranty preview must establish container context.");
+assert(!warrantyCss.includes("vw"), "Warranty preview must not scale typography with viewport-relative vw units.");
+assert(warrantyCss.includes("cqw"), "Warranty preview must scale typography with container query units.");
+
 console.log("Cube O Roll Print Pack UI/download contract PASS");

@@ -48,6 +48,14 @@ jobs:
       - name: Verify Cube O O5 UI and download wiring
         run: node scripts/verify-cube-o-roll-print-pack-ui-contract.mjs
 
+      - name: Verify Warranty in-platform rendered preview regression
+        run: |
+          npm install --global npm@11.6.0 --no-audit --no-fund
+          npm --version
+          npm install --no-save --package-lock=false --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+          node scripts/verify-cube-o-warranty-preview-rendering.mjs
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
