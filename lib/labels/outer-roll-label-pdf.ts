@@ -10,7 +10,7 @@ import type { QrVectorGeometry } from "../qr/qr-vector";
 import type { OuterRollLabelViewModel } from "./outer-roll-label-plan";
 import {
   OUTER_ROLL_MACHINE_CODE_RENDER_SCALE,
-  buildOuterRollGtinBarcodeGeometry,
+  buildOuterRollProductBarcodeGeometry,
   buildOuterRollQrGeometry,
   type BwipVectorGeometry,
 } from "./outer-roll-machine-codes";
@@ -239,7 +239,7 @@ function drawFixedOuterRollLabel(
     ? assertPrintableText(model.productVersion, "Product version")
     : null;
   const sku = assertPrintableText(model.sku, "SKU");
-  const gtin = assertPrintableText(model.gtin, "GTIN");
+  const barcode = assertPrintableText(model.gtin, "Product Barcode");
   const lotNumber = assertPrintableText(model.lotNumber, "Lot number");
   const rollSerial = assertPrintableText(model.rollSerial, "Roll serial");
 
@@ -369,14 +369,14 @@ function drawFixedOuterRollLabel(
     7.2,
   );
 
-  const barcode = buildOuterRollGtinBarcodeGeometry(
-    gtin,
+  const barcodeVector = buildOuterRollProductBarcodeGeometry(
+    barcode,
     template.barcodeBox.widthMm,
     template.barcodeBox.heightMm,
   );
   drawVectorGeometry(
     page,
-    barcode.geometry,
+    barcodeVector.geometry,
     {
       xPt: x(template.barcodeBox.xMm),
       yPt: y(template.barcodeBox.yMm),
@@ -386,7 +386,7 @@ function drawFixedOuterRollLabel(
     "physical-max",
   );
 
-  page.drawText(`GTIN ${gtin}`, {
+  page.drawText(`BARCODE ${barcode}`, {
     x: x(template.gtinLabel.xMm),
     y: y(template.gtinLabel.yMm),
     size: 5.5,

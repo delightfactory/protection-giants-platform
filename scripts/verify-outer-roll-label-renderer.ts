@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import { PDFDocument } from "pdf-lib";
 
 import {
-  buildOuterRollGtinBarcodeGeometry,
+  buildOuterRollProductBarcodeGeometry,
   buildOuterRollQrVector,
-  selectOuterRollGtinSymbology,
 } from "../lib/labels/outer-roll-machine-codes";
 import {
   millimetresToPdfPoints,
@@ -23,7 +22,7 @@ function model(index: number): OuterRollLabelViewModel {
     productName: "AI Pro",
     productVersion: "7.5 mil",
     sku: "AI-PRO-75",
-    gtin: "4006381333931",
+    gtin: "1234567890",
     widthMm: 1524,
     lengthM: 15,
     thicknessMil: 7.5,
@@ -39,18 +38,22 @@ function model(index: number): OuterRollLabelViewModel {
 }
 
 async function main() {
-  assert.equal(selectOuterRollGtinSymbology("96385074"), "ean8");
-  assert.equal(selectOuterRollGtinSymbology("012345678905"), "upca");
-  assert.equal(selectOuterRollGtinSymbology("4006381333931"), "ean13");
-  assert.equal(selectOuterRollGtinSymbology("10012345000017"), "itf14");
-  assert.throws(() => selectOuterRollGtinSymbology("4006381333932"));
-
-  for (const gtin of ["96385074", "012345678905", "4006381333931", "10012345000017"]) {
-    const barcode = buildOuterRollGtinBarcodeGeometry(gtin);
-    assert.equal(barcode.payload, gtin, "Linear barcode payload must remain the exact Product GTIN.");
+  for (const barcodeValue of [
+    "1234567890",
+    "4006381333932",
+    "000012345678",
+    "12345678901234567890123456789012",
+  ]) {
+    const barcode = buildOuterRollProductBarcodeGeometry(barcodeValue);
+    assert.equal(barcode.payload, barcodeValue, "Linear barcode payload must remain the exact V1 Product Barcode.");
+    assert.equal(barcode.symbology, "code128");
     assert.ok(barcode.geometry.width > 0 && barcode.geometry.height > 0);
     assert.ok(barcode.geometry.lines.length + barcode.geometry.polygons.length > 0);
   }
+
+  assert.throws(() => buildOuterRollProductBarcodeGeometry(""));
+  assert.throws(() => buildOuterRollProductBarcodeGeometry("ABC123"));
+  assert.throws(() => buildOuterRollProductBarcodeGeometry("123456789012345678901234567890123"));
 
   const qrPayload = model(1).qrPayload;
   const qr = buildOuterRollQrVector(qrPayload);
@@ -104,7 +107,7 @@ async function main() {
   const tamperedLayout = { ...layout, labelCount: layout.labelCount + 1 };
   await assert.rejects(() => renderOuterRollPrintPdf(tamperedLayout));
 
-  console.log("Outer Roll vector machine-code, QR quiet-zone, PDF dimension and deterministic export verification passed.");
+  console.log("Outer Roll V1 Product Barcode, QR quiet-zone, PDF dimension and deterministic export verification passed.");
 }
 
 main().catch((error) => {

@@ -48,19 +48,17 @@ export function ProductCoreFields({ values }: ProductCoreFieldsProps) {
             />
           </FormField>
 
-          <FormField label="GTIN / الباركود العالمي" hint="اختياري. أدخل فقط رقم GS1 الرسمي المخصص للمنتج؛ المنصة لا تنشئ GTIN من تلقاء نفسها." optional>
+          <FormField label="الباركود" hint="اختياري. أدخل باركود المنتج كما هو؛ لا يشترط أن يكون GTIN/GS1 في الإصدار الأول." optional>
             <input
               name="gtin"
               type="text"
               inputMode="numeric"
-              minLength={8}
-              maxLength={14}
-              pattern="[0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14}"
+              maxLength={32}
               dir="ltr"
               spellCheck={false}
               autoComplete="off"
               defaultValue={values?.gtin ?? ""}
-              placeholder="4006381333931"
+              placeholder="1234567890"
             />
           </FormField>
 

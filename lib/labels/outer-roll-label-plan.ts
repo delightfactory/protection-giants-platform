@@ -4,7 +4,7 @@ export const OUTER_ROLL_LABEL_DEFAULT_ROLL_CHUNK_SIZE = 100;
 export const OUTER_ROLL_LABEL_MAX_ROLL_CHUNK_SIZE = 500;
 
 const canonicalRollSerialPattern = /^PG-R-[0-9]{8}-[0-9]{8}-[0-9]{2}-[0-9]{4,5}$/;
-const supportedGtinLengths = new Set([8, 12, 13, 14]);
+const productBarcodePattern = /^\d{1,32}$/;
 
 export type OuterRollLabelSelection =
   | { mode: "order" }
@@ -137,29 +137,12 @@ function normalizePublicOrigin(value: string): string {
   }
 }
 
-function isValidCanonicalGtin(gtin: string): boolean {
-  if (!/^\d+$/.test(gtin) || !supportedGtinLengths.has(gtin.length)) return false;
-
-  const digits = Array.from(gtin, Number);
-  const checkDigit = digits.pop();
-  if (checkDigit === undefined) return false;
-
-  let sum = 0;
-  let weight = 3;
-  for (let index = digits.length - 1; index >= 0; index -= 1) {
-    sum += digits[index] * weight;
-    weight = weight === 3 ? 1 : 3;
+function assertProductBarcode(barcode: string | null): string {
+  if (!barcode) return fail("missing-gtin", "Product Barcode is required before outer Roll labels can be planned.");
+  if (!productBarcodePattern.test(barcode)) {
+    return fail("invalid-gtin", "Product Barcode must contain 1 to 32 digits.");
   }
-
-  return ((10 - (sum % 10)) % 10) === checkDigit;
-}
-
-function assertGtin(gtin: string | null): string {
-  if (!gtin) return fail("missing-gtin", "Product GTIN is required before outer Roll labels can be planned.");
-  if (!isValidCanonicalGtin(gtin)) {
-    return fail("invalid-gtin", "Product GTIN must be a valid 8, 12, 13 or 14 digit GTIN with a correct check digit.");
-  }
-  return gtin;
+  return barcode;
 }
 
 function assertChunkSize(value: number): number {
@@ -223,7 +206,7 @@ export function buildOuterRollLabelPlan(input: OuterRollLabelPlanInput): OuterRo
     return fail("source-incomplete", "Production Order Roll total is invalid for outer Roll label planning.");
   }
 
-  const gtin = assertGtin(input.product.gtin);
+  const gtin = assertProductBarcode(input.product.gtin);
   const publicOrigin = normalizePublicOrigin(input.publicSiteOrigin);
   const rollChunkSize = assertChunkSize(input.rollChunkSize ?? OUTER_ROLL_LABEL_DEFAULT_ROLL_CHUNK_SIZE);
 
