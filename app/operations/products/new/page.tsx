@@ -12,7 +12,7 @@ type ProductCreatePageProps = {
 };
 
 const errorMessages: Record<string, string> = {
-  duplicate: "يوجد منتج آخر بنفس الـSKU أو رابط المنتج أو GTIN.",
+  duplicate: "يوجد منتج آخر بنفس الـSKU أو رابط المنتج أو الباركود.",
   failed: "تعذر حفظ المنتج. حاول مرة أخرى.",
 };
 
