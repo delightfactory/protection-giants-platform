@@ -7,6 +7,7 @@ import { FormField } from "@/components/ui/form-field";
 import { FormGrid, FormPanel, FormSection } from "@/components/ui/form-layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { PRODUCT_ASSET_BUCKET } from "@/lib/products/product-assets";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -110,7 +111,7 @@ export default async function ProductEditPage({ params, searchParams }: ProductE
           />
 
           <div className="operations-form-actions">
-            <button type="submit" className="button button-primary">حفظ التعديلات</button>
+            <SubmitButton pendingLabel="جارٍ حفظ التعديلات…">حفظ التعديلات</SubmitButton>
             <Link href="/operations/products" className="button button-ghost">إلغاء</Link>
           </div>
         </form>

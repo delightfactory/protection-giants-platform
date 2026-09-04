@@ -810,7 +810,7 @@ export function TransferSendFlow({ senderTransferId, publicSiteOrigin }: {
           </div>
 
           <div className={styles.reviewActions}>
-            <button type="button" className="button button-primary" disabled={submitLoading} onClick={() => { void submitTransfer(); }}>
+            <button type="button" className="button button-primary" disabled={submitLoading} aria-busy={submitLoading || undefined} onClick={() => { void submitTransfer(); }}>
               {submitLoading ? "جارٍ إرسال التحويل…" : `إرسال التحويل · ${selectedCount.toLocaleString("en-US")} لفة`}
             </button>
             <button type="button" className="button button-ghost" disabled={submitLoading} onClick={() => setStage("select")}>العودة للاختيار</button>

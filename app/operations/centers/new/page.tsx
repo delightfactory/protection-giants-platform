@@ -5,6 +5,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormPanel, FormSection } from "@/components/ui/form-layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createCenter } from "./actions";
@@ -84,7 +85,7 @@ export default async function CenterCreatePage({ searchParams }: CenterCreatePag
           </FormSection>
 
           <div className="operations-form-actions">
-            <button type="submit" className="button button-primary">حفظ المركز</button>
+            <SubmitButton pendingLabel="جارٍ حفظ المركز…">حفظ المركز</SubmitButton>
             <Link href="/operations/centers" className="button button-ghost">إلغاء</Link>
           </div>
         </form>

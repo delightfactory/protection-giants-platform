@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { RecordItem, RecordList } from "@/components/ui/record-list";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -149,7 +150,7 @@ export default async function DealerEditPage({ params, searchParams }: DealerEdi
             </FormSection>
 
             <div className="operations-form-actions">
-              <button type="submit" className="button button-primary">حفظ التعديلات</button>
+              <SubmitButton pendingLabel="جارٍ حفظ التعديلات…">حفظ التعديلات</SubmitButton>
               <Link href="/operations/dealers" className="button button-ghost">إلغاء</Link>
             </div>
           </form>
@@ -256,7 +257,7 @@ export default async function DealerEditPage({ params, searchParams }: DealerEdi
 
             {dealerActive ? (
               <div className="operations-form-actions is-inline">
-                <button type="submit" className="button button-primary">إنشاء حساب للموزع</button>
+                <SubmitButton pendingLabel="جارٍ إنشاء حساب الموزع…">إنشاء حساب للموزع</SubmitButton>
               </div>
             ) : null}
           </form>

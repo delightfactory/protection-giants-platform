@@ -5,6 +5,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormPanel, FormSection } from "@/components/ui/form-layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createDealer } from "./actions";
@@ -61,7 +62,7 @@ export default async function DealerCreatePage({ searchParams }: DealerCreatePag
           </FormSection>
 
           <div className="operations-form-actions">
-            <button type="submit" className="button button-primary">حفظ الوكيل</button>
+            <SubmitButton pendingLabel="جارٍ حفظ الوكيل…">حفظ الوكيل</SubmitButton>
             <Link href="/operations/dealers" className="button button-ghost">إلغاء</Link>
           </div>
         </form>

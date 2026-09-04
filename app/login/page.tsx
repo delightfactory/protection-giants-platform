@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandLockup } from "@/components/ui/brand-lockup";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { signIn } from "./actions";
 
 type LoginPageProps = {
@@ -48,7 +49,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <input name="password" type="password" autoComplete="current-password" dir="ltr" required />
           </FormField>
 
-          <button type="submit" className="button button-primary">دخول</button>
+          <SubmitButton pendingLabel="جارٍ تسجيل الدخول…">دخول</SubmitButton>
         </form>
 
         <Link href="/" className="auth-back-link">العودة إلى الموقع العام</Link>

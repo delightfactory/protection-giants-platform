@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BrandLockup } from "@/components/ui/brand-lockup";
 import { FeedbackBanner } from "@/components/ui/feedback-banner";
 import { FormField } from "@/components/ui/form-field";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isOperationalUserId } from "@/lib/users/operational-user-input";
@@ -188,7 +189,7 @@ export default async function CenterOnboardingPage({ searchParams }: CenterOnboa
             />
           </FormField>
 
-          <button type="submit" className="button button-primary">إكمال إعداد الحساب</button>
+          <SubmitButton pendingLabel="جارٍ إكمال إعداد الحساب…">إكمال إعداد الحساب</SubmitButton>
         </form>
 
         <p className="auth-back-link">لن يتم إنشاء الحساب التشغيلي إلا إذا ظلت هذه الدعوة مرتبطة بنفس البريد والمركز.</p>

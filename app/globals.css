@@ -4,13 +4,13 @@
   /* P.G semantic color system */
   --canvas: #060607;
   --surface-0: #090a0b;
-  --surface-1: #0e0f11;
-  --surface-2: #141518;
-  --surface-3: #1a1c20;
+  --surface-1: #101114;
+  --surface-2: #16181d;
+  --surface-3: #1c1f24;
   --surface-hover: #202226;
   --surface-selected: rgba(223, 37, 38, 0.105);
 
-  --line-subtle: rgba(255, 255, 255, 0.06);
+  --line-subtle: rgba(255, 255, 255, 0.08);
   --line: rgba(255, 255, 255, 0.105);
   --line-strong: rgba(255, 255, 255, 0.18);
 
@@ -260,6 +260,7 @@ textarea:focus-visible {
 .button:active { transform: translateY(1px); }
 .button:disabled,
 .button[aria-disabled="true"] { opacity: .46; cursor: not-allowed; transform: none; }
+.button[aria-busy="true"] { cursor: wait; }
 .button-primary {
   background: var(--accent);
   color: var(--accent-ink);
@@ -326,7 +327,7 @@ textarea:focus-visible {
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
-.ui-page-description { max-width: 700px; margin: 7px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.7; }
+.ui-page-description { max-width: 700px; margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.8; }
 .ui-page-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; flex: 0 0 auto; }
 .ui-page-meta { color: var(--text-tertiary); font-size: 11px; font-weight: 600; white-space: nowrap; }
 .ui-heading-accent { color: #fff; }
@@ -353,6 +354,35 @@ textarea:focus-visible {
 .ui-feedback-warning { color: #f4ce88; border-color: var(--warning-border); background: var(--warning-soft); }
 .ui-feedback-info { color: var(--text-secondary); border-color: var(--line); background: var(--surface-1); }
 .form-error, .form-success { margin: 0; }
+.ui-navigation-feedback {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 3px 12px;
+  background: rgba(6, 6, 7, .94);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  pointer-events: none;
+}
+.ui-navigation-feedback-bar {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 2px;
+  background: var(--accent);
+  transform-origin: right center;
+  animation: ui-navigation-feedback-pulse 1.1s ease-in-out infinite alternate;
+}
+@keyframes ui-navigation-feedback-pulse {
+  from { transform: scaleX(.18); opacity: .5; }
+  to { transform: scaleX(.82); opacity: 1; }
+}
 
 /* Empty state */
 .ui-empty-state {
@@ -368,7 +398,7 @@ textarea:focus-visible {
 }
 .ui-empty-eyebrow { display: block; margin-bottom: 5px; color: var(--text-tertiary); font-size: 10px; font-weight: 700; }
 .ui-empty-state strong { display: block; font-size: 17px; font-weight: 750; }
-.ui-empty-state p { max-width: 620px; margin: 5px 0 0; color: var(--text-secondary); font-size: 12px; }
+.ui-empty-state p { max-width: 620px; margin: 5px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.75; }
 .ui-empty-action { flex: 0 0 auto; }
 
 /* Status */
@@ -468,13 +498,14 @@ textarea:focus-visible {
   padding: 22px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: var(--surface-1);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-panel);
 }
 .operations-form { display: grid; gap: 20px; }
 .ui-form-section { display: grid; gap: 14px; }
-.ui-form-section + .ui-form-section { padding-top: 18px; border-top: 1px solid var(--line-subtle); }
+.ui-form-section + .ui-form-section { padding-top: 20px; border-top: 1px solid var(--line); }
 .ui-form-section-heading strong { display: block; font-size: 14px; font-weight: 750; }
-.ui-form-section-heading p { max-width: 680px; margin: 4px 0 0; color: var(--text-tertiary); font-size: 10px; line-height: 1.65; }
+.ui-form-section-heading p { max-width: 680px; margin: 5px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.75; }
 .ui-form-section-body { min-width: 0; }
 .ui-form-grid { display: grid; gap: 14px; }
 .ui-form-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -518,7 +549,7 @@ textarea:focus-visible {
 .ui-form-field select:disabled,
 .operations-form input:disabled,
 .operations-form select:disabled { color: var(--text-tertiary); background: #0b0c0d; cursor: not-allowed; }
-.ui-form-hint { color: var(--text-tertiary); font-size: 9px; font-weight: 450; line-height: 1.55; }
+.ui-form-hint { color: var(--text-secondary); font-size: 12px; font-weight: 500; line-height: 1.7; }
 .operations-form-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
 .operations-form-actions .button { min-width: 120px; }
 .operations-form-actions.is-inline { margin-top: -4px; }
@@ -561,7 +592,7 @@ textarea:focus-visible {
 .ui-module-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
 .ui-module-copy { display: grid; min-width: 0; }
 .ui-module-copy strong { font-size: 14px; font-weight: 750; }
-.ui-module-copy > span { margin-top: 4px; color: var(--text-tertiary); font-size: 10px; line-height: 1.55; }
+.ui-module-copy > span { margin-top: 4px; color: var(--text-secondary); font-size: 11px; line-height: 1.65; }
 .ui-module-arrow { color: var(--text-tertiary); font-family: Arial, sans-serif; font-size: 16px; }
 .ui-module-card:hover .ui-module-icon,
 .ui-module-card:hover .ui-module-arrow { color: var(--accent); }
@@ -655,7 +686,7 @@ textarea:focus-visible {
   .ui-page-header { align-items: flex-start; flex-direction: column; gap: 12px; margin-bottom: 18px; padding-bottom: 17px; }
   .ui-page-heading h1 { font-size: clamp(25px, 6.5vw, 34px); }
   .ui-page-actions { width: 100%; justify-content: space-between; }
-  .ui-page-description { font-size: 11px; }
+  .ui-page-description { font-size: 12px; }
   .ui-form-grid-2 { grid-template-columns: 1fr; }
   .ui-form-field.is-full,
   .ui-form-grid-full { grid-column: auto; }
@@ -706,7 +737,7 @@ textarea:focus-visible {
   .ui-record-facts { grid-template-columns: 1fr 1fr; }
   .ui-form-panel { padding: 16px; border-radius: var(--radius-md); }
   .ui-form-section { gap: 12px; }
-  .ui-form-section-heading p { font-size: 9px; }
+  .ui-form-section-heading p { font-size: 11px; }
   .ui-form-field input,
   .ui-form-field select,
   .operations-form input,

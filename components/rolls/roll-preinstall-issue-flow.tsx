@@ -338,7 +338,7 @@ export function RollPreinstallIssueFlow({
               ) : null}
 
               <div className={styles.actions}>
-                <button type="button" className="button button-primary" onClick={submitIssue} disabled={isSubmitting}>
+                <button type="button" className="button button-primary" onClick={submitIssue} disabled={isSubmitting} aria-busy={isSubmitting || undefined}>
                   {isSubmitting ? "جارٍ إرسال البلاغ…" : "إرسال البلاغ وإيقاف التفعيل مؤقتًا"}
                 </button>
                 <button type="button" className="button button-ghost" onClick={() => { setSerialInput(""); resetReport(); }} disabled={isSubmitting}>اختيار رول آخر</button>

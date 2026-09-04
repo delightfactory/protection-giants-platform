@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AppBadgeSync } from "@/components/app-badge-sync";
+import { NavigationFeedback } from "@/components/ui/navigation-feedback";
 import { OperationsNav } from "@/components/operations-nav";
 import { PwaLifecycleCoordinator } from "@/components/pwa-lifecycle";
 import { requireOperationalProfile } from "@/lib/auth/operational-profile";
@@ -17,6 +18,7 @@ export default async function OperationsLayout({ children }: Readonly<{ children
   return (
     <div className={`operations-shell operations-shell-${profile.role}`}>
       <OperationsNav profile={profile} notificationUnreadCount={notificationUnreadCount} />
+      <NavigationFeedback />
       <main className="operations-content">{children}</main>
       <PwaLifecycleCoordinator />
       <AppBadgeSync unreadCount={notificationUnreadCount ?? 0} />

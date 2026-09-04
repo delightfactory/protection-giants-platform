@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { RecordItem, RecordList } from "@/components/ui/record-list";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import styles from "../center-detail.module.css";
@@ -151,7 +152,7 @@ export default async function CenterLocationAdminPage({ params, searchParams }: 
               </FormGrid>
             </FormSection>
             <div className="operations-form-actions">
-              <button type="submit" className="button button-primary">حفظ التصحيح</button>
+              <SubmitButton pendingLabel="جارٍ حفظ تصحيح الموقع…">حفظ التصحيح</SubmitButton>
             </div>
           </form>
         </FormPanel>

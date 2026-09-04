@@ -73,8 +73,9 @@ export function ConfirmSubmitButton({
         onClick={(event) => openDialog(event.currentTarget)}
         aria-haspopup="dialog"
         disabled={pending || disabled}
+        aria-busy={pending || undefined}
       >
-        {children}
+        {pending ? "جارٍ التنفيذ…" : children}
       </button>
 
       <dialog

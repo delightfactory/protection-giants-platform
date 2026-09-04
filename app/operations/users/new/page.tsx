@@ -5,6 +5,7 @@ import { FormField } from "@/components/ui/form-field";
 import { FormGrid, FormPanel, FormSection } from "@/components/ui/form-layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { TaskBackLink } from "@/components/ui/task-back-link";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requireAdminProfile } from "@/lib/auth/operational-profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createOperationalUser } from "./actions";
@@ -94,7 +95,7 @@ export default async function UserCreatePage({ searchParams }: UserCreatePagePro
           </FormSection>
 
           <div className="operations-form-actions">
-            <button type="submit" className="button button-primary">إنشاء الحساب</button>
+            <SubmitButton pendingLabel="جارٍ إنشاء الحساب…">إنشاء الحساب</SubmitButton>
             <Link href="/operations/users" className="button button-ghost">إلغاء</Link>
           </div>
         </form>

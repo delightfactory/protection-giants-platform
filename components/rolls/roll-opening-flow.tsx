@@ -287,7 +287,7 @@ export function RollOpeningFlow({
                 <p>اضغط التأكيد فقط بعد فتح الرول فعليًا. بعد التسجيل لن يظهر للمركز زر Undo ولن يدخل الرول في التحويلات العادية.</p>
               </div>
               <div className={styles.actions}>
-                <button type="button" className="button button-primary" onClick={confirmOpening} disabled={isOpening}>
+                <button type="button" className="button button-primary" onClick={confirmOpening} disabled={isOpening} aria-busy={isOpening || undefined}>
                   {isOpening ? "جارٍ تسجيل الفتح…" : "تأكيد فتح الرول"}
                 </button>
                 <button type="button" className="button button-ghost" onClick={startAnother} disabled={isOpening}>
