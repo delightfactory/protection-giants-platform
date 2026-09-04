@@ -96,7 +96,10 @@ const barcodeConstraint = scalar(`
   where conrelid = 'public.products'::regclass
     and conname = 'products_barcode_v1_valid'
 `);
-assert(barcodeConstraint.includes("{1,32}"), `Barcode constraint does not enforce the 1-32 digit boundary: ${barcodeConstraint}`);
+assert(
+  barcodeConstraint.includes("{1,32}"),
+  `Barcode constraint does not enforce the 1-32 digit boundary: ${barcodeConstraint}`,
+);
 assert(!barcodeConstraint.includes("is_valid_gtin"), "Barcode constraint still delegates to GS1 GTIN validation.");
 
 const uniqueIndex = scalar(`
@@ -107,27 +110,29 @@ const uniqueIndex = scalar(`
     and indexname = 'products_gtin_unique'
 `);
 assert(uniqueIndex.includes("CREATE UNIQUE INDEX"), "Non-null Product Barcode uniqueness index is missing.");
-assert(uniqueIndex.includes("gtin IS NOT NULL"), `Product Barcode uniqueness index lost its partial-null contract: ${uniqueIndex}`);
+assert(
+  uniqueIndex.includes("gtin IS NOT NULL"),
+  `Product Barcode uniqueness index lost its partial-null contract: ${uniqueIndex}`,
+);
 
 assert(
   scalar(`
     select count(*)
-    from pg_trigger
-    where tgrelid = 'public.products'::regclass
-      and tgname = 'products_prevent_produced_gtin_change'
-      and not tgisinternal
+    from pg_trigger as trigger
+    where trigger.tgrelid = 'public.products'::regclass
+      and trigger.tgfoid = 'private.prevent_produced_product_gtin_change()'::regprocedure
+      and not trigger.tgisinternal
   `) === "1",
   "Produced Product Barcode identity lock trigger is missing.",
 );
 
 const lockFunction = scalar(`
-  select pg_get_functiondef(t.tgfoid)
-  from pg_trigger t
-  where t.tgrelid = 'public.products'::regclass
-    and t.tgname = 'products_prevent_produced_gtin_change'
-    and not t.tgisinternal
+  select pg_get_functiondef('private.prevent_produced_product_gtin_change()'::regprocedure)
 `);
-assert(lockFunction.includes("barcode is locked after assignment"), "Produced Product lock function was not upgraded to the Barcode V1 contract.");
+assert(
+  lockFunction.includes("barcode is locked after assignment"),
+  "Produced Product lock function was not upgraded to the Barcode V1 contract.",
+);
 
 const fixtureA = randomUUID();
 const fixtureB = randomUUID();
@@ -210,7 +215,10 @@ assert(scalar(`select gtin from public.products where id = ${sqlUuid(fixtureA)}`
 
 const maxBarcode = "12345678901234567890123456789012";
 runSql(`update public.products set gtin = ${sqlText(maxBarcode)} where id = ${sqlUuid(fixtureA)};`);
-assert(scalar(`select gtin from public.products where id = ${sqlUuid(fixtureA)}`) === maxBarcode, "32-digit Barcode was not preserved exactly.");
+assert(
+  scalar(`select gtin from public.products where id = ${sqlUuid(fixtureA)}`) === maxBarcode,
+  "32-digit Barcode was not preserved exactly.",
+);
 
 const nonGs1Barcode = "4006381333932";
 runSql(`update public.products set gtin = ${sqlText(nonGs1Barcode)} where id = ${sqlUuid(fixtureA)};`);
@@ -311,7 +319,10 @@ const generatedSerial = scalar(`
   order by r.serial_number
   limit 1
 `);
-assert(/^PG-R-[0-9]{8}-[0-9]{8}-[0-9]{2}-[0-9]{4,5}$/.test(generatedSerial), "Generated Roll resolver fixture is missing.");
+assert(
+  /^PG-R-[0-9]{8}-[0-9]{8}-[0-9]{2}-[0-9]{4,5}$/.test(generatedSerial),
+  "Generated Roll resolver fixture is missing.",
+);
 
 let anonRollCount = null;
 try {
@@ -319,7 +330,10 @@ try {
 } catch {
   // Permission denial is also an acceptable non-exposure outcome.
 }
-assert(anonRollCount === null || anonRollCount === 0, `Anonymous role can browse operational Rolls: count=${anonRollCount}`);
+assert(
+  anonRollCount === null || anonRollCount === 0,
+  `Anonymous role can browse operational Rolls: count=${anonRollCount}`,
+);
 assert(
   scalar(`select has_function_privilege('anon', 'public.resolve_public_roll_product_slug(text)', 'EXECUTE')`) === "t",
   "Anonymous role lost the narrow public Roll resolver contract.",
@@ -358,7 +372,10 @@ const voidedSerial = scalar(`
   order by r.serial_number
   limit 1
 `);
-assert(/^PG-R-[0-9]{8}-[0-9]{8}-[0-9]{2}-[0-9]{4,5}$/.test(voidedSerial), "Voided Roll resolver fixture is missing.");
+assert(
+  /^PG-R-[0-9]{8}-[0-9]{8}-[0-9]{2}-[0-9]{4,5}$/.test(voidedSerial),
+  "Voided Roll resolver fixture is missing.",
+);
 assert(
   anonScalar(`select public.resolve_public_roll_product_slug(${sqlText(voidedSerial)})`) === "",
   "Voided Production Roll unexpectedly remained publicly resolvable.",
