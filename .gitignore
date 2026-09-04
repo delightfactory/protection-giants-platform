@@ -9,3 +9,5 @@ dist/
 coverage/
 *.log
 *.tsbuildinfo
+artifacts/
+node_modules.recovery-*/
