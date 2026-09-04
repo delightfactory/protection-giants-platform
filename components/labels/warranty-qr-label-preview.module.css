@@ -5,11 +5,10 @@
   overflow: hidden;
   background: #fff;
   border: 1px solid #111;
-  border-radius: 8px;
+  border-radius: 10px;
   color: #111;
-  box-shadow: 0 4px 14px rgb(0 0 0 / 6%);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 8%);
   container-type: inline-size;
-  font-family: Arial, Helvetica, sans-serif;
 }
 
 .brandBand {
@@ -93,10 +92,4 @@
   font-size: clamp(5.5px, 2.4cqw, 8.5px);
   line-height: 1;
   max-width: 42%;
-}
-
-@media (max-width: 520px) {
-  .frame {
-    border-radius: 6px;
-  }
 }

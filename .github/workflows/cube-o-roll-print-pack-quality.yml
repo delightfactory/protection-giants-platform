@@ -50,8 +50,9 @@ jobs:
 
       - name: Verify Warranty in-platform rendered preview regression
         run: |
+          npm install --no-save --package-lock=false playwright@1.63.0
           npx playwright install --with-deps chromium
-          npx --package=playwright node scripts/verify-cube-o-warranty-preview-rendering.mjs
+          node scripts/verify-cube-o-warranty-preview-rendering.mjs
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
