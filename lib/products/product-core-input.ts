@@ -1,4 +1,4 @@
-import { isValidGtin, normalizeOptionalGtin } from "@/lib/products/gtin";
+import { isValidProductBarcode, normalizeOptionalProductBarcode } from "@/lib/products/barcode";
 
 export type ProductCoreInput = {
   code: string;
@@ -50,7 +50,7 @@ function parseFeatureLines(value: FormDataEntryValue | null): string[] {
 
 export function parseProductCoreInput(formData: FormData): ProductCoreInputResult {
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
-  const gtin = normalizeOptionalGtin(formData.get("gtin"));
+  const gtin = normalizeOptionalProductBarcode(formData.get("gtin"));
   const name = String(formData.get("name") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
   const productType = String(formData.get("product_type") ?? "PPF").trim().toUpperCase();
@@ -73,8 +73,8 @@ export function parseProductCoreInput(formData: FormData): ProductCoreInputResul
     return { ok: false, error: "كود المنتج يجب أن يكون من 2 إلى 40 حرفًا ويحتوي على حروف إنجليزية أو أرقام أو . _ - فقط." };
   }
 
-  if (gtin && !isValidGtin(gtin)) {
-    return { ok: false, error: "GTIN يجب أن يكون رقم GS1 صحيحًا من 8 أو 12 أو 13 أو 14 رقمًا مع Check Digit صحيح." };
+  if (gtin && !isValidProductBarcode(gtin)) {
+    return { ok: false, error: "الباركود يجب أن يتكون من أرقام فقط وبحد أقصى 32 رقمًا." };
   }
 
   if (name.length < 2 || name.length > 120) {
