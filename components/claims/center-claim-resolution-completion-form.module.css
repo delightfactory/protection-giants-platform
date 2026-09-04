@@ -125,7 +125,9 @@
 }
 
 .acknowledgement input {
-  margin-top: 0.2rem;
+  width: 44px;
+  height: 44px;
+  margin: 0;
 }
 
 .acknowledgement span {
