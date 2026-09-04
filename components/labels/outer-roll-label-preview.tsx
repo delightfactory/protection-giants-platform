@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 import type { OuterRollLabelViewModel } from "@/lib/labels/outer-roll-label-plan";
 import {
-  buildOuterRollGtinBarcodeGeometry,
+  buildOuterRollProductBarcodeGeometry,
   buildOuterRollQrVector,
   type BwipVectorGeometry,
 } from "@/lib/labels/outer-roll-machine-codes";
@@ -99,7 +99,7 @@ function QrVectorCode({ geometry, label }: { geometry: QrVectorGeometry; label: 
 
 export function OuterRollLabelPreview({ model }: OuterRollLabelPreviewProps) {
   const template = OUTER_ROLL_LABEL_TEMPLATE;
-  const barcode = buildOuterRollGtinBarcodeGeometry(
+  const barcode = buildOuterRollProductBarcodeGeometry(
     model.gtin,
     template.barcodeBox.widthMm,
     template.barcodeBox.heightMm,
@@ -128,9 +128,9 @@ export function OuterRollLabelPreview({ model }: OuterRollLabelPreviewProps) {
       <div className={styles.field} style={positionStyle(template.fields.roll)}><span>ROLL</span><strong>{model.rollSerial}</strong></div>
 
       <div className={styles.barcode} style={boxStyle(template.barcodeBox)}>
-        <VectorCode geometry={barcode.geometry} label={`GTIN ${barcode.payload}`} />
+        <VectorCode geometry={barcode.geometry} label={`Product Barcode ${barcode.payload}`} />
       </div>
-      <span className={styles.gtin} style={positionStyle(template.gtinLabel)}>GTIN {model.gtin}</span>
+      <span className={styles.gtin} style={positionStyle(template.gtinLabel)}>BARCODE {model.gtin}</span>
 
       <div className={styles.qrLabel} style={positionStyle(template.qrLabel)}>ROLL QR</div>
       <div className={styles.qr} style={boxStyle(template.qrQuietBox)}>
