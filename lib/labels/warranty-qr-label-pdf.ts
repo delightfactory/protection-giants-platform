@@ -99,7 +99,7 @@ function splitIntoTwoLines(
     const line2 = token.slice(mid);
     let size = 7.5;
     while (
-      size > 3.5 &&
+      size > 2.0 &&
       (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
     ) {
       size -= 0.25;
@@ -127,19 +127,10 @@ function splitIntoTwoLines(
 
   let size = 7.5;
   while (
-    size > 3.5 &&
+    size > 2.0 &&
     (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
   ) {
     size -= 0.25;
-  }
-
-  if (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt) {
-    while (
-      size > 2.5 &&
-      (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
-    ) {
-      size -= 0.25;
-    }
   }
 
   return { lines: [line1, line2], size };

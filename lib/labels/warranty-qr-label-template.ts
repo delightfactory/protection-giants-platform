@@ -26,7 +26,7 @@ export const WARRANTY_QR_LABEL_TEMPLATE = {
   productName: {
     xMm: 4,
     yMm: 9.5,
-    widthMm: 30.5,
+    widthMm: 31,
   },
   qrQuietBox: {
     xMm: 36,
