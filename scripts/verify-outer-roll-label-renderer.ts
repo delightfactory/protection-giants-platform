@@ -107,10 +107,95 @@ async function main() {
   const tamperedLayout = { ...layout, labelCount: layout.labelCount + 1 };
   await assert.rejects(() => renderOuterRollPrintPdf(tamperedLayout));
 
-  console.log("Outer Roll V1 Product Barcode, QR quiet-zone, PDF dimension and deterministic export verification passed.");
+  const longestValidModel: OuterRollLabelViewModel = {
+    templateId: "outer-roll-label-v1",
+    productName: "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1",
+    productVersion: "PREMIUM PLUS ULTRA THICK CERAMIC COATED EXTENDED WARRANTY EDITION SERIES 2026-X",
+    sku: "PG-ULT-PLUS-CER-PPF-1524-75MIL-EXP-PRO-X",
+    gtin: "12345678901234567890123456789012",
+    widthMm: 1524,
+    lengthM: 30,
+    thicknessMil: 12.5,
+    productionOrderNumber: "PG-PO-20260825-00000001",
+    productionDate: "2026-08-25",
+    lotNumber: "PG-L-20260825-00000001-99",
+    lotSequence: 99,
+    rollId: "44444444-4444-4444-8444-999999999999",
+    rollSerial: "PG-R-20260825-00000001-99-9999",
+    rollIndex: 9999,
+    qrPayload: "https://protectiongiants.com/r/PG-R-20260825-00000001-99-9999",
+  };
+  const longestMasterA = await renderOuterRollLabelMasterPdf(longestValidModel);
+  const longestMasterB = await renderOuterRollLabelMasterPdf(longestValidModel);
+  assert.equal(Buffer.from(longestMasterA).subarray(0, 4).toString("ascii"), "%PDF");
+  assert.deepEqual(Buffer.from(longestMasterA), Buffer.from(longestMasterB), "Longest valid values reprint must be byte-deterministic.");
+  const longestDoc = await PDFDocument.load(longestMasterA);
+  assert.equal(longestDoc.getPageCount(), 1);
+  const longestPage = longestDoc.getPage(0);
+  assert.ok(Math.abs(longestPage.getWidth() - millimetresToPdfPoints(150)) < 0.01);
+  assert.ok(Math.abs(longestPage.getHeight() - millimetresToPdfPoints(100)) < 0.01);
+
+  // Arabic Outer Roll label
+  const arabicModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productName: "فيلم حماية عمالقة الحماية نانو سيراميك شفاف",
+    productVersion: "إصدار بلس نانو سيراميك",
+  };
+  const arabicMasterA = await renderOuterRollLabelMasterPdf(arabicModel);
+  const arabicMasterB = await renderOuterRollLabelMasterPdf(arabicModel);
+  assert.equal(Buffer.from(arabicMasterA).subarray(0, 4).toString("ascii"), "%PDF");
+  assert.deepEqual(Buffer.from(arabicMasterA), Buffer.from(arabicMasterB), "Arabic Outer Roll reprint must be byte-deterministic.");
+
+  // Mixed Arabic/Latin Outer Roll label
+  const mixedModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productName: "فيلم حماية PPF Super Clear 1524mm Pro",
+    productVersion: "Ceramic Plus 2026",
+  };
+  const mixedMasterA = await renderOuterRollLabelMasterPdf(mixedModel);
+  const mixedMasterB = await renderOuterRollLabelMasterPdf(mixedModel);
+  assert.equal(Buffer.from(mixedMasterA).subarray(0, 4).toString("ascii"), "%PDF");
+  assert.deepEqual(Buffer.from(mixedMasterA), Buffer.from(mixedMasterB), "Mixed Outer Roll reprint must be byte-deterministic.");
+
+  // Product Version boundary tests: 1-char version ("X") and 80-char version
+  const singleCharVersionModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productVersion: "X",
+  };
+  const singleCharPdf = await renderOuterRollLabelMasterPdf(singleCharVersionModel);
+  assert.equal(Buffer.from(singleCharPdf).subarray(0, 4).toString("ascii"), "%PDF");
+
+  const eightyCharVersionModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productVersion: "V".repeat(80),
+  };
+  const eightyCharPdf = await renderOuterRollLabelMasterPdf(eightyCharVersionModel);
+  assert.equal(Buffer.from(eightyCharPdf).subarray(0, 4).toString("ascii"), "%PDF");
+
+  // Rejections: >80-char version, <2-char name, >120-char name
+  const overlongVersionModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productVersion: "V".repeat(81),
+  };
+  await assert.rejects(async () => renderOuterRollLabelMasterPdf(overlongVersionModel));
+
+  const tooShortNameModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productName: "A",
+  };
+  await assert.rejects(async () => renderOuterRollLabelMasterPdf(tooShortNameModel));
+
+  const overlongNameModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productName: "A".repeat(121),
+  };
+  await assert.rejects(async () => renderOuterRollLabelMasterPdf(overlongNameModel));
+
+  console.log("Outer Roll V1 Product Barcode, QR quiet-zone, PDF dimension, version bounds, and deterministic export verification passed.");
 }
 
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+

@@ -140,4 +140,57 @@ describe("Cube O Master Roll Print Pack PDF", () => {
     expect(layout.pages.map((page) => page.packOrdinal)).toEqual([4, 5]);
     expect(layout.pages.every((page) => page.totalPackCount === 5)).toBe(true);
   });
+
+  it("renders a multi-page Master Roll Print Pack PDF with longest valid product names and SKU without errors", async () => {
+    const outer = buildOuterRollLabelPlan({
+      publicSiteOrigin: "https://preview.protectiongiants.com",
+      product: { id: productId, gtin: "12345678901234567890123456789012" },
+      order: {
+        id: orderId,
+        productId,
+        status: "generated",
+        orderNumber: "PG-PO-20260825-00000001",
+        productionDate: "2026-08-25",
+        totalRolls: 1,
+        productCodeSnapshot: "PG-ULT-PLUS-CER-PPF-1524-75MIL-EXP-PRO-X",
+        productNameSnapshot:
+          "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1",
+        productVersionSnapshot:
+          "PREMIUM PLUS ULTRA THICK CERAMIC COATED EXTENDED WARRANTY EDITION SERIES 2026-X",
+        widthMmSnapshot: 1524,
+        lengthMSnapshot: 30,
+        thicknessMilSnapshot: 12.5,
+      },
+      lots: [
+        { id: lotId, productionOrderId: orderId, lotNumber: "PG-L-20260825-00000001-99", lotSequence: 99, rollCount: 1 },
+      ],
+      rolls: [
+        {
+          id: "44444444-4444-4444-8444-999999999999",
+          productionOrderId: orderId,
+          productionLotId: lotId,
+          serialNumber: "PG-R-20260825-00000001-99-9999",
+          rollIndex: 9999,
+        },
+      ],
+      selection: { mode: "order" },
+      rollChunkSize: 1,
+    });
+    const identities = new Map([
+      [
+        "44444444-4444-4444-8444-999999999999",
+        {
+          rollId: "44444444-4444-4444-8444-999999999999",
+          publicCode: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        },
+      ],
+    ]);
+    const plan = buildRollPrintPackPlan({ outerPlan: outer, warrantyIdentities: identities });
+    const layout = planRollPrintPackMasterLayout({ chunk: plan.chunks[0], firstPackOrdinal: 1, totalPackCount: 1 });
+    const bytes = await renderRollPrintPackPdf(layout);
+    expect(Buffer.from(bytes).subarray(0, 5).toString("ascii")).toBe("%PDF-");
+    const doc = await PDFDocument.load(bytes);
+    expect(doc.getPageCount()).toBe(1);
+  });
 });
+

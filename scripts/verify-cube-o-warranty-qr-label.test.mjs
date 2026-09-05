@@ -72,4 +72,89 @@ describe("Cube O Warranty QR label contract", () => {
     expect(model.productName).toBe("PG Shield Matte");
     expect(() => buildWarrantyQrLabelModel({ publicCode: codeA, productNameSnapshot: "  " })).toThrow();
   });
+
+  it("renders deterministic PDF for short, long, single-token, and 120-char product names", async () => {
+    const { renderWarrantyQrLabelMasterPdf } = await import("../lib/labels/warranty-qr-label-pdf");
+    const { PDFDocument } = await import("pdf-lib");
+
+    const testNames = [
+      "PG Shield Ceramic",
+      "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1",
+      "ULTRA-PROTECT-SUPER-GLOSS-FILM-SERIES-ADVANCED-CERAMIC-PLUS-COATING-EXTENDED-WARRANTY-PROFESSIONAL-EDITION-2026-X-1524MM-75MIL".slice(0, 120),
+      "فيلم حماية عمالقة الحماية نانو سيراميك شفاف",
+      "فيلم حماية عمالقة الحماية نانو سيراميك شفاف ذاتي المعالجة مقاوم للخدوش عالي اللمعان سماكة 8.5 ميل ضمان عشر سنوات 1524 مم",
+      "فيلم حماية PPF Super Clear 1524mm Pro",
+      "فيلم حماية عمالقة الحماية PPF Ultra Clear Ceramic 1524mm Pro Edition High Gloss 8.5mil Self Healing Warranty 10 Years PG-2026".slice(0, 120),
+    ];
+
+    for (const name of testNames) {
+      const model = buildWarrantyQrLabelModel({
+        publicCode: codeA,
+        productNameSnapshot: name,
+      });
+
+      const pdfBytes1 = await renderWarrantyQrLabelMasterPdf(model);
+      const pdfBytes2 = await renderWarrantyQrLabelMasterPdf(model);
+
+      expect(Buffer.from(pdfBytes1).subarray(0, 4).toString("ascii")).toBe("%PDF");
+      expect(Buffer.from(pdfBytes1)).toEqual(Buffer.from(pdfBytes2));
+
+      const doc = await PDFDocument.load(pdfBytes1);
+      expect(doc.getPageCount()).toBe(1);
+      const page = doc.getPage(0);
+      const POINTS_PER_MM = 72 / 25.4;
+      expect(page.getWidth()).toBeCloseTo(70 * POINTS_PER_MM, 2);
+      expect(page.getHeight()).toBeCloseTo(45 * POINTS_PER_MM, 2);
+    }
+  });
+
+  it("strictly enforces Product contract bounds (rejects >120 chars and <2 chars)", async () => {
+    const { renderWarrantyQrLabelMasterPdf, WarrantyQrLabelPdfError } = await import(
+      "../lib/labels/warranty-qr-label-pdf"
+    );
+
+    const overlongName = "A".repeat(121);
+    const modelOverlong = buildWarrantyQrLabelModel({
+      publicCode: codeA,
+      productNameSnapshot: "Valid Temporary Name",
+    });
+    modelOverlong.productName = overlongName;
+    await expect(renderWarrantyQrLabelMasterPdf(modelOverlong)).rejects.toThrow(
+      WarrantyQrLabelPdfError
+    );
+
+    const tooShortModel = buildWarrantyQrLabelModel({
+      publicCode: codeA,
+      productNameSnapshot: "Valid Temporary Name",
+    });
+    tooShortModel.productName = "A";
+    await expect(renderWarrantyQrLabelMasterPdf(tooShortModel)).rejects.toThrow(
+      WarrantyQrLabelPdfError
+    );
+  });
+
+  it("orders mixed Arabic/Latin phrases according to Unicode Bidirectional Algorithm (UAX #9)", async () => {
+    const { getVisualRuns } = await import("../lib/labels/bidi");
+
+    // RTL paragraph with embedded English: "فيلم حماية PPF Super Clear"
+    const mixedRtl = "فيلم حماية PPF Super Clear";
+    const runsRtl = getVisualRuns(mixedRtl);
+    expect(runsRtl).toHaveLength(2);
+    // In visual coordinate order (left to right):
+    // The embedded LTR run appears on the left, Arabic run appears on the right
+    // Reading right-to-left recovers the logical sentence order: "فيلم حماية" then "PPF Super Clear"
+    expect(runsRtl[0].text).toBe("PPF Super Clear");
+    expect(runsRtl[0].level).toBe(2);
+    expect(runsRtl[1].text).toBe("فيلم حماية ");
+    expect(runsRtl[1].level).toBe(1);
+
+    // LTR paragraph with embedded Arabic: "Super Clear فيلم حماية"
+    const mixedLtr = "Super Clear فيلم حماية";
+    const runsLtr = getVisualRuns(mixedLtr);
+    expect(runsLtr).toHaveLength(2);
+    expect(runsLtr[0].text).toBe("Super Clear ");
+    expect(runsLtr[0].level).toBe(0);
+    expect(runsLtr[1].text).toBe("فيلم حماية");
+    expect(runsLtr[1].level).toBe(1);
+  });
 });

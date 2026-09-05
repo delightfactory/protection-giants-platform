@@ -21,12 +21,40 @@ function mm(value: number): number {
   return value * POINTS_PER_MM;
 }
 
+import { embedCairoBoldFont } from "./fonts/cairo-bold-font";
+
 function printable(value: string, field: string): string {
-  if (!value || !/^[\x20-\x7E]+$/.test(value)) {
-    throw new WarrantyQrLabelPdfError(`${field} contains unsupported print characters for warranty-qr-label-v1.`);
+  if (!value || typeof value !== "string") {
+    throw new WarrantyQrLabelPdfError(`${field} is required for warranty-qr-label-v1.`);
   }
-  return value;
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || trimmed.length > 120) {
+    throw new WarrantyQrLabelPdfError(
+      `${field} length must be between 2 and 120 characters to satisfy authoritative Product contract.`
+    );
+  }
+  return trimmed;
 }
+
+import { getVisualRuns } from "./bidi";
+
+export function drawMixedText(
+  page: PDFPage,
+  font: PDFFont,
+  text: string,
+  xPt: number,
+  yPt: number,
+  size: number,
+  color = BLACK,
+) {
+  const runs = getVisualRuns(text);
+  let curX = xPt;
+  for (const run of runs) {
+    page.drawText(run.text, { x: curX, y: yPt, size, font, color });
+    curX += font.widthOfTextAtSize(run.text, size);
+  }
+}
+
 
 function drawFittedText(
   page: PDFPage,
@@ -44,7 +72,7 @@ function drawFittedText(
   if (font.widthOfTextAtSize(text, size) > maxWidthPt) {
     throw new WarrantyQrLabelPdfError(`Required Warranty sticker text does not fit: ${text}`);
   }
-  page.drawText(text, { x: xPt, y: yPt, size, font, color });
+  drawMixedText(page, font, text, xPt, yPt, size, color);
 }
 
 function drawQrGeometry(
@@ -85,6 +113,125 @@ function drawQrGeometry(
   }
 }
 
+export function layoutWarrantyProductName(
+  productName: string,
+  font: PDFFont,
+  maxWidthPt: number,
+  maxHeightPt: number,
+  minSizePt = 5.5,
+  maxSizePt = 8.5,
+): { lines: string[]; size: number; lineHeight: number } {
+  const text = printable(productName, "Product name");
+  const words = text.split(/\s+/).filter(Boolean);
+
+  let bestLayout: { lines: string[]; size: number; lineHeight: number } | null = null;
+
+  for (let size = maxSizePt; size >= minSizePt; size -= 0.25) {
+    const lineHeight = Math.max(size * 1.25, 6.5);
+    const maxAllowedLines = Math.floor(maxHeightPt / lineHeight);
+    const lines: string[] = [];
+    let currentLine = "";
+    let fits = true;
+
+    for (const word of words) {
+      if (font.widthOfTextAtSize(word, size) > maxWidthPt) {
+        if (currentLine) {
+          lines.push(currentLine);
+          currentLine = "";
+        }
+        let tokenPart = "";
+        for (const char of word) {
+          if (font.widthOfTextAtSize(tokenPart + char, size) <= maxWidthPt) {
+            tokenPart += char;
+          } else {
+            if (tokenPart) lines.push(tokenPart);
+            tokenPart = char;
+          }
+        }
+        if (tokenPart) {
+          currentLine = tokenPart;
+        }
+      } else {
+        const candidate = currentLine ? `${currentLine} ${word}` : word;
+        if (font.widthOfTextAtSize(candidate, size) <= maxWidthPt) {
+          currentLine = candidate;
+        } else {
+          lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+
+      if (lines.length > maxAllowedLines) {
+        fits = false;
+        break;
+      }
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    if (fits && lines.length <= maxAllowedLines && lines.length * lineHeight <= maxHeightPt) {
+      bestLayout = { size, lines, lineHeight };
+      break;
+    }
+  }
+
+  if (!bestLayout) {
+    throw new WarrantyQrLabelPdfError(
+      `Product name "${text}" cannot fit within ${maxWidthPt.toFixed(1)}pt x ${maxHeightPt.toFixed(1)}pt ` +
+        `even at minimum readable font size ${minSizePt}pt.`
+    );
+  }
+
+  // Strict final geometry assertions
+  if (bestLayout.lines.length === 0 || bestLayout.lines.length > 5) {
+    throw new WarrantyQrLabelPdfError("Layout exceeded maximum allowable line count (5 lines).");
+  }
+  for (const line of bestLayout.lines) {
+    const lineWidth = font.widthOfTextAtSize(line, bestLayout.size);
+    if (lineWidth > maxWidthPt) {
+      throw new WarrantyQrLabelPdfError(
+        `Final-fit assertion failed: line "${line}" width ${lineWidth.toFixed(1)}pt exceeds maxWidth ${maxWidthPt.toFixed(1)}pt.`
+      );
+    }
+  }
+
+  return bestLayout;
+}
+
+export function drawWarrantyProductName(
+  page: PDFPage,
+  font: PDFFont,
+  productName: string,
+  xPt: number,
+  baseYPt: number,
+  maxWidthPt: number,
+  maxHeightPt = mm(14.5),
+): { lines: string[]; size: number } {
+  const { lines, size, lineHeight } = layoutWarrantyProductName(
+    productName,
+    font,
+    maxWidthPt,
+    maxHeightPt,
+  );
+
+  const totalBlockHeight = (lines.length - 1) * lineHeight;
+  const startY = baseYPt + totalBlockHeight * 0.5;
+
+  lines.forEach((line, index) => {
+    const lineY = startY - index * lineHeight;
+    if (lineY < mm(3.0)) {
+      throw new WarrantyQrLabelPdfError(
+        `Final-fit assertion failed: line ${index + 1} y-coordinate ${lineY.toFixed(1)}pt falls below safe bottom inset.`
+      );
+    }
+    drawMixedText(page, font, line, xPt, lineY, size, BLACK);
+  });
+
+  return { lines, size };
+}
+
 export async function renderWarrantyQrLabelMasterPdf(
   model: WarrantyQrLabelViewModel,
 ): Promise<Uint8Array> {
@@ -105,7 +252,7 @@ export async function renderWarrantyQrLabelMasterPdf(
 
   const [regular, bold] = await Promise.all([
     pdfDoc.embedFont(StandardFonts.Helvetica),
-    pdfDoc.embedFont(StandardFonts.HelveticaBold),
+    embedCairoBoldFont(pdfDoc),
   ]);
 
   const page = pdfDoc.addPage([mm(template.widthMm), mm(template.heightMm)]);
@@ -129,7 +276,7 @@ export async function renderWarrantyQrLabelMasterPdf(
   page.drawText("PROTECTION GIANTS", {
     x: mm(template.brand.xMm),
     y: mm(template.brand.yMm),
-    size: 7,
+    size: 7.2,
     font: bold,
     color: WHITE,
   });
@@ -137,7 +284,7 @@ export async function renderWarrantyQrLabelMasterPdf(
   page.drawText("WARRANTY", {
     x: mm(template.title.xMm),
     y: mm(template.title.yMm),
-    size: 13,
+    size: 13.5,
     font: bold,
     color: BLACK,
   });
@@ -148,16 +295,14 @@ export async function renderWarrantyQrLabelMasterPdf(
     font: bold,
     color: MUTED,
   });
-  drawFittedText(
+
+  drawWarrantyProductName(
     page,
-    regular,
+    bold,
     productName,
     mm(template.productName.xMm),
     mm(template.productName.yMm),
     mm(template.productName.widthMm),
-    7.5,
-    5.25,
-    BLACK,
   );
 
   drawQrGeometry(page, geometry, {
@@ -169,7 +314,7 @@ export async function renderWarrantyQrLabelMasterPdf(
   page.drawText("protectiongiants.com", {
     x: mm(template.qrCaption.xMm),
     y: mm(template.qrCaption.yMm),
-    size: 5.25,
+    size: 6,
     font: regular,
     color: MUTED,
   });

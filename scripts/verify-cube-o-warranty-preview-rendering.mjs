@@ -221,7 +221,16 @@ async function verifyLayout(page, testName) {
 async function run() {
   console.log("Starting rendered Warranty preview regression verification...");
 
-  const browser = await chromium.launch({ headless: true });
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+  } catch (err) {
+    console.error(
+      "Failed to launch Chromium via Playwright. Please ensure browsers are installed by running `npx playwright install chromium`.",
+      err,
+    );
+    throw err;
+  }
 
   const viewports = [
     { name: "desktop", width: 1440, height: 900 },

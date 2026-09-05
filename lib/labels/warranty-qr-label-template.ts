@@ -15,18 +15,18 @@ export const WARRANTY_QR_LABEL_TEMPLATE = {
   },
   title: {
     xMm: 4,
-    yMm: 26,
-    widthMm: 28,
+    yMm: 26.5,
+    widthMm: 30,
   },
   instruction: {
     xMm: 4,
-    yMm: 18,
-    widthMm: 28,
+    yMm: 19.5,
+    widthMm: 30,
   },
   productName: {
     xMm: 4,
-    yMm: 9,
-    widthMm: 28,
+    yMm: 9.5,
+    widthMm: 31,
   },
   qrQuietBox: {
     xMm: 36,
@@ -35,8 +35,8 @@ export const WARRANTY_QR_LABEL_TEMPLATE = {
     heightMm: 30,
   },
   qrCaption: {
-    xMm: 37,
+    xMm: 36.5,
     yMm: 3.5,
-    widthMm: 28,
+    widthMm: 29,
   },
 } as const;
