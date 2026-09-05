@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const matrixPath = "C:/Users/DELL/.gemini/antigravity-ide/brain/68abd622-9f9e-4125-9720-c8bd7c74fc30/prl-e2e-01-full-coverage-matrix.md";
+const matrixPath = path.join(__dirname, "..", "docs", "prl-e2e-01-v1-coverage-matrix.md");
 const content = fs.readFileSync(matrixPath, "utf8");
 
 const lines = content.split("\n").filter((line) => line.startsWith("| `"));

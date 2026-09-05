@@ -18,12 +18,13 @@ During the initial high-level platform audit summary, the system's functional la
 4. **Custody & Transfers (Cube C & H):** Expanded into **8 granular rows** (`CUST-01`, `TRNS-01..07`), isolating send forms, dispatch state reservation, manifest inspection, receiving workspace, roll barcode scanning, and unresolved transfer dispute handling.
 5. **Roll Lifecycle (Cube D & K):** Expanded into **7 granular rows** (`ROPN-01..03`, `RISS-01..04`), verifying roll opening workspace, opening mutation, interrupted roll recovery, issue reporting, private evidence photo uploads, quarantine state enforcement, and signed URL thumbnail security.
 6. **Warranty Activation & Claims (Cube M & P):** Expanded into **9 granular rows** (`WACT-01..05`, `CLMI-01..04`), isolating activation forms, customer/vehicle bindings, idempotent replay protection, customer claim lookup, phone rate-limiting throttle windows, damage photo capture, and claim submission.
-7. **Inspection, Decision & Resolution (Cube Q & R):** Expanded into **12 granular rows** (`CLMR-01..03`, `INSP-01..03`, `CLMD-01..02`, `RESL-01..04`, `RESL-05..07`), detailing center inspection assignments, photo uploads, admin approval/rejection decisions, clerical error decision reopenings, replacement roll allocation, center fulfillment execution, customer claim withdrawal, and task reassignment recovery.
+7. **Inspection, Decision & Resolution (Cube Q & R):** Expanded into **15 granular rows** (`CLMR-01..03`, `INSP-01..03`, `CLMD-01..02`, `RESL-01..07`), detailing center inspection assignments, photo uploads, admin approval/rejection decisions, clerical error decision reopenings, replacement roll allocation, center fulfillment execution, customer claim withdrawal, and task reassignment recovery.
 8. **Network & User Administration:** Expanded into **13 granular rows** (`NETW-01..10`, `USER-01..03`), covering Country Agents, Dealers, Centers, self-reported GPS location updates, admin location approval, network authorization grant/revoke, and operator user lifecycle/suspension.
 9. **PWA, Mobile & Accessibility:** Expanded into **3 granular rows** (`PWA-01..02`, `A11Y-01`), validating web app manifest, 320-430px responsive touch conformance, and WCAG AA accessibility/contrast.
+10. **Navigation, Account, Products & Notifications:** Expanded into **17 granular rows** (`NAV-01..05`, `ACCT-01..02`, `PROD-01..05`, `NOTIF-01..05`), verifying role-based navigational boundaries, account credential security, product catalog lifecycle, and notification materialization/push transport.
 
 **Reconciliation Proof:**
-$$\mathbf{67\ High\text{-}Level\ Functional\ Areas \xrightarrow{\text{Atomic Row Decomposition}} 104\ Granular\ Execution\ Rows}$$
+$$\mathbf{12 + 12 + 8 + 8 + 7 + 9 + 15 + 13 + 3 + 17 = 104\ Granular\ Execution\ Rows}$$
 - **Duplicate Check:** Verified 0 duplicate IDs (`Unique IDs: 104 / 104`).
 - **Scope Creep Check:** Verified 0 out-of-scope additions; every row maps directly to approved V1 functionality specified in `docs/pre-launch-operational-readiness-requirements.md`.
 

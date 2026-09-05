@@ -221,7 +221,15 @@ async function verifyLayout(page, testName) {
 async function run() {
   console.log("Starting rendered Warranty preview regression verification...");
 
-  const browser = await chromium.launch({ headless: true });
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+  } catch {
+    browser = await chromium.launch({
+      headless: true,
+      executablePath: "C:/Users/DELL/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe",
+    });
+  }
 
   const viewports = [
     { name: "desktop", width: 1440, height: 900 },

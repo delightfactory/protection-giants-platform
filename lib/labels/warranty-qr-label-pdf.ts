@@ -21,11 +21,47 @@ function mm(value: number): number {
   return value * POINTS_PER_MM;
 }
 
+import { embedCairoBoldFont } from "./fonts/cairo-bold-font";
+
 function printable(value: string, field: string): string {
-  if (!value || !/^[\x20-\x7E]+$/.test(value)) {
-    throw new WarrantyQrLabelPdfError(`${field} contains unsupported print characters for warranty-qr-label-v1.`);
+  if (!value || typeof value !== "string") {
+    throw new WarrantyQrLabelPdfError(`${field} is required for warranty-qr-label-v1.`);
   }
-  return value;
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || trimmed.length > 120) {
+    throw new WarrantyQrLabelPdfError(
+      `${field} length must be between 2 and 120 characters to satisfy authoritative Product contract.`
+    );
+  }
+  return trimmed;
+}
+
+export function drawMixedText(
+  page: PDFPage,
+  font: PDFFont,
+  text: string,
+  xPt: number,
+  yPt: number,
+  size: number,
+  color = BLACK,
+) {
+  const isMixed =
+    /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text) &&
+    /[a-zA-Z0-9]/.test(text);
+
+  if (!isMixed) {
+    page.drawText(text, { x: xPt, y: yPt, size, font, color });
+    return;
+  }
+
+  const regex =
+    /([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+|[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+)/g;
+  const runs = text.match(regex) || [text];
+  let curX = xPt;
+  for (const run of runs) {
+    page.drawText(run, { x: curX, y: yPt, size, font, color });
+    curX += font.widthOfTextAtSize(run, size);
+  }
 }
 
 function drawFittedText(
@@ -44,7 +80,7 @@ function drawFittedText(
   if (font.widthOfTextAtSize(text, size) > maxWidthPt) {
     throw new WarrantyQrLabelPdfError(`Required Warranty sticker text does not fit: ${text}`);
   }
-  page.drawText(text, { x: xPt, y: yPt, size, font, color });
+  drawMixedText(page, font, text, xPt, yPt, size, color);
 }
 
 function drawQrGeometry(
@@ -85,55 +121,91 @@ function drawQrGeometry(
   }
 }
 
-function splitIntoTwoLines(
-  text: string,
+export function layoutWarrantyProductName(
+  productName: string,
   font: PDFFont,
   maxWidthPt: number,
-): { lines: [string, string]; size: number } {
+  maxHeightPt: number,
+  minSizePt = 5.5,
+  maxSizePt = 8.5,
+): { lines: string[]; size: number; lineHeight: number } {
+  const text = printable(productName, "Product name");
   const words = text.split(/\s+/).filter(Boolean);
 
-  if (words.length <= 1) {
-    const token = words[0] || text;
-    const mid = Math.ceil(token.length / 2);
-    const line1 = token.slice(0, mid);
-    const line2 = token.slice(mid);
-    let size = 7.5;
-    while (
-      size > 2.0 &&
-      (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
-    ) {
-      size -= 0.25;
+  let bestLayout: { lines: string[]; size: number; lineHeight: number } | null = null;
+
+  for (let size = maxSizePt; size >= minSizePt; size -= 0.25) {
+    const lineHeight = Math.max(size * 1.25, 6.5);
+    const maxAllowedLines = Math.floor(maxHeightPt / lineHeight);
+    const lines: string[] = [];
+    let currentLine = "";
+    let fits = true;
+
+    for (const word of words) {
+      if (font.widthOfTextAtSize(word, size) > maxWidthPt) {
+        if (currentLine) {
+          lines.push(currentLine);
+          currentLine = "";
+        }
+        let tokenPart = "";
+        for (const char of word) {
+          if (font.widthOfTextAtSize(tokenPart + char, size) <= maxWidthPt) {
+            tokenPart += char;
+          } else {
+            if (tokenPart) lines.push(tokenPart);
+            tokenPart = char;
+          }
+        }
+        if (tokenPart) {
+          currentLine = tokenPart;
+        }
+      } else {
+        const candidate = currentLine ? `${currentLine} ${word}` : word;
+        if (font.widthOfTextAtSize(candidate, size) <= maxWidthPt) {
+          currentLine = candidate;
+        } else {
+          lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+
+      if (lines.length > maxAllowedLines) {
+        fits = false;
+        break;
+      }
     }
-    return { lines: [line1, line2], size };
-  }
 
-  let bestSplit = 1;
-  let minDiff = Infinity;
+    if (currentLine) {
+      lines.push(currentLine);
+    }
 
-  for (let i = 1; i < words.length; i++) {
-    const l1 = words.slice(0, i).join(" ");
-    const l2 = words.slice(i).join(" ");
-    const w1 = font.widthOfTextAtSize(l1, 10);
-    const w2 = font.widthOfTextAtSize(l2, 10);
-    const diff = Math.abs(w1 - w2);
-    if (diff < minDiff) {
-      minDiff = diff;
-      bestSplit = i;
+    if (fits && lines.length <= maxAllowedLines && lines.length * lineHeight <= maxHeightPt) {
+      bestLayout = { size, lines, lineHeight };
+      break;
     }
   }
 
-  const line1 = words.slice(0, bestSplit).join(" ");
-  const line2 = words.slice(bestSplit).join(" ");
-
-  let size = 7.5;
-  while (
-    size > 2.0 &&
-    (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
-  ) {
-    size -= 0.25;
+  if (!bestLayout) {
+    throw new WarrantyQrLabelPdfError(
+      `Product name "${text}" cannot fit within ${maxWidthPt.toFixed(1)}pt x ${maxHeightPt.toFixed(1)}pt ` +
+        `even at minimum readable font size ${minSizePt}pt.`
+    );
   }
 
-  return { lines: [line1, line2], size };
+  // Strict final geometry assertions
+  if (bestLayout.lines.length === 0 || bestLayout.lines.length > 5) {
+    throw new WarrantyQrLabelPdfError("Layout exceeded maximum allowable line count (5 lines).");
+  }
+  for (const line of bestLayout.lines) {
+    const lineWidth = font.widthOfTextAtSize(line, bestLayout.size);
+    if (lineWidth > maxWidthPt) {
+      throw new WarrantyQrLabelPdfError(
+        `Final-fit assertion failed: line "${line}" width ${lineWidth.toFixed(1)}pt exceeds maxWidth ${maxWidthPt.toFixed(1)}pt.`
+      );
+    }
+  }
+
+  return bestLayout;
 }
 
 export function drawWarrantyProductName(
@@ -143,30 +215,27 @@ export function drawWarrantyProductName(
   xPt: number,
   baseYPt: number,
   maxWidthPt: number,
+  maxHeightPt = mm(14.5),
 ): { lines: string[]; size: number } {
-  let singleLineSize = 8.5;
-  while (singleLineSize >= 7.0 && font.widthOfTextAtSize(productName, singleLineSize) > maxWidthPt) {
-    singleLineSize -= 0.25;
-  }
+  const { lines, size, lineHeight } = layoutWarrantyProductName(
+    productName,
+    font,
+    maxWidthPt,
+    maxHeightPt,
+  );
 
-  if (font.widthOfTextAtSize(productName, singleLineSize) <= maxWidthPt) {
-    page.drawText(productName, {
-      x: xPt,
-      y: baseYPt,
-      size: singleLineSize,
-      font,
-      color: BLACK,
-    });
-    return { lines: [productName], size: singleLineSize };
-  }
+  const totalBlockHeight = (lines.length - 1) * lineHeight;
+  const startY = baseYPt + totalBlockHeight * 0.5;
 
-  const { lines, size } = splitIntoTwoLines(productName, font, maxWidthPt);
-  const lineSpacingPt = Math.max(size * 1.25, 9);
-  const line1Y = baseYPt + lineSpacingPt * 0.55;
-  const line2Y = baseYPt - lineSpacingPt * 0.45;
-
-  page.drawText(lines[0], { x: xPt, y: line1Y, size, font, color: BLACK });
-  page.drawText(lines[1], { x: xPt, y: line2Y, size, font, color: BLACK });
+  lines.forEach((line, index) => {
+    const lineY = startY - index * lineHeight;
+    if (lineY < mm(3.0)) {
+      throw new WarrantyQrLabelPdfError(
+        `Final-fit assertion failed: line ${index + 1} y-coordinate ${lineY.toFixed(1)}pt falls below safe bottom inset.`
+      );
+    }
+    drawMixedText(page, font, line, xPt, lineY, size, BLACK);
+  });
 
   return { lines, size };
 }
@@ -191,7 +260,7 @@ export async function renderWarrantyQrLabelMasterPdf(
 
   const [regular, bold] = await Promise.all([
     pdfDoc.embedFont(StandardFonts.Helvetica),
-    pdfDoc.embedFont(StandardFonts.HelveticaBold),
+    embedCairoBoldFont(pdfDoc),
   ]);
 
   const page = pdfDoc.addPage([mm(template.widthMm), mm(template.heightMm)]);

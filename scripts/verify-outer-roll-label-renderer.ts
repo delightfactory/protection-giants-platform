@@ -109,7 +109,7 @@ async function main() {
 
   const longestValidModel: OuterRollLabelViewModel = {
     templateId: "outer-roll-label-v1",
-    productName: "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1524MM",
+    productName: "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1",
     productVersion: "PREMIUM PLUS ULTRA THICK CERAMIC COATED EXTENDED WARRANTY EDITION SERIES 2026-X",
     sku: "PG-ULT-PLUS-CER-PPF-1524-75MIL-EXP-PRO-X",
     gtin: "12345678901234567890123456789012",
@@ -134,6 +134,28 @@ async function main() {
   const longestPage = longestDoc.getPage(0);
   assert.ok(Math.abs(longestPage.getWidth() - millimetresToPdfPoints(150)) < 0.01);
   assert.ok(Math.abs(longestPage.getHeight() - millimetresToPdfPoints(100)) < 0.01);
+
+  // Arabic Outer Roll label
+  const arabicModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productName: "فيلم حماية عمالقة الحماية نانو سيراميك شفاف",
+    productVersion: "إصدار بلس نانو سيراميك",
+  };
+  const arabicMasterA = await renderOuterRollLabelMasterPdf(arabicModel);
+  const arabicMasterB = await renderOuterRollLabelMasterPdf(arabicModel);
+  assert.equal(Buffer.from(arabicMasterA).subarray(0, 4).toString("ascii"), "%PDF");
+  assert.deepEqual(Buffer.from(arabicMasterA), Buffer.from(arabicMasterB), "Arabic Outer Roll reprint must be byte-deterministic.");
+
+  // Mixed Arabic/Latin Outer Roll label
+  const mixedModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productName: "فيلم حماية PPF Super Clear 1524mm Pro",
+    productVersion: "Ceramic Plus 2026",
+  };
+  const mixedMasterA = await renderOuterRollLabelMasterPdf(mixedModel);
+  const mixedMasterB = await renderOuterRollLabelMasterPdf(mixedModel);
+  assert.equal(Buffer.from(mixedMasterA).subarray(0, 4).toString("ascii"), "%PDF");
+  assert.deepEqual(Buffer.from(mixedMasterA), Buffer.from(mixedMasterB), "Mixed Outer Roll reprint must be byte-deterministic.");
 
   console.log("Outer Roll V1 Product Barcode, QR quiet-zone, PDF dimension and deterministic export verification passed.");
 }

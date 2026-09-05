@@ -10,7 +10,7 @@ import { buildRollPrintPackPlan } from "../lib/labels/roll-print-pack-plan.ts";
 import { planRollPrintPackMasterLayout } from "../lib/labels/roll-print-pack-layout.ts";
 import { renderRollPrintPackPdf } from "../lib/labels/roll-print-pack-pdf.ts";
 
-const OUTPUT_DIR = "artifacts/prl-e2e-final";
+const OUTPUT_DIR = "docs/prl-e2e-final-evidence";
 fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
 const cases = [
@@ -29,9 +29,9 @@ const cases = [
     publicCode: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
   },
   {
-    id: "case-2-longest-valid",
-    title: "Case 2: Longest Valid Values (120-char Name, 40-char SKU, 80-char Version)",
-    productName: "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1524MM",
+    id: "case-2-longest-valid-latin",
+    title: "Case 2: Longest Valid Latin (120-char Name, 40-char SKU, 79-char Version)",
+    productName: "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1",
     productVersion: "PREMIUM PLUS ULTRA THICK CERAMIC COATED EXTENDED WARRANTY EDITION SERIES 2026-X",
     sku: "PG-ULT-PLUS-CER-PPF-1524-75MIL-EXP-PRO-X",
     gtin: "12345678901234567890123456789012",
@@ -43,10 +43,10 @@ const cases = [
     publicCode: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
   },
   {
-    id: "case-3-single-token",
-    title: "Case 3: Single-Token Product Name",
-    productName: "ULTRA-PROTECT-SUPER-GLOSS-FILM-SERIES",
-    productVersion: "CERAMIC-PLUS-COATING",
+    id: "case-3-120-char-single-token",
+    title: "Case 3: 120-Character Single-Token Valid Name (Deterministic Hard-Break)",
+    productName: "ULTRA-PROTECT-SUPER-GLOSS-FILM-SERIES-ADVANCED-CERAMIC-PLUS-COATING-EXTENDED-WARRANTY-PROFESSIONAL-EDITION-2026-X-1524MM-75MIL".slice(0, 120),
+    productVersion: "CERAMIC-PLUS-COATING-2026",
     sku: "PG-UP-1524",
     gtin: "5012345678900",
     thicknessMil: 8.0,
@@ -55,6 +55,34 @@ const cases = [
     lotNumber: "PG-L-20260825-00000001-02",
     rollSerial: "PG-R-20260825-00000001-02-0002",
     publicCode: "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
+  },
+  {
+    id: "case-4-arabic",
+    title: "Case 4: Pure Arabic Product Name & Version",
+    productName: "فيلم حماية عمالقة الحماية نانو سيراميك شفاف ذاتي المعالجة",
+    productVersion: "إصدار بلس نانو سيراميك فائق اللمعان",
+    sku: "PG-AR-1524-75",
+    gtin: "6281000000012",
+    thicknessMil: 8.5,
+    widthMm: 1524,
+    lengthM: 15,
+    lotNumber: "PG-L-20260825-00000001-03",
+    rollSerial: "PG-R-20260825-00000001-03-0003",
+    publicCode: "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff",
+  },
+  {
+    id: "case-5-mixed-arabic-latin",
+    title: "Case 5: Mixed Arabic/Latin Product Name & Version",
+    productName: "فيلم حماية PPF Super Clear 1524mm Pro Edition",
+    productVersion: "Ceramic Plus 8.5mil",
+    sku: "PG-MIX-1524",
+    gtin: "6281000000029",
+    thicknessMil: 8.5,
+    widthMm: 1524,
+    lengthM: 15,
+    lotNumber: "PG-L-20260825-00000001-04",
+    rollSerial: "PG-R-20260825-00000001-04-0004",
+    publicCode: "99887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa",
   },
 ];
 
@@ -104,8 +132,15 @@ async function rasterizePdf(browser, pdfBytes, outPngPath, scale = 2.0) {
 }
 
 async function main() {
-  console.log("Launching Chromium for high-res PDF raster evidence generation...");
-  const browser = await chromium.launch({ headless: true });
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+  } catch {
+    browser = await chromium.launch({
+      headless: true,
+      executablePath: "C:/Users/DELL/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe",
+    });
+  }
 
   for (const c of cases) {
     console.log(`\nGenerating evidence for ${c.title}...`);

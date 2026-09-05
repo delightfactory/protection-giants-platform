@@ -79,9 +79,12 @@ describe("Cube O Warranty QR label contract", () => {
 
     const testNames = [
       "PG Shield Ceramic",
-      "PROTECTION GIANTS ULTIMATE PLUS CERAMIC PPF 1524MM",
-      "SUPERLONGPRODUCTTOKENWITHOUTANYSPACESATALL1234567890",
-      "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1524MM",
+      "PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1",
+      "ULTRA-PROTECT-SUPER-GLOSS-FILM-SERIES-ADVANCED-CERAMIC-PLUS-COATING-EXTENDED-WARRANTY-PROFESSIONAL-EDITION-2026-X-1524MM-75MIL".slice(0, 120),
+      "فيلم حماية عمالقة الحماية نانو سيراميك شفاف",
+      "فيلم حماية عمالقة الحماية نانو سيراميك شفاف ذاتي المعالجة مقاوم للخدوش عالي اللمعان سماكة 8.5 ميل ضمان عشر سنوات 1524 مم",
+      "فيلم حماية PPF Super Clear 1524mm Pro",
+      "فيلم حماية عمالقة الحماية PPF Ultra Clear Ceramic 1524mm Pro Edition High Gloss 8.5mil Self Healing Warranty 10 Years PG-2026".slice(0, 120),
     ];
 
     for (const name of testNames) {
@@ -103,5 +106,30 @@ describe("Cube O Warranty QR label contract", () => {
       expect(page.getWidth()).toBeCloseTo(70 * POINTS_PER_MM, 2);
       expect(page.getHeight()).toBeCloseTo(45 * POINTS_PER_MM, 2);
     }
+  });
+
+  it("strictly enforces Product contract bounds (rejects >120 chars and <2 chars)", async () => {
+    const { renderWarrantyQrLabelMasterPdf, WarrantyQrLabelPdfError } = await import(
+      "../lib/labels/warranty-qr-label-pdf"
+    );
+
+    const overlongName = "A".repeat(121);
+    const modelOverlong = buildWarrantyQrLabelModel({
+      publicCode: codeA,
+      productNameSnapshot: "Valid Temporary Name",
+    });
+    modelOverlong.productName = overlongName;
+    await expect(renderWarrantyQrLabelMasterPdf(modelOverlong)).rejects.toThrow(
+      WarrantyQrLabelPdfError
+    );
+
+    const tooShortModel = buildWarrantyQrLabelModel({
+      publicCode: codeA,
+      productNameSnapshot: "Valid Temporary Name",
+    });
+    tooShortModel.productName = "A";
+    await expect(renderWarrantyQrLabelMasterPdf(tooShortModel)).rejects.toThrow(
+      WarrantyQrLabelPdfError
+    );
   });
 });

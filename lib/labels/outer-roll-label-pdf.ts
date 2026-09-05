@@ -39,7 +39,23 @@ export function millimetresToPdfPoints(value: number): number {
   return value * POINTS_PER_MM;
 }
 
+import { embedCairoBoldFont } from "./fonts/cairo-bold-font";
+import { drawMixedText } from "./warranty-qr-label-pdf";
+
 function assertPrintableText(value: string, field: string): string {
+  if (!value || typeof value !== "string") {
+    throw new OuterRollLabelPdfError(`${field} is required for outer-roll-label-v1.`);
+  }
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || trimmed.length > 120) {
+    throw new OuterRollLabelPdfError(
+      `${field} length must be between 2 and 120 characters to satisfy authoritative Product contract.`
+    );
+  }
+  return trimmed;
+}
+
+function assertPrintableCode(value: string, field: string): string {
   if (!value || !/^[\x20-\x7E]+$/.test(value)) {
     throw new OuterRollLabelPdfError(
       `${field} contains unsupported print characters for outer-roll-label-v1.`,
@@ -71,15 +87,13 @@ function drawFittedText(
     size -= 0.25;
   }
 
-  while (size > 4 && font.widthOfTextAtSize(text, size) > maxWidthPt) {
-    size -= 0.25;
-  }
-
   if (font.widthOfTextAtSize(text, size) > maxWidthPt) {
-    throw new OuterRollLabelPdfError(`Required label text does not fit the fixed V1 geometry: ${text}`);
+    throw new OuterRollLabelPdfError(
+      `Required label text does not fit the fixed V1 geometry at minimum size ${minSizePt}pt: ${text}`
+    );
   }
 
-  page.drawText(text, { x: xPt, y: yPt, size, font, color });
+  drawMixedText(page, font, text, xPt, yPt, size, color);
   return size;
 }
 
@@ -242,13 +256,7 @@ function drawOuterProductName(
   }
 
   if (font.widthOfTextAtSize(productName, singleLineSize) <= maxWidthPt) {
-    page.drawText(productName, {
-      x: xPt,
-      y: baseYPt,
-      size: singleLineSize,
-      font,
-      color: WHITE,
-    });
+    drawMixedText(page, font, productName, xPt, baseYPt, singleLineSize, WHITE);
     return;
   }
 
@@ -268,9 +276,14 @@ function drawOuterProductName(
     ) {
       size -= 0.25;
     }
+    if (font.widthOfTextAtSize(l1, size) > maxWidthPt || font.widthOfTextAtSize(l2, size) > maxWidthPt) {
+      throw new OuterRollLabelPdfError(
+        `Product name "${productName}" does not fit Outer Roll label header at minimum 5.5pt.`
+      );
+    }
     const lineSpacing = Math.max(size * 1.2, 11);
-    page.drawText(l1, { x: xPt, y: baseYPt + lineSpacing * 0.45, size, font, color: WHITE });
-    page.drawText(l2, { x: xPt, y: baseYPt - lineSpacing * 0.55, size, font, color: WHITE });
+    drawMixedText(page, font, l1, xPt, baseYPt + lineSpacing * 0.45, size, WHITE);
+    drawMixedText(page, font, l2, xPt, baseYPt - lineSpacing * 0.55, size, WHITE);
     return;
   }
 
@@ -297,9 +310,15 @@ function drawOuterProductName(
     size -= 0.25;
   }
 
+  if (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt) {
+    throw new OuterRollLabelPdfError(
+      `Product name "${productName}" does not fit Outer Roll label header at minimum 5.5pt.`
+    );
+  }
+
   const lineSpacing = Math.max(size * 1.2, 11);
-  page.drawText(line1, { x: xPt, y: baseYPt + lineSpacing * 0.45, size, font, color: WHITE });
-  page.drawText(line2, { x: xPt, y: baseYPt - lineSpacing * 0.55, size, font, color: WHITE });
+  drawMixedText(page, font, line1, xPt, baseYPt + lineSpacing * 0.45, size, WHITE);
+  drawMixedText(page, font, line2, xPt, baseYPt - lineSpacing * 0.55, size, WHITE);
 }
 
 function drawOuterProductVersion(
@@ -316,13 +335,7 @@ function drawOuterProductVersion(
   }
 
   if (font.widthOfTextAtSize(productVersion, singleLineSize) <= maxWidthPt) {
-    page.drawText(productVersion, {
-      x: xPt,
-      y: baseYPt,
-      size: singleLineSize,
-      font,
-      color: WHITE,
-    });
+    drawMixedText(page, font, productVersion, xPt, baseYPt, singleLineSize, WHITE);
     return;
   }
 
@@ -337,14 +350,19 @@ function drawOuterProductVersion(
     const l2 = token.slice(mid);
     let size = 8;
     while (
-      size > 3.5 &&
+      size > 4.5 &&
       (font.widthOfTextAtSize(l1, size) > maxWidthPt || font.widthOfTextAtSize(l2, size) > maxWidthPt)
     ) {
       size -= 0.25;
     }
+    if (font.widthOfTextAtSize(l1, size) > maxWidthPt || font.widthOfTextAtSize(l2, size) > maxWidthPt) {
+      throw new OuterRollLabelPdfError(
+        `Product version "${productVersion}" does not fit Outer Roll label header at minimum 4.5pt.`
+      );
+    }
     const lineSpacing = Math.max(size * 1.2, 8);
-    page.drawText(l1, { x: xPt, y: baseYPt + lineSpacing * 0.45, size, font, color: WHITE });
-    page.drawText(l2, { x: xPt, y: baseYPt - lineSpacing * 0.55, size, font, color: WHITE });
+    drawMixedText(page, font, l1, xPt, baseYPt + lineSpacing * 0.45, size, WHITE);
+    drawMixedText(page, font, l2, xPt, baseYPt - lineSpacing * 0.55, size, WHITE);
     return;
   }
 
@@ -365,15 +383,21 @@ function drawOuterProductVersion(
 
   let size = 8;
   while (
-    size > 3.5 &&
+    size > 4.5 &&
     (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
   ) {
     size -= 0.25;
   }
 
+  if (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt) {
+    throw new OuterRollLabelPdfError(
+      `Product version "${productVersion}" does not fit Outer Roll label header at minimum 4.5pt.`
+    );
+  }
+
   const lineSpacing = Math.max(size * 1.2, 8);
-  page.drawText(line1, { x: xPt, y: baseYPt + lineSpacing * 0.45, size, font, color: WHITE });
-  page.drawText(line2, { x: xPt, y: baseYPt - lineSpacing * 0.55, size, font, color: WHITE });
+  drawMixedText(page, font, line1, xPt, baseYPt + lineSpacing * 0.45, size, WHITE);
+  drawMixedText(page, font, line2, xPt, baseYPt - lineSpacing * 0.55, size, WHITE);
 }
 
 function drawFixedOuterRollLabel(
@@ -393,10 +417,10 @@ function drawFixedOuterRollLabel(
   const productVersion = model.productVersion
     ? assertPrintableText(model.productVersion, "Product version")
     : null;
-  const sku = assertPrintableText(model.sku, "SKU");
-  const barcode = assertPrintableText(model.gtin, "Product Barcode");
-  const lotNumber = assertPrintableText(model.lotNumber, "Lot number");
-  const rollSerial = assertPrintableText(model.rollSerial, "Roll serial");
+  const sku = assertPrintableCode(model.sku, "SKU");
+  const barcode = assertPrintableCode(model.gtin, "Product Barcode");
+  const lotNumber = assertPrintableCode(model.lotNumber, "Lot number");
+  const rollSerial = assertPrintableCode(model.rollSerial, "Roll serial");
 
   page.drawRectangle({
     x: originXPt,
@@ -604,7 +628,7 @@ async function createPdfDocument(title: string): Promise<{ pdfDoc: PDFDocument; 
 
   const [regular, bold] = await Promise.all([
     pdfDoc.embedFont(StandardFonts.Helvetica),
-    pdfDoc.embedFont(StandardFonts.HelveticaBold),
+    embedCairoBoldFont(pdfDoc),
   ]);
 
   return { pdfDoc, fonts: { regular, bold } };
