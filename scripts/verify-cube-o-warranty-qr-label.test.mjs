@@ -132,4 +132,29 @@ describe("Cube O Warranty QR label contract", () => {
       WarrantyQrLabelPdfError
     );
   });
+
+  it("orders mixed Arabic/Latin phrases according to Unicode Bidirectional Algorithm (UAX #9)", async () => {
+    const { getVisualRuns } = await import("../lib/labels/bidi");
+
+    // RTL paragraph with embedded English: "فيلم حماية PPF Super Clear"
+    const mixedRtl = "فيلم حماية PPF Super Clear";
+    const runsRtl = getVisualRuns(mixedRtl);
+    expect(runsRtl).toHaveLength(2);
+    // In visual coordinate order (left to right):
+    // The embedded LTR run appears on the left, Arabic run appears on the right
+    // Reading right-to-left recovers the logical sentence order: "فيلم حماية" then "PPF Super Clear"
+    expect(runsRtl[0].text).toBe("PPF Super Clear");
+    expect(runsRtl[0].level).toBe(2);
+    expect(runsRtl[1].text).toBe("فيلم حماية ");
+    expect(runsRtl[1].level).toBe(1);
+
+    // LTR paragraph with embedded Arabic: "Super Clear فيلم حماية"
+    const mixedLtr = "Super Clear فيلم حماية";
+    const runsLtr = getVisualRuns(mixedLtr);
+    expect(runsLtr).toHaveLength(2);
+    expect(runsLtr[0].text).toBe("Super Clear ");
+    expect(runsLtr[0].level).toBe(0);
+    expect(runsLtr[1].text).toBe("فيلم حماية");
+    expect(runsLtr[1].level).toBe(1);
+  });
 });

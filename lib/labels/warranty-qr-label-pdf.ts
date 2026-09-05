@@ -36,6 +36,8 @@ function printable(value: string, field: string): string {
   return trimmed;
 }
 
+import { getVisualRuns } from "./bidi";
+
 export function drawMixedText(
   page: PDFPage,
   font: PDFFont,
@@ -45,24 +47,14 @@ export function drawMixedText(
   size: number,
   color = BLACK,
 ) {
-  const isMixed =
-    /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text) &&
-    /[a-zA-Z0-9]/.test(text);
-
-  if (!isMixed) {
-    page.drawText(text, { x: xPt, y: yPt, size, font, color });
-    return;
-  }
-
-  const regex =
-    /([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+|[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+)/g;
-  const runs = text.match(regex) || [text];
+  const runs = getVisualRuns(text);
   let curX = xPt;
   for (const run of runs) {
-    page.drawText(run, { x: curX, y: yPt, size, font, color });
-    curX += font.widthOfTextAtSize(run, size);
+    page.drawText(run.text, { x: curX, y: yPt, size, font, color });
+    curX += font.widthOfTextAtSize(run.text, size);
   }
 }
+
 
 function drawFittedText(
   page: PDFPage,

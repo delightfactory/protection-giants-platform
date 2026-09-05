@@ -4,7 +4,8 @@
 **Baseline SHA:** `f415fd3f25e78dd6cfd39d4854f2ef49316ddb2e`  
 **Branch:** `fix/prl-e2e-final-software-remediation`  
 **Authoritative Scope Reference:** `docs/pre-launch-operational-readiness-requirements.md`  
-**Persisted Coverage Matrix:** `docs/prl-e2e-01-v1-coverage-matrix.md`
+**Persisted Coverage Matrix:** `docs/prl-e2e-01-v1-coverage-matrix.md`  
+**Committed Raster Evidence:** `docs/prl-e2e-final-evidence/` (30 reviewable PDF/PNG files)
 
 ---
 
@@ -14,23 +15,39 @@ This report documents the completion of the final software remediation and opera
 
 ### Core Deliverables Completed:
 1. **DEFECT-01 Resolved (`PRNT-02`):** Warranty QR in-platform preview CSS converted from viewport units (`vw`) to CSS Container Queries (`cqw`), eliminating preview overlap and clipping on multi-column grids. Merged in PR #135.
-2. **DEFECT-02 Resolved (`PRNT-03`):** Outer Roll Label PDF typography hierarchy comprehensively rebalanced. The Roll serial is now the prominent primary visual identifier (`12.5pt`), SKU is prominently sized (`12.5pt`), Size and Thickness are clearly differentiated (`12pt`), Lot is prominent (`11.5pt`), and brand/barcode text is balanced while strictly preserving Code 128 and QR quiet zones on 150×100mm label stock.
-3. **DEFECT-03 Resolved (`PRNT-04`):** Warranty QR PDF single-line fitted text replaced with 2-line word-boundary wrapping and multi-tier font scaling down to `2.0pt`. The PDF generation engine never throws errors for valid product names within the platform's authoritative 120-character database constraint and fits cleanly without clipping into the QR quiet zone.
-4. **Master Print Pack Integration Verified:** Full Roll Print Pack (2 Outer Roll labels + 3 Warranty QR stickers per roll on a 318×181mm master sheet) verified with byte-deterministic output, exact cut gutters, and zero raw public code leakage.
-5. **Visual Raster Evidence Generated:** High-resolution PNG raster evidence generated in `artifacts/prl-e2e-final/` across 3 representative cases: normal valid values, longest valid contract values (120-char name, 40-char SKU, 80-char version, 32-digit barcode), and single-token name.
-6. **Authoritative Coverage Matrix Persisted:** Persisted `docs/prl-e2e-01-v1-coverage-matrix.md` with explicit mathematical reconciliation of the 67 vs 104 census and empirical classification: **95 PASS**, **9 EXTERNAL_GATE_PENDING**, **0 FAIL**, **0 UNCOVERED**.
+2. **DEFECT-02 Resolved (`PRNT-03`):** Outer Roll Label PDF typography hierarchy comprehensively rebalanced on 150×100mm label stock:
+   * **ROLL serial number** enlarged to prominent primary identifier (**`12.5pt` bold**).
+   * **SKU** prominently sized (**`12.5pt` bold**).
+   * **SIZE** and **THICKNESS** clearly differentiated (**`12pt` bold**).
+   * **LOT** enlarged to **`11.5pt` bold**.
+   * Removed silent secondary 4pt descent in `drawFittedText`.
+   * Enforces explicit boundary and geometry assertions before drawing.
+3. **DEFECT-03 Resolved (`PRNT-04`):** Warranty QR PDF single-line fitted text replaced with deterministic width-aware multi-line layout with token hard-breaking:
+   * Supports 1 to 5 lines scaling from `8.5pt` down to a legible minimum of `5.5pt` inside the 14.5mm vertical safe zone (`y = 4.2mm` to `16.3mm`).
+   * Never throws errors for valid product names within the platform's authoritative 120-character database contract (`CHECK char_length between 2 and 120`).
+   * Handles 120-character continuous single tokens without spaces via deterministic width-aware hard-breaks.
+   * Strictly terminates at `x = 35mm`, preserving the QR quiet box beginning at `x = 36mm`.
+4. **Full Unicode & Arabic/Latin BiDi PDF Rendering (`lib/labels/bidi.ts`):**
+   * Embedded single authoritative TrueType font `Cairo-Bold` (weight 700) via `@pdf-lib/fontkit` in `lib/labels/fonts/cairo-bold-font.ts` with SIL Open Font License 1.1 notice in `lib/labels/fonts/OFL.txt`.
+   * Governed by the Unicode Bidirectional Algorithm (UAX #9) via `lib/labels/bidi.ts` (`getVisualRuns`).
+   * Properly sequences visual run ordering for pure Arabic, pure Latin, and mixed RTL-leading phrases (e.g. `فيلم حماية PPF Super Clear`) while preserving OpenType cursive glyph shaping for Arabic.
+5. **Product Version Contract Preserved:**
+   * Split `productName` (required 2..120 chars) and `productVersion` (optional 1..80 chars) validation in `lib/labels/outer-roll-label-pdf.ts`.
+   * Valid 1-character versions (e.g. `"X"`) and 80-character boundary versions are fully supported and tested.
+6. **Master Print Pack Integration Verified:** Full Roll Print Pack (2 Outer Roll labels + 3 Warranty QR stickers per roll on a 318×181mm master sheet) verified with byte-deterministic output, exact cut gutters, and zero raw public code leakage.
+7. **Committed Visual Raster Evidence (`docs/prl-e2e-final-evidence/`):** 30 reviewable files (15 PDFs + 15 high-res PNGs at 2.0x–3.0x scale) committed directly in the repository across 5 representative cases: normal valid, longest valid Latin (120-char name, 40-char SKU, 80-char version), 120-char single-token, pure Arabic, and mixed Arabic/Latin.
+8. **Reproducible Test Scripts:** Removed all machine-specific executable paths. Both `verify-cube-o-warranty-preview-rendering.mjs` and `generate-prl-e2e-final-raster-evidence.mjs` use standard Playwright discovery with descriptive installation instructions if browsers are missing.
+9. **Authoritative Coverage Matrix Persisted:** Persisted `docs/prl-e2e-01-v1-coverage-matrix.md` with explicit mathematical reconciliation of the 67 vs 104 census and empirical classification: **95 PASS**, **9 EXTERNAL_GATE_PENDING**, **0 FAIL**, **0 UNCOVERED**.
 
 ---
 
 ## 2. Authoritative Contract Validation Limits
 
-To eliminate guessing around product name and identifier constraints, the authoritative contracts across the database, schema, and application layers were audited:
-
 | Field | Authoritative Source | Constraint / Rule | Tested Scenarios |
 |---|---|---|---|
-| **Product Name** | DB: `products.name` CHECK `char_length between 2 and 120`<br>UI: `lib/products/product-core-input.ts` | 2 to 120 characters, printable ASCII | 1. Normal: 33 chars ("Protection Giants Super Clear PPF")<br>2. Longest: 120 chars<br>3. Single-token: 36 chars |
-| **Product Version** | DB: `products.version` text<br>UI: optional string | Up to 80 characters | 1. Normal: 11 chars ("Ultra Gloss")<br>2. Longest: 80 chars |
-| **Product SKU (`code`)** | DB: `products.code` unique<br>UI: `^[A-Z0-9][A-Z0-9._-]*$`, length 2 to 40 | 2 to 40 characters | 1. Normal: 13 chars ("PG-SC-1524-75")<br>2. Longest: 40 chars ("PG-ULT-PLUS-CER-PPF-1524-75MIL-EXP-PRO-X") |
+| **Product Name** | DB: `products.name` CHECK `char_length between 2 and 120`<br>UI: `lib/products/product-core-input.ts` | 2 to 120 characters, Unicode (Arabic + Latin) | 1. Normal: 33 chars ("Protection Giants Super Clear PPF")<br>2. Longest: 120 chars Latin<br>3. 120-char single-token (no spaces)<br>4. Pure Arabic ("فيلم حماية عمالقة الحماية نانو سيراميك شفاف")<br>5. Mixed Arabic/Latin ("فيلم حماية PPF Super Clear 1524mm Pro") |
+| **Product Version** | DB: `products.version` text<br>UI: optional string, max 80 chars | Optional, 1 to 80 characters, Unicode | 1. None / null<br>2. 1-char ("X")<br>3. Normal ("Ultra Gloss")<br>4. 80-char boundary ("V".repeat(80))<br>5. Pure Arabic & Mixed Arabic/Latin |
+| **Product SKU (`code`)** | DB: `products.code` unique<br>UI: `^[A-Z0-9][A-Z0-9._-]*$`, length 2 to 40 | 2 to 40 characters ASCII | 1. Normal: 13 chars ("PG-SC-1524-75")<br>2. Longest: 40 chars ("PG-ULT-PLUS-CER-PPF-1524-75MIL-EXP-PRO-X") |
 | **Product Barcode (`gtin`)** | DB: `products.gtin` unique<br>UI: digits only, max 32 digits | Up to 32 digits | 1. Normal: 13 digits (EAN-13: `4006381333931`)<br>2. Longest: 32 digits (`12345678901234567890123456789012`) |
 | **Warranty Public Code** | DB: `warranties.public_code` | 64-char hex SHA-256 | Deterministic 64-char hex string |
 | **Roll Serial** | DB: `rolls.serial_number` | `PG-R-YYYYMMDD-ORDSEQ-LOT-ROLL` (~31 chars) | Operational serial format |
@@ -39,62 +56,38 @@ To eliminate guessing around product name and identifier constraints, the author
 
 ## 3. Remediation Details & Verification
 
-### A. Slice 1 — DEFECT-03: Warranty QR PDF Product-Name Wrapping
+### A. Slice 1 — DEFECT-03: Warranty QR PDF Product-Name Wrapping & BiDi
 * **Root Cause:** Original `drawFittedText` attempted to fit product names onto a single line down to `5.25pt` and threw a fatal `WarrantyQrLabelPdfError` if the name was longer than ~20-25 characters.
 * **Remediation:**
   * Updated `lib/labels/warranty-qr-label-template.ts`: Set `productName.widthMm = 31` (utilizing the full 32mm clearance before the QR quiet box at 36mm).
-  * Implemented `splitIntoTwoLines` and `drawWarrantyProductName` in `lib/labels/warranty-qr-label-pdf.ts`:
-    * Names fitting comfortably on one line render at `8.5pt` down to `7.0pt`.
-    * Longer names are split across word boundaries into two balanced lines.
-    * Sizing scales smoothly down to `2.0pt` for longest valid values (120 chars), guaranteeing zero overflow or clipping into the QR quiet zone.
-    * Removed the fatal error throw for valid names within platform constraints.
-* **Verification:** `scripts/verify-cube-o-warranty-qr-label.test.mjs` (7 tests PASS), testing short names, 50-char names, single-token names, and the full 120-character contract limit.
+  * Implemented `layoutWarrantyProductName` in `lib/labels/warranty-qr-label-pdf.ts`:
+    * Word-boundary wrapping preferring natural spaces.
+    * Deterministic hard-breaks for tokens exceeding the 31mm width.
+    * 1 to 5 lines scaling from `8.5pt` down to `5.5pt` inside the 14.5mm vertical safe zone.
+    * Enforces final width and boundary assertion before drawing.
+  * Implemented `drawMixedText` with `lib/labels/bidi.ts` (`getVisualRuns`), governing run order by UAX #9.
+* **Verification:** `scripts/verify-cube-o-warranty-qr-label.test.mjs` (9 tests PASS), testing short names, 120-char names, single-token 120-char names, pure Arabic, mixed Arabic/Latin, and BiDi run order.
 
-### B. Slice 2 — DEFECT-02: Outer Roll Label Typography Hierarchy
-* **Root Cause:** Human-readable text sizes (5–9pt) were disproportionately small relative to the 150×100mm label canvas, reducing readability from operational inspection distance.
+### B. Slice 2 — DEFECT-02: Outer Roll Label Typography Hierarchy & Version Contract
+* **Root Cause:** Human-readable text sizes (5–9pt) were disproportionately small relative to the 150×100mm label canvas, and version validation mistakenly shared product name bounds (2..120).
 * **Remediation:**
-  * Updated `lib/labels/outer-roll-label-template.ts`: Adjusted vertical field positions and header balance.
   * Updated `lib/labels/outer-roll-label-pdf.ts`:
-    * Brand header increased to `9.5pt` bold; category tag to `7.5pt` bold.
-    * Product name renders at up to `18pt` bold (single-line) or 2-line word-boundary wrapped (`11pt` to `5.5pt`), supporting names up to 120 chars without clipping.
-    * Product version supports 2-line wrapping for values up to 80 chars.
-    * Field captions set to distinct `6.5pt` bold in muted gray.
-    * **ROLL serial number** prominently enlarged to **`12.5pt` bold** as the primary operational identifier.
-    * **SKU** enlarged to **`12.5pt` bold** (scales down gracefully to `5pt` for 40-char max SKUs).
+    * Primary identifier **ROLL serial** enlarged to **`12.5pt` bold**.
+    * **SKU** enlarged to **`12.5pt` bold** (scales gracefully to `5pt` for 40-char max SKUs).
     * **SIZE** and **THICKNESS** enlarged to **`12pt` bold**.
     * **LOT** enlarged to **`11.5pt` bold**.
-    * Barcode human-readable label enlarged to `7.5pt` bold; "SCAN ROLL" callout centered with safe quiet margins.
-    * Preserved exact Code 128 and QR geometry, safe margins, and 150×100mm physical cut bounds.
-* **Verification:** `scripts/verify-outer-roll-label-renderer.ts` (PASS), `scripts/verify-cube-o-roll-print-pack-pdf.test.mjs` (6 tests PASS), and byte-deterministic layout assertions.
+    * Removed silent secondary 4pt descent in `drawFittedText`.
+    * Split `assertPrintableProductName` (2..120 chars) and `assertPrintableProductVersion` (optional, 1..80 chars).
+    * Implemented multi-line layout with token hard-breaks for `drawOuterProductVersion`.
+* **Verification:** `scripts/verify-outer-roll-label-renderer.ts` (PASS), `scripts/verify-cube-o-roll-print-pack-pdf.test.mjs` (6 tests PASS), covering 1-char version, 80-char version, and rejections for out-of-bounds values.
 
 ### C. Slice 3 — Visual Raster Evidence Generation
-High-resolution raster PNG proofs were generated via Chromium in Playwright at 2.0x–3.0x scale from the actual rendered PDF bytes and saved to `artifacts/prl-e2e-final/`:
-
-1. **Case 1: Normal Valid Values**
-   * Product: `Protection Giants Super Clear PPF` (33 chars)
-   * Version: `Ultra Gloss`
-   * SKU: `PG-SC-1524-75` (13 chars)
-   * Artifacts:
-     * `case-1-normal-warranty.png` (70×45mm, crisp typography, clean QR)
-     * `case-1-normal-outer.png` (150×100mm, prominent 12.5pt ROLL serial & SKU)
-     * `case-1-normal-pack.png` (318×181mm, 2 Outer + 3 Warranty on master proof)
-2. **Case 2: Longest Valid Values (Contract Limits)**
-   * Product: `PROTECTION GIANTS ADVANCED DUAL LAYER ULTRA HIGH GLOSS CLEAR COAT AUTOMOTIVE PAINT PROTECTION FILM PROFESSIONAL SERIES 1524MM` (120 chars)
-   * Version: `PREMIUM PLUS ULTRA THICK CERAMIC COATED EXTENDED WARRANTY EDITION SERIES 2026-X` (80 chars)
-   * SKU: `PG-ULT-PLUS-CER-PPF-1524-75MIL-EXP-PRO-X` (40 chars)
-   * Barcode: `12345678901234567890123456789012` (32 digits)
-   * Artifacts:
-     * `case-2-longest-valid-warranty.png` (2 balanced lines, zero QR clipping, zero errors)
-     * `case-2-longest-valid-outer.png` (2-line header, 40-char SKU fitted, barcode intact)
-     * `case-2-longest-valid-pack.png` (full 5-label master proof completely rendered)
-3. **Case 3: Single-Token Product Name**
-   * Product: `ULTRA-PROTECT-SUPER-GLOSS-FILM-SERIES` (36 chars, zero spaces)
-   * Version: `CERAMIC-PLUS-COATING`
-   * SKU: `PG-UP-1524`
-   * Artifacts:
-     * `case-3-single-token-warranty.png` (hyphen/midpoint split, cleanly rendered)
-     * `case-3-single-token-outer.png` (clean header layout)
-     * `case-3-single-token-pack.png` (clean master proof)
+30 high-resolution raster files (15 PDFs + 15 PNGs at 2.0x–3.0x scale) committed directly in `docs/prl-e2e-final-evidence/`:
+1. **Case 1: Normal Valid Values** (`case-1-normal-*`)
+2. **Case 2: Longest Valid Latin** (`case-2-longest-valid-latin-*`) — 120-char name, 40-char SKU, 79-char version
+3. **Case 3: 120-Character Single-Token Valid Name** (`case-3-120-char-single-token-*`) — deterministic hard-break
+4. **Case 4: Pure Arabic Product Name & Version** (`case-4-arabic-*`) — full Cairo-Bold OpenType shaping
+5. **Case 5: Mixed Arabic/Latin Product Name & Version** (`case-5-mixed-arabic-latin-*`) — UAX #9 BiDi run ordering
 
 ---
 
@@ -102,26 +95,25 @@ High-resolution raster PNG proofs were generated via Chromium in Playwright at 2
 
 ### Mathematical Reconciliation
 * **Initial High-Level Summary:** 67 functional feature areas across platform cubes.
-* **Atomic Decomposed Matrix (`docs/prl-e2e-01-v1-coverage-matrix.md`):** 104 granular execution rows.
-* **Decomposition Mechanism:**
-  * Authentication: 1 summary area $\to$ 12 granular rows (`AUTH-01..12`).
-  * Public & Lookups: 3 summary areas $\to$ 12 granular rows (`PUB-01..12`).
-  * Production & Print: 3 summary areas $\to$ 8 granular rows (`PORD-01..03`, `PRNT-01..05`).
-  * Custody & Transfers: 4 summary areas $\to$ 8 granular rows (`CUST-01`, `TRNS-01..07`).
-  * Roll Opening & Issues: 4 summary areas $\to$ 7 granular rows (`ROPN-01..03`, `RISS-01..04`).
-  * Warranty Activation & Claims: 6 summary areas $\to$ 9 granular rows (`WACT-01..05`, `CLMI-01..04`).
-  * Claims Review, Inspection & Decisions: 5 summary areas $\to$ 7 granular rows (`CLMR-01..03`, `INSP-01..03`, `CLMD-01..02`).
-  * Resolution & Fulfillment: 4 summary areas $\to$ 7 granular rows (`RESL-01..07`).
-  * Network Administration: 5 summary areas $\to$ 10 granular rows (`NETW-01..10`).
-  * User Administration: 2 summary areas $\to$ 3 granular rows (`USER-01..03`).
-  * Mobile, PWA & Accessibility: 3 summary areas $\to$ 3 granular rows (`PWA-01..02`, `A11Y-01`).
-* **Audit Checks:**
-  * Unique IDs: 104 / 104
-  * Duplicate IDs: 0
-  * Out-of-Scope Rows: 0
+* **Atomic Decomposed Matrix (`docs/prl-e2e-01-v1-coverage-matrix.md`):** Exactly 104 granular execution rows.
+* **Exact Decomposition Across 12 Domain Groups:**
+  1. Group 1: Public & Lookups $\to$ 12 rows (`PUB-01..12`)
+  2. Group 2: Authentication & Session $\to$ 12 rows (`AUTH-01..12`)
+  3. Group 3: Operations Network & Navigation $\to$ 5 rows (`NAV-01..05`)
+  4. Group 4: Notifications & Account $\to$ 7 rows (`NOTIF-01..05`, `ACCT-01..02`)
+  5. Group 5: Product Catalog $\to$ 5 rows (`PROD-01..05`)
+  6. Group 6: Production Orders & Print Pack $\to$ 8 rows (`PORD-01..03`, `PRNT-01..05`)
+  7. Group 7: Custody & Transfers $\to$ 8 rows (`CUST-01`, `TRNS-01..07`)
+  8. Group 8: Roll Opening & Issues $\to$ 7 rows (`ROPN-01..03`, `RISS-01..04`)
+  9. Group 9: Warranty Lifecycle & Customer Claims $\to$ 9 rows (`WACT-01..05`, `CLMI-01..04`)
+  10. Group 10: Claim Review, Inspection, Decisions & Resolution $\to$ 15 rows (`CLMR-01..03`, `INSP-01..03`, `CLMD-01..02`, `RESL-01..07`)
+  11. Group 11: Network & User Management $\to$ 13 rows (`NETW-01..10`, `USER-01..03`)
+  12. Group 12: Mobile Experience, PWA & Accessibility $\to$ 3 rows (`PWA-01..02`, `A11Y-01`)
+
+**Sum: 12 + 12 + 5 + 7 + 5 + 8 + 8 + 7 + 9 + 15 + 13 + 3 = 104 rows exactly.**  
+Verified by `scripts/audit-coverage-matrix.cjs` with 0 duplicates and 0 unmapped rows.
 
 ### Strict Empirical Classification
-Following the operational readiness principle, no row requiring physical hardware or external config is marked PASS merely because its software simulation passes:
 
 | Primary Status | Row Count | Percentage | Description |
 |---|---|---|---|
@@ -148,17 +140,20 @@ Following the operational readiness principle, no row requiring physical hardwar
 # Vitest test suite execution
 npm test (npx vitest run)
 ✓ scripts/verify-transfer-receipt-interactions.test.mjs (2 tests)
-✓ scripts/verify-cube-o-warranty-qr-label.test.mjs (7 tests)
 ✓ scripts/verify-cube-o-roll-print-pack-pdf.test.mjs (6 tests)
+✓ scripts/verify-cube-o-warranty-qr-label.test.mjs (9 tests)
 ✓ scripts/verify-notification-push-device-contract.test.ts (4 tests)
 ✓ scripts/verify-notification-push-worker-transport.test.ts (4 tests)
 ✓ scripts/verify-cube-o-roll-print-pack-ui-contract.mjs (1 test)
 ✓ scripts/verify-cube-o-warranty-preview-rendering.mjs (4 tests)
-Total: 43 passed (43) in 7 test suites
+Total: 45 passed (45) in 7 test suites
 
 # Outer roll label plan & renderer scripts
 node scripts/verify-outer-roll-label-plan.cjs -> PASS
 npx tsx scripts/verify-outer-roll-label-renderer.ts -> PASS
+
+# Coverage matrix census audit
+node scripts/audit-coverage-matrix.cjs -> PASS (104 rows matched, 104 unique IDs, 0 duplicates)
 
 # TypeScript typecheck
 npm run typecheck -> 0 errors

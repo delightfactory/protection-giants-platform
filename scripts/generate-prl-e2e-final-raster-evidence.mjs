@@ -135,11 +135,12 @@ async function main() {
   let browser;
   try {
     browser = await chromium.launch({ headless: true });
-  } catch {
-    browser = await chromium.launch({
-      headless: true,
-      executablePath: "C:/Users/DELL/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe",
-    });
+  } catch (err) {
+    console.error(
+      "Failed to launch Chromium via Playwright. Please ensure browsers are installed by running `npx playwright install chromium`.",
+      err,
+    );
+    throw err;
   }
 
   for (const c of cases) {
@@ -238,7 +239,7 @@ async function main() {
   }
 
   await browser.close();
-  console.log("\nAll visual raster evidence generated successfully in artifacts/prl-e2e-final/");
+  console.log(`\nAll visual raster evidence generated successfully in ${OUTPUT_DIR}/`);
 }
 
 main().catch((err) => {

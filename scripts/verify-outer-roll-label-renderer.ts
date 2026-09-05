@@ -157,10 +157,45 @@ async function main() {
   assert.equal(Buffer.from(mixedMasterA).subarray(0, 4).toString("ascii"), "%PDF");
   assert.deepEqual(Buffer.from(mixedMasterA), Buffer.from(mixedMasterB), "Mixed Outer Roll reprint must be byte-deterministic.");
 
-  console.log("Outer Roll V1 Product Barcode, QR quiet-zone, PDF dimension and deterministic export verification passed.");
+  // Product Version boundary tests: 1-char version ("X") and 80-char version
+  const singleCharVersionModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productVersion: "X",
+  };
+  const singleCharPdf = await renderOuterRollLabelMasterPdf(singleCharVersionModel);
+  assert.equal(Buffer.from(singleCharPdf).subarray(0, 4).toString("ascii"), "%PDF");
+
+  const eightyCharVersionModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productVersion: "V".repeat(80),
+  };
+  const eightyCharPdf = await renderOuterRollLabelMasterPdf(eightyCharVersionModel);
+  assert.equal(Buffer.from(eightyCharPdf).subarray(0, 4).toString("ascii"), "%PDF");
+
+  // Rejections: >80-char version, <2-char name, >120-char name
+  const overlongVersionModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productVersion: "V".repeat(81),
+  };
+  await assert.rejects(async () => renderOuterRollLabelMasterPdf(overlongVersionModel));
+
+  const tooShortNameModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productName: "A",
+  };
+  await assert.rejects(async () => renderOuterRollLabelMasterPdf(tooShortNameModel));
+
+  const overlongNameModel: OuterRollLabelViewModel = {
+    ...longestValidModel,
+    productName: "A".repeat(121),
+  };
+  await assert.rejects(async () => renderOuterRollLabelMasterPdf(overlongNameModel));
+
+  console.log("Outer Roll V1 Product Barcode, QR quiet-zone, PDF dimension, version bounds, and deterministic export verification passed.");
 }
 
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+

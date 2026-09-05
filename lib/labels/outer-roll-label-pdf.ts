@@ -42,18 +42,38 @@ export function millimetresToPdfPoints(value: number): number {
 import { embedCairoBoldFont } from "./fonts/cairo-bold-font";
 import { drawMixedText } from "./warranty-qr-label-pdf";
 
-function assertPrintableText(value: string, field: string): string {
+function assertPrintableProductName(value: string): string {
   if (!value || typeof value !== "string") {
-    throw new OuterRollLabelPdfError(`${field} is required for outer-roll-label-v1.`);
+    throw new OuterRollLabelPdfError("Product name is required for outer-roll-label-v1.");
   }
   const trimmed = value.trim();
   if (trimmed.length < 2 || trimmed.length > 120) {
     throw new OuterRollLabelPdfError(
-      `${field} length must be between 2 and 120 characters to satisfy authoritative Product contract.`
+      "Product name length must be between 2 and 120 characters to satisfy authoritative Product contract."
     );
   }
   return trimmed;
 }
+
+function assertPrintableProductVersion(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    throw new OuterRollLabelPdfError("Product version must be a string if provided.");
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  if (trimmed.length > 80) {
+    throw new OuterRollLabelPdfError(
+      "Product version length cannot exceed 80 characters to satisfy authoritative Product contract."
+    );
+  }
+  return trimmed;
+}
+
 
 function assertPrintableCode(value: string, field: string): string {
   if (!value || !/^[\x20-\x7E]+$/.test(value)) {
@@ -340,64 +360,73 @@ function drawOuterProductVersion(
   }
 
   const words = productVersion.split(/\s+/).filter(Boolean);
-  let bestSplit = 1;
-  let minDiff = Infinity;
+  let bestLayout: { lines: string[]; size: number; lineHeight: number } | null = null;
+  const maxHeightPt = 32;
 
-  if (words.length <= 1) {
-    const token = words[0] || productVersion;
-    const mid = Math.ceil(token.length / 2);
-    const l1 = token.slice(0, mid);
-    const l2 = token.slice(mid);
-    let size = 8;
-    while (
-      size > 4.5 &&
-      (font.widthOfTextAtSize(l1, size) > maxWidthPt || font.widthOfTextAtSize(l2, size) > maxWidthPt)
-    ) {
-      size -= 0.25;
+  for (let size = 8; size >= 4.5; size -= 0.25) {
+    const lineHeight = Math.max(size * 1.25, 6);
+    const maxAllowedLines = Math.floor(maxHeightPt / lineHeight);
+    const lines: string[] = [];
+    let currentLine = "";
+    let fits = true;
+
+    for (const word of words) {
+      if (font.widthOfTextAtSize(word, size) > maxWidthPt) {
+        if (currentLine) {
+          lines.push(currentLine);
+          currentLine = "";
+        }
+        let tokenPart = "";
+        for (const char of word) {
+          if (font.widthOfTextAtSize(tokenPart + char, size) <= maxWidthPt) {
+            tokenPart += char;
+          } else {
+            if (tokenPart) lines.push(tokenPart);
+            tokenPart = char;
+          }
+        }
+        if (tokenPart) {
+          currentLine = tokenPart;
+        }
+      } else {
+        const candidate = currentLine ? `${currentLine} ${word}` : word;
+        if (font.widthOfTextAtSize(candidate, size) <= maxWidthPt) {
+          currentLine = candidate;
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (lines.length > maxAllowedLines) {
+        fits = false;
+        break;
+      }
     }
-    if (font.widthOfTextAtSize(l1, size) > maxWidthPt || font.widthOfTextAtSize(l2, size) > maxWidthPt) {
-      throw new OuterRollLabelPdfError(
-        `Product version "${productVersion}" does not fit Outer Roll label header at minimum 4.5pt.`
-      );
+    if (currentLine) lines.push(currentLine);
+
+    if (fits && lines.length <= maxAllowedLines) {
+      const allLinesFit = lines.every((l) => font.widthOfTextAtSize(l, size) <= maxWidthPt);
+      if (allLinesFit) {
+        bestLayout = { lines, size, lineHeight };
+        break;
+      }
     }
-    const lineSpacing = Math.max(size * 1.2, 8);
-    drawMixedText(page, font, l1, xPt, baseYPt + lineSpacing * 0.45, size, WHITE);
-    drawMixedText(page, font, l2, xPt, baseYPt - lineSpacing * 0.55, size, WHITE);
-    return;
   }
 
-  for (let i = 1; i < words.length; i++) {
-    const l1 = words.slice(0, i).join(" ");
-    const l2 = words.slice(i).join(" ");
-    const w1 = font.widthOfTextAtSize(l1, 10);
-    const w2 = font.widthOfTextAtSize(l2, 10);
-    const diff = Math.abs(w1 - w2);
-    if (diff < minDiff) {
-      minDiff = diff;
-      bestSplit = i;
-    }
-  }
-
-  const line1 = words.slice(0, bestSplit).join(" ");
-  const line2 = words.slice(bestSplit).join(" ");
-
-  let size = 8;
-  while (
-    size > 4.5 &&
-    (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt)
-  ) {
-    size -= 0.25;
-  }
-
-  if (font.widthOfTextAtSize(line1, size) > maxWidthPt || font.widthOfTextAtSize(line2, size) > maxWidthPt) {
+  if (!bestLayout || bestLayout.lines.length === 0) {
     throw new OuterRollLabelPdfError(
       `Product version "${productVersion}" does not fit Outer Roll label header at minimum 4.5pt.`
     );
   }
 
-  const lineSpacing = Math.max(size * 1.2, 8);
-  drawMixedText(page, font, line1, xPt, baseYPt + lineSpacing * 0.45, size, WHITE);
-  drawMixedText(page, font, line2, xPt, baseYPt - lineSpacing * 0.55, size, WHITE);
+  const { lines, size, lineHeight } = bestLayout;
+  const totalHeight = (lines.length - 1) * lineHeight;
+  const startY = baseYPt + totalHeight / 2;
+
+  for (let i = 0; i < lines.length; i++) {
+    const yLine = startY - i * lineHeight;
+    drawMixedText(page, font, lines[i], xPt, yLine, size, WHITE);
+  }
 }
 
 function drawFixedOuterRollLabel(
@@ -413,10 +442,8 @@ function drawFixedOuterRollLabel(
   const x = (mm: number) => originXPt + millimetresToPdfPoints(mm);
   const y = (mm: number) => originYPt + millimetresToPdfPoints(mm);
 
-  const productName = assertPrintableText(model.productName, "Product name");
-  const productVersion = model.productVersion
-    ? assertPrintableText(model.productVersion, "Product version")
-    : null;
+  const productName = assertPrintableProductName(model.productName);
+  const productVersion = assertPrintableProductVersion(model.productVersion);
   const sku = assertPrintableCode(model.sku, "SKU");
   const barcode = assertPrintableCode(model.gtin, "Product Barcode");
   const lotNumber = assertPrintableCode(model.lotNumber, "Lot number");
