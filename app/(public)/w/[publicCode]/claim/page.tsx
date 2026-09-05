@@ -12,6 +12,8 @@ type Props = {
 };
 
 export const metadata: Metadata = {
+  title: "تقديم مطالبة ضمان",
+  description: "تقديم مطالبة ضمان رسمية لعملاء Protection Giants.",
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };
